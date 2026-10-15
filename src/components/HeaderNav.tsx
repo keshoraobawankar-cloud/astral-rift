@@ -18,6 +18,7 @@ import {
   Lock,
   User,
   LogOut,
+  Database,
 } from 'lucide-react';
 
 export type NavTab =
@@ -43,6 +44,9 @@ interface HeaderNavProps {
   hunterUsername?: string | null;
   onOpenLoginModal?: () => void;
   onLogout?: () => void;
+  onOpenCloudVault?: () => void;
+  isPlaying3D?: boolean;
+  onToggle3DPlayable?: () => void;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -57,6 +61,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   hunterUsername,
   onOpenLoginModal,
   onLogout,
+  onOpenCloudVault,
+  isPlaying3D,
+  onToggle3DPlayable,
 }) => {
   return (
     <header className="w-full bg-slate-950/95 border-b border-slate-800 backdrop-blur-md sticky top-0 z-40 select-none">
@@ -244,6 +251,33 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             >
               <User className="w-3.5 h-3.5" />
               <span>HUNTER LOGIN</span>
+            </button>
+          )}
+
+          {onToggle3DPlayable && (
+            <button
+              onClick={onToggle3DPlayable}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-rpg font-bold transition shadow-sm cursor-pointer ${
+                isPlaying3D
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-500/20'
+                  : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:brightness-110 text-white shadow-cyan-500/20'
+              }`}
+              title={isPlaying3D ? 'Currently in 3D Viewport. Click to return to Dashboard' : 'Enter 3D Multiplayer Viewport'}
+            >
+              <span className={`w-2 h-2 rounded-full ${isPlaying3D ? 'bg-white animate-pulse' : 'bg-cyan-300'}`} />
+              <span className="hidden sm:inline">{isPlaying3D ? '3D VIEWPORT ACTIVE' : 'ENTER 3D WORLD'}</span>
+              <span className="sm:hidden font-mono">3D</span>
+            </button>
+          )}
+
+          {onOpenCloudVault && (
+            <button
+              onClick={onOpenCloudVault}
+              className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 px-2.5 py-1 rounded-xl text-xs font-mono transition shadow-sm cursor-pointer"
+              title="Open Supabase Cloud Vault for Persistent Inventory & Auth"
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline font-bold">SUPABASE VAULT</span>
             </button>
           )}
 

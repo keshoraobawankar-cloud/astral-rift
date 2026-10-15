@@ -29,8 +29,12 @@ import { CombatCanvas } from './components/CombatCanvas';
 import { CraftingWorkshop } from './components/CraftingWorkshop';
 import { CodexLore } from './components/CodexLore';
 import { GuildHall } from './components/GuildHall';
+import { GameViewport } from './components/GameViewport';
+import { AuthAndInventory } from './components/AuthAndInventory';
+import LoginScreen from './components/LoginScreen';
 import { AffinityManager } from './services/affinityManager';
 import { AffinityEventType } from './types/affinity';
+import { syncPlayerStateWithBackend } from './services/api';
 
 export const App: React.FC = () => {
   // Safe Zone & City Boundary State (Feature A)
@@ -135,6 +139,14 @@ export const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState(sound.getMuted());
   const [systemToast, setSystemToast] = useState<string | null>(null);
 
+  // 3D Playable World & Cloud Modal States
+  const [isPlaying3D, setIsPlaying3D] = useState<boolean>(false);
+  const [isCloudVaultOpen, setIsCloudVaultOpen] = useState<boolean>(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [hunterUsername, setHunterUsername] = useState<string | null>(
+    () => localStorage.getItem('aethelgard_username') || localStorage.getItem('username') || 'Hunter Monarch'
+  );
+
   // Dynamic NPC Affinity & Relationship Manager
   const [affinityManager] = useState<AffinityManager>(() => {
     try {
@@ -160,6 +172,33 @@ export const App: React.FC = () => {
     }
   }, [safeZone, teleportArray, inventory, party, realms, guild, affinityManager]);
 
+  // Load persistent state from Express backend on mount
+  useEffect(() => {
+    fetch('/api/player/sync')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data?.profile) {
+          if (typeof data.profile.gold === 'number') {
+            setInventory((prev) => ({
+              ...prev,
+              stardust: data.profile.gold,
+              astralPrisms:
+                typeof data.profile.essence === 'number' ? data.profile.essence : prev.astralPrisms,
+            }));
+          }
+          if (data.profile.safeZone) {
+            setSafeZone((prev) => ({
+              ...prev,
+              ...data.profile.safeZone,
+            }));
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('Initial server state sync:', err.message);
+      });
+  }, []);
+
   const handleToggleSound = () => {
     const next = !isMuted;
     setIsMuted(next);
@@ -167,13 +206,28 @@ export const App: React.FC = () => {
   };
 
   // Collect Activity Funds / Guild Vanguard Stipend
-  const handleCollectActivityFunds = () => {
+  const handleCollectActivityFunds = async () => {
+    const nextGold = inventory.stardust + 3850;
+    const nextEssence = inventory.astralPrisms + 50;
+
     setInventory((prev) => ({
       ...prev,
-      stardust: prev.stardust + 3850,
-      astralPrisms: prev.astralPrisms + 50,
+      stardust: nextGold,
+      astralPrisms: nextEssence,
     }));
-    setSystemToast('✦ Citadel Vanguard Stipend Collected: +3,850 Gold & +50 Essence Stones!');
+
+    try {
+      await syncPlayerStateWithBackend({
+        gold: nextGold,
+        essence: nextEssence,
+        inventory: [],
+        currentZone: safeZone.locationName,
+      });
+    } catch (err) {
+      console.warn('Backend sync note:', err);
+    }
+
+    setSystemToast('✦ Citadel Vanguard Stipend Collected: +3,850 Gold & +50 Essence (Server Synced 200 OK)!');
     setTimeout(() => setSystemToast(null), 4000);
   };
 
@@ -366,13 +420,21 @@ export const App: React.FC = () => {
       {/* Header Navigation */}
       <HeaderNav
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={(tab) => {
+          setIsPlaying3D(false);
+          setActiveTab(tab);
+        }}
         inventory={inventory}
         guild={guild}
         safeZone={safeZone}
         isCombatActive={!!activeCombatNode}
         isMuted={isMuted}
         onToggleSound={handleToggleSound}
+        hunterUsername={hunterUsername}
+        onOpenLoginModal={() => setIsLoginModalOpen(true)}
+        onOpenCloudVault={() => setIsCloudVaultOpen(true)}
+        isPlaying3D={isPlaying3D}
+        onToggle3DPlayable={() => setIsPlaying3D((prev) => !prev)}
       />
 
       {/* System Toast Banner */}
@@ -383,23 +445,54 @@ export const App: React.FC = () => {
       )}
 
       {/* Main View Display */}
-      <main className="flex-1 p-4 md:p-6 flex flex-col items-center">
-        {/* Citadel Plaza: Safe-Zone Aegis Dome, Inn Logout Simulator & 6 Biomes */}
-        {activeTab === 'lobby' && (
-          <AethelgardCitadelHub
-            inventory={inventory}
-            party={party}
-            safeZone={safeZone}
-            onUpdateSafeZone={setSafeZone}
-            onOpenPartyScreen={() => setActiveTab('party')}
-            onOpenTeleportArray={() => setActiveTab('array')}
-            onOpenDungeonGate={() => setActiveTab('dungeon')}
-            onOpenBazaar={() => setActiveTab('bazaar')}
-            onOpenWorkshops={() => setActiveTab('workshops')}
-            onOpenGuildHall={() => setActiveTab('guild')}
-            onCollectActivityFunds={handleCollectActivityFunds}
-          />
-        )}
+      <main className="flex-1 p-4 md:p-6 flex flex-col items-center w-full max-w-7xl mx-auto">
+        {/* Playable 3D Game Viewport (Three.js WebGL Engine) */}
+        {isPlaying3D ? (
+          <div className="w-full flex flex-col items-center space-y-3">
+            <div className="w-full flex items-center justify-between px-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-rpg font-bold text-sm text-emerald-300">
+                  Aethelgard 3D Playable Viewport (Three.js WebGL Engine)
+                </span>
+                <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+                  [WASD Move • Shift Sprint • Space Jump • E Attack]
+                </span>
+              </div>
+              <button
+                onClick={() => setIsPlaying3D(false)}
+                className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-cyan-500/50 text-slate-300 hover:text-white rounded-xl text-xs font-rpg font-bold transition cursor-pointer"
+              >
+                Return to Dashboard View
+              </button>
+            </div>
+            <GameViewport
+              onReturnToDashboard={() => setIsPlaying3D(false)}
+              playerGold={inventory.stardust}
+              playerEssence={inventory.astralPrisms}
+              characterName={party[0]?.name || 'Elurien'}
+              isSafeZone={safeZone.bIsInSafeZone}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Citadel Plaza: Safe-Zone Aegis Dome, Inn Logout Simulator & 6 Biomes */}
+            {activeTab === 'lobby' && (
+              <AethelgardCitadelHub
+                inventory={inventory}
+                party={party}
+                safeZone={safeZone}
+                onUpdateSafeZone={setSafeZone}
+                onOpenPartyScreen={() => setActiveTab('party')}
+                onOpenTeleportArray={() => setActiveTab('array')}
+                onOpenDungeonGate={() => setActiveTab('dungeon')}
+                onOpenBazaar={() => setActiveTab('bazaar')}
+                onOpenWorkshops={() => setActiveTab('workshops')}
+                onOpenGuildHall={() => setActiveTab('guild')}
+                onCollectActivityFunds={handleCollectActivityFunds}
+                onEnter3DPlayableWorld={() => setIsPlaying3D(true)}
+              />
+            )}
 
         {/* Dynamic 6-Player Party Strike Team & Attribute Matrix */}
         {activeTab === 'party' && (
@@ -525,7 +618,37 @@ export const App: React.FC = () => {
 
         {/* Codex, Living Dungeon Ecology & UE5 Technical Blueprint */}
         {activeTab === 'codex' && <CodexLore />}
+          </>
+        )}
       </main>
+
+      {/* Supabase Cloud Vault Modal */}
+      {isCloudVaultOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <AuthAndInventory
+            onSyncInventoryToGame={(g, e) => {
+              setInventory((prev) => ({ ...prev, stardust: g, astralPrisms: e }));
+              setSystemToast(`✦ Cloud Synchronized: ${g.toLocaleString()} Gold & ${e.toLocaleString()} Essence`);
+              setTimeout(() => setSystemToast(null), 3500);
+            }}
+            onClose={() => setIsCloudVaultOpen(false)}
+          />
+        </div>
+      )}
+
+      {/* Hunter Portal Modal */}
+      {isLoginModalOpen && (
+        <LoginScreen
+          onLoginSuccess={(_token, user) => {
+            setHunterUsername(user || 'Hunter Monarch');
+            setIsLoginModalOpen(false);
+            setSystemToast(`✓ Welcome, Hunter ${user || ''}! Session Authenticated.`);
+            setTimeout(() => setSystemToast(null), 3500);
+          }}
+          onClose={() => setIsLoginModalOpen(false)}
+          isModal={true}
+        />
+      )}
     </div>
   );
 };

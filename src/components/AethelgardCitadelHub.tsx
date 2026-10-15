@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlayerInventory, Character, SafeZoneState } from '../types/game';
 import { sound } from '../services/soundService';
+import { innLogoutSafeZone, wildernessDisconnectSafeZone, syncPlayerState } from '../services/api';
 import {
   Shield,
   ShieldAlert,
@@ -24,6 +25,7 @@ import {
   Mountain,
   Sun,
   Eye,
+  Gamepad2,
 } from 'lucide-react';
 
 interface AethelgardCitadelHubProps {
@@ -38,6 +40,7 @@ interface AethelgardCitadelHubProps {
   onOpenWorkshops: () => void;
   onOpenGuildHall: () => void;
   onCollectActivityFunds: () => void;
+  onEnter3DPlayableWorld?: () => void;
 }
 
 const TIER1_BIOMES = [
@@ -97,6 +100,7 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
   onOpenWorkshops,
   onOpenGuildHall,
   onCollectActivityFunds,
+  onEnter3DPlayableWorld,
 }) => {
   const [fundsCollected, setFundsCollected] = useState<boolean>(false);
   const [exhaustedTimer, setExhaustedTimer] = useState<number>(safeZone.exhaustedSleeperTimer || 0);
@@ -125,42 +129,50 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
     };
   }, [safeZone.isSleepingInWilderness, exhaustedTimer, onUpdateSafeZone]);
 
-  const handleToggleBoundary = () => {
+  const handleToggleBoundary = async () => {
     sound.playClick();
-    if (safeZone.bIsInSafeZone) {
-      // Step beyond city gates into Wilderness
-      onUpdateSafeZone((prev) => ({
-        ...prev,
-        bIsInSafeZone: false,
-        locationName: 'Shattered Badlands (Wilderness PvP Active)',
-      }));
-    } else {
-      // Return inside Arcane Aegis Dome
-      onUpdateSafeZone((prev) => ({
-        ...prev,
-        bIsInSafeZone: true,
-        locationName: 'Citadel of Oakhaven (Safe-Zone)',
+    const nextInSafeZone = !safeZone.bIsInSafeZone;
+    const nextLocation = nextInSafeZone
+      ? 'Citadel of Oakhaven (Safe-Zone)'
+      : 'Shattered Badlands (Wilderness PvP Active)';
+
+    onUpdateSafeZone((prev) => ({
+      ...prev,
+      bIsInSafeZone: nextInSafeZone,
+      locationName: nextLocation,
+      isSleepingInWilderness: false,
+      exhaustedSleeperTimer: 0,
+    }));
+
+    await syncPlayerState({
+      gold: inventory.stardust,
+      essence: inventory.astralPrisms,
+      safeZone: {
+        bIsInSafeZone: nextInSafeZone,
+        locationName: nextLocation,
         isSleepingInWilderness: false,
         exhaustedSleeperTimer: 0,
-      }));
-    }
+      },
+    });
   };
 
-  const handleInnLogout = () => {
+  const handleInnLogout = async () => {
     sound.playVictory();
     onUpdateSafeZone((prev) => ({
       ...prev,
       isRestingInInn: true,
       wellRestedExpMultiplierActive: true,
-      wellRestedTimerSeconds: 7200, // 2 hours
+      wellRestedTimerSeconds: 7200,
       isSleepingInWilderness: false,
       exhaustedSleeperTimer: 0,
     }));
+
+    await innLogoutSafeZone(inventory.stardust, inventory.astralPrisms);
   };
 
-  const handleWildernessDisconnect = () => {
+  const handleWildernessDisconnect = async () => {
     sound.playTrapTrigger();
-    setExhaustedTimer(300); // 300 seconds (5 minutes)
+    setExhaustedTimer(300);
     onUpdateSafeZone((prev) => ({
       ...prev,
       isSleepingInWilderness: true,
@@ -168,6 +180,8 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
       isRestingInInn: false,
       wellRestedExpMultiplierActive: false,
     }));
+
+    await wildernessDisconnectSafeZone('Shattered Badlands (Wilderness PvP Active)');
   };
 
   const handleClaimFunds = () => {
@@ -288,7 +302,16 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {onEnter3DPlayableWorld && (
+                <button
+                  onClick={onEnter3DPlayableWorld}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-rpg font-extrabold text-xs shadow-lg shadow-cyan-500/30 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Gamepad2 className="w-4 h-4" />
+                  <span>PLAY IN 3D WORLD</span>
+                </button>
+              )}
               <button
                 onClick={onOpenTeleportArray}
                 className="px-4 py-2 rounded-xl bg-cyan-500/90 hover:bg-cyan-400 text-slate-950 font-rpg font-bold text-xs shadow-lg shadow-cyan-500/20 transition flex items-center gap-1.5 cursor-pointer"

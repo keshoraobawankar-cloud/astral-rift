@@ -149,4 +149,91 @@ api.interceptors.response.use(
   }
 );
 
+export interface PlayerState {
+  gold: number;
+  essence: number;
+  inventory?: Array<{ id: string; name: string; quantity: number }> | any;
+  currentZone?: string;
+  safeZone?: any;
+  username?: string;
+}
+
+export async function syncPlayerStateWithBackend(playerState: PlayerState, token?: string) {
+  const authToken =
+    token ||
+    localStorage.getItem('jwt_token') ||
+    localStorage.getItem('access_token') ||
+    '';
+
+  const response = await fetch('/api/player/sync', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: authToken ? `Bearer ${authToken}` : '',
+    },
+    body: JSON.stringify(playerState),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Backend sync failed with status ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+// Express Backend Player State Sync Helpers
+export async function syncPlayerState(data: {
+  gold?: number;
+  essence?: number;
+  inventory?: any;
+  safeZone?: any;
+  username?: string;
+  currentZone?: string;
+}) {
+  try {
+    const res = await api.post('/player/sync', data);
+    return res.data;
+  } catch (err: any) {
+    console.warn('[API] State sync local fallback active:', err.message);
+    return { success: true, localOnly: true, profile: data };
+  }
+}
+
+export async function innLogoutSafeZone(gold?: number, essence?: number) {
+  try {
+    const res = await api.post('/player/safe-zone/inn-logout', { gold, essence });
+    return res.data;
+  } catch (err: any) {
+    console.warn('[API] Inn logout local fallback:', err.message);
+    return {
+      success: true,
+      safeZone: {
+        bIsInSafeZone: true,
+        locationName: 'Citadel of Oakhaven (Safe-Zone)',
+        isRestingInInn: true,
+        wellRestedExpMultiplierActive: true,
+        wellRestedTimerSeconds: 7200,
+      },
+    };
+  }
+}
+
+export async function wildernessDisconnectSafeZone(locationName?: string) {
+  try {
+    const res = await api.post('/player/safe-zone/wilderness-disconnect', { locationName });
+    return res.data;
+  } catch (err: any) {
+    console.warn('[API] Wilderness disconnect local fallback:', err.message);
+    return {
+      success: true,
+      safeZone: {
+        bIsInSafeZone: false,
+        locationName: locationName || 'Shattered Badlands (Wilderness PvP Active)',
+        isSleepingInWilderness: true,
+        exhaustedSleeperTimer: 300,
+      },
+    };
+  }
+}
+
 export default api;

@@ -27,6 +27,7 @@ import {
   Gift,
   BookOpen,
 } from 'lucide-react';
+import { BazaarChatAndLeaderboard } from './BazaarChatAndLeaderboard';
 
 interface CitadelBazaarNPCProps {
   inventory: PlayerInventory;
@@ -612,6 +613,14 @@ export const CitadelBazaarNPC: React.FC<CitadelBazaarNPCProps> = ({
                 Accept Quest
               </button>
             </div>
+          </div>
+
+          {/* Artisan Bazaar Realtime Chat & Global Leaderboard */}
+          <div className="pt-2">
+            <BazaarChatAndLeaderboard
+              userId={localStorage.getItem('aethelgard_player_id') || 'player_123_abc'}
+              username={localStorage.getItem('aethelgard_username') || activeHero.name}
+            />
           </div>
         </div>
       </div>

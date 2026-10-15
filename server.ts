@@ -1,4 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
+import { createServer as createHttpServer } from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -495,6 +497,161 @@ app.get('/api/character/audit-logs', (_req: Request, res: Response) => {
 });
 
 // ============================================================================
+// 4. PLAYER STATE SYNC & SAFE-ZONE ENDPOINTS (Option 1: Express REST API)
+// ============================================================================
+interface PlayerProfileRecord {
+  id: string;
+  username?: string;
+  gold: number;
+  essence: number;
+  inventory: any[];
+  safeZone?: any;
+  updatedAt: string;
+}
+
+const playerProfiles: Record<string, PlayerProfileRecord> = {
+  'player_123_abc': {
+    id: 'player_123_abc',
+    username: 'hunter_monarch',
+    gold: 50830,
+    essence: 1960,
+    inventory: [
+      { id: 'health_potion', name: 'Health Potion', quantity: 5 },
+      { id: 'mana_potion', name: 'Elven Mana Flask', quantity: 8 },
+    ],
+    safeZone: {
+      bIsInSafeZone: true,
+      locationName: 'Citadel of Oakhaven (Safe-Zone)',
+      isRestingInInn: false,
+      wellRestedExpMultiplierActive: false,
+    },
+    updatedAt: new Date().toISOString(),
+  },
+};
+
+app.post('/api/player/sync', (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    let playerId = 'player_123_abc';
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded?.playerId) playerId = decoded.playerId;
+      } catch {
+        // guest fallback
+      }
+    }
+
+    const { gold, essence, inventory, safeZone, currentZone, username } = req.body;
+    let profile = playerProfiles[playerId];
+    if (!profile) {
+      profile = {
+        id: playerId,
+        username: username || 'hunter_monarch',
+        gold: typeof gold === 'number' ? gold : 50830,
+        essence: typeof essence === 'number' ? essence : 1960,
+        inventory: Array.isArray(inventory) ? inventory : [],
+        safeZone: safeZone || {
+          bIsInSafeZone: true,
+          locationName: currentZone || 'Citadel Plaza',
+          isRestingInInn: false,
+          wellRestedExpMultiplierActive: false,
+        },
+        updatedAt: new Date().toISOString(),
+      };
+      playerProfiles[playerId] = profile;
+    } else {
+      if (typeof gold === 'number') profile.gold = gold;
+      if (typeof essence === 'number') profile.essence = essence;
+      if (Array.isArray(inventory)) profile.inventory = inventory;
+      if (safeZone) {
+        profile.safeZone = safeZone;
+      } else if (currentZone) {
+        profile.safeZone = { ...(profile.safeZone || {}), locationName: currentZone };
+      }
+      profile.updatedAt = new Date().toISOString();
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Player state synchronized successfully',
+      profile,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Sync failed' });
+  }
+});
+
+app.get('/api/player/sync', (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'];
+  let playerId = 'player_123_abc';
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      if (decoded?.playerId) playerId = decoded.playerId;
+    } catch {
+      // guest fallback
+    }
+  }
+
+  const profile = playerProfiles[playerId] || playerProfiles['player_123_abc'];
+  return res.status(200).json({ success: true, profile });
+});
+
+// Inn Safe-Zone Resting & Logout
+app.post('/api/player/safe-zone/inn-logout', (req: Request, res: Response) => {
+  const { playerId = 'player_123_abc', gold, essence } = req.body;
+  const profile = playerProfiles[playerId] || playerProfiles['player_123_abc'];
+  if (typeof gold === 'number') profile.gold = gold;
+  if (typeof essence === 'number') profile.essence = essence;
+
+  const safeZone = {
+    bIsInSafeZone: true,
+    locationName: 'Citadel of Oakhaven (Safe-Zone)',
+    isRestingInInn: true,
+    wellRestedExpMultiplierActive: true,
+    wellRestedTimerSeconds: 7200,
+    isSleepingInWilderness: false,
+    exhaustedSleeperTimer: 0,
+  };
+  profile.safeZone = safeZone;
+  profile.updatedAt = new Date().toISOString();
+
+  return res.status(200).json({
+    success: true,
+    message: 'Safe-Zone Inn resting verified! +2-hour Well-Rested EXP Multiplier (+100% EXP) active.',
+    safeZone,
+    profile,
+  });
+});
+
+// Wilderness Disconnect
+app.post('/api/player/safe-zone/wilderness-disconnect', (req: Request, res: Response) => {
+  const { playerId = 'player_123_abc', locationName = 'Shattered Badlands (Wilderness PvP Active)' } = req.body;
+  const profile = playerProfiles[playerId] || playerProfiles['player_123_abc'];
+
+  const safeZone = {
+    bIsInSafeZone: false,
+    locationName,
+    isRestingInInn: false,
+    wellRestedExpMultiplierActive: false,
+    isSleepingInWilderness: true,
+    exhaustedSleeperTimer: 300,
+  };
+  profile.safeZone = safeZone;
+  profile.updatedAt = new Date().toISOString();
+
+  return res.status(200).json({
+    success: true,
+    message: 'Wilderness disconnect recorded: Avatar remains vulnerable ExhaustedSleeper for 300 seconds.',
+    safeZone,
+    profile,
+  });
+});
+
+// ============================================================================
 // MOUNT VITE MIDDLEWARE IN DEV OR STATIC IN PROD
 // ============================================================================
 async function start() {
@@ -513,8 +670,231 @@ async function start() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Aethelgard Server] Full-Stack JWT & Anti-Cheat Authority active on port ${PORT}`);
+  const httpServer = createHttpServer(app);
+
+  // ============================================================================
+  // MULTIPLAYER WEBSOCKET SERVICES (/ws/chat and /ws/game)
+  // ============================================================================
+  const wssChat = new WebSocketServer({ noServer: true });
+  const wssGame = new WebSocketServer({ noServer: true });
+
+  // 1. Chat WebSocket Handler
+  const chatClients = new Set<WebSocket>();
+  wssChat.on('connection', (ws: WebSocket) => {
+    chatClients.add(ws);
+    console.log('[WebSocket] New player connected to /ws/chat');
+
+    ws.send(
+      JSON.stringify({
+        type: 'CHAT_MESSAGE',
+        sender: 'Citadel Gatekeeper',
+        text: 'Connected to Citadel Live Communications Relay.',
+        timestamp: new Date().toISOString(),
+      })
+    );
+
+    ws.on('message', (data: any) => {
+      try {
+        const parsed = JSON.parse(data.toString());
+        if (parsed.type === 'CHAT_MESSAGE') {
+          const payload = JSON.stringify({
+            type: 'CHAT_MESSAGE',
+            sender: parsed.sender || 'Anonymous',
+            text: parsed.text,
+            timestamp: new Date().toISOString(),
+          });
+
+          chatClients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(payload);
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Invalid Chat WebSocket message:', err);
+      }
+    });
+
+    ws.on('close', () => {
+      chatClients.delete(ws);
+      console.log('[WebSocket] Player disconnected from chat');
+    });
+  });
+
+  // 2. 3D Multiplayer Game & Combat Movement WebSocket Handler
+  interface ConnectedGamePlayer {
+    ws: WebSocket;
+    data: {
+      id: string;
+      username: string;
+      position: { x: number; y: number; z: number };
+      rotation: { y: number };
+      animationState: string;
+      hp: number;
+      maxHp: number;
+    };
+  }
+
+  const connectedPlayers = new Map<string, ConnectedGamePlayer>();
+
+  function broadcastExcept(senderId: string, data: object) {
+    const payload = JSON.stringify(data);
+    connectedPlayers.forEach(({ ws }, id) => {
+      if (id !== senderId && ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+      }
+    });
+  }
+
+  function broadcastAll(data: object) {
+    const payload = JSON.stringify(data);
+    connectedPlayers.forEach(({ ws }) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+      }
+    });
+  }
+
+  wssGame.on('connection', (ws: WebSocket) => {
+    const playerId = `player_${Math.random().toString(36).substring(2, 9)}`;
+    const spawnOffsetX = (Math.random() - 0.5) * 6;
+    const spawnOffsetZ = (Math.random() - 0.5) * 6;
+
+    const initialData = {
+      id: playerId,
+      username: `Hunter_${playerId.substring(7, 11)}`,
+      position: { x: spawnOffsetX, y: 0, z: spawnOffsetZ },
+      rotation: { y: 0 },
+      animationState: 'idle',
+      hp: 100,
+      maxHp: 100,
+    };
+
+    connectedPlayers.set(playerId, { ws, data: initialData });
+    console.log(`[Game WebSocket] Player ${playerId} connected. Total active: ${connectedPlayers.size}`);
+
+    // Send newly joined player their assigned ID and list of existing remote players
+    const existingPlayers = Array.from(connectedPlayers.values())
+      .filter((p) => p.data.id !== playerId)
+      .map((p) => p.data);
+
+    ws.send(
+      JSON.stringify({
+        type: 'INIT_WORLD',
+        playerId,
+        player: initialData,
+        existingPlayers,
+      })
+    );
+
+    // Broadcast new player presence to all other connected clients
+    broadcastExcept(playerId, {
+      type: 'PLAYER_JOINED',
+      player: initialData,
+    });
+
+    ws.on('message', (message: string) => {
+      try {
+        const payload = JSON.parse(message.toString());
+
+        // A. 3D Locomotion & Position Update
+        if (payload.type === 'PLAYER_MOVE') {
+          const session = connectedPlayers.get(playerId);
+          if (session) {
+            if (payload.position) session.data.position = payload.position;
+            if (payload.rotation) session.data.rotation = payload.rotation;
+            if (payload.animationState) session.data.animationState = payload.animationState;
+            if (payload.username) session.data.username = payload.username;
+
+            // Broadcast smooth transform coordinates to all other clients
+            broadcastExcept(playerId, {
+              type: 'PLAYER_MOVED',
+              id: playerId,
+              username: session.data.username,
+              position: session.data.position,
+              rotation: session.data.rotation,
+              animationState: session.data.animationState,
+            });
+          }
+        }
+
+        // B. Real-time Combat Action (Sword slash, Heavy Cleave, Whirlwind)
+        if (payload.type === 'PLAYER_ATTACK') {
+          broadcastExcept(playerId, {
+            type: 'REMOTE_ATTACK',
+            attackerId: playerId,
+            attackType: payload.attackType || 'light_slash',
+            position: payload.position,
+            direction: payload.direction,
+          });
+        }
+
+        // C. Damage Broadcast & Health Update
+        if (payload.type === 'DEAL_DAMAGE') {
+          const { targetId, damageAmount } = payload;
+          const targetSession = connectedPlayers.get(targetId);
+          if (targetSession) {
+            targetSession.data.hp = Math.max(0, targetSession.data.hp - damageAmount);
+          }
+
+          // Broadcast damage event to everyone (including attacker for UI confirmation)
+          broadcastAll({
+            type: 'PLAYER_DAMAGED',
+            attackerId: playerId,
+            targetId,
+            damageAmount,
+            remainingHp: targetSession?.data.hp ?? 100,
+            timestamp: Date.now(),
+          });
+        }
+
+        // D. Emote Broadcast (Cheer, Guard, Rest, Shout)
+        if (payload.type === 'PLAYER_EMOTE') {
+          broadcastExcept(playerId, {
+            type: 'REMOTE_EMOTE',
+            playerId,
+            emote: payload.emote,
+          });
+        }
+      } catch (err) {
+        console.error('Invalid Game WebSocket payload:', err);
+      }
+    });
+
+    ws.on('close', () => {
+      connectedPlayers.delete(playerId);
+      console.log(`[Game WebSocket] Player ${playerId} disconnected. Total active: ${connectedPlayers.size}`);
+      broadcastExcept(playerId, {
+        type: 'PLAYER_LEFT',
+        id: playerId,
+      });
+    });
+
+    ws.on('error', (err) => {
+      console.error(`[Game WebSocket] Player ${playerId} socket error:`, err);
+    });
+  });
+
+  // Upgrade HTTP request to appropriate WebSocket server
+  httpServer.on('upgrade', (request, socket, head) => {
+    const url = new URL(request.url || '', `http://${request.headers.host}`);
+    const pathname = url.pathname;
+
+    if (pathname === '/ws/game') {
+      wssGame.handleUpgrade(request, socket, head, (ws) => {
+        wssGame.emit('connection', ws, request);
+      });
+    } else if (pathname === '/ws/chat') {
+      wssChat.handleUpgrade(request, socket, head, (ws) => {
+        wssChat.emit('connection', ws, request);
+      });
+    } else {
+      socket.destroy();
+    }
+  });
+
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Aethelgard Server] Full-Stack HTTP & WebSocket Server active on port ${PORT}`);
   });
 }
 
