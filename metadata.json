@@ -1,6 +1,6 @@
 {
-  "name": "Astral Rift",
-  "description": "An action-packed anime fantasy MMORPG with living dungeon ecology, Guild Estates, Dwarven forging, Elven arcane weaving, dynamic party synergies, and high-energy combat.",
+  "name": "Aethelgard Online",
+  "description": "A seamless, non-linear high-fantasy open-world MMORPG with multi-tier continental realms, living dungeon ecology, Guild Estates, Dwarven forging, Elven arcane weaving, dynamic party synergies, and high-energy combat.",
   "permissions": [],
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

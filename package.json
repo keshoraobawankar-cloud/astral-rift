@@ -4,20 +4,28 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 3000",
+    "dev": "tsx server.ts",
     "build": "tsc && vite build",
     "lint": "tsc --noEmit",
+    "start": "tsx server.ts",
     "preview": "vite preview --port 3000"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.0.2"
+    "tailwind-merge": "^3.0.2",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.9",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.13.9",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",

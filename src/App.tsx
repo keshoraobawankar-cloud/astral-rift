@@ -7,7 +7,6 @@ import {
   GuildEstate,
   SafeZoneState,
   TeleportationArray,
-  WorldBossInfo,
   AttributeMatrix,
 } from './types/game';
 import { INITIAL_CHARACTERS } from './data/characters';
@@ -21,31 +20,43 @@ import {
 import { sound } from './services/soundService';
 
 import { HeaderNav, NavTab } from './components/HeaderNav';
-import { SoloLevelingHub } from './components/SoloLevelingHub';
-import { HunterPartyScreen } from './components/HunterPartyScreen';
-import { SungJinwooSystemStatus } from './components/SungJinwooSystemStatus';
+import { AethelgardCitadelHub } from './components/AethelgardCitadelHub';
+import { PartyRoster } from './components/PartyRoster';
+import { TeleportationArrayView } from './components/TeleportationArrayView';
 import { CitadelBazaarNPC } from './components/CitadelBazaarNPC';
 import { StellarMap } from './components/StellarMap';
 import { CombatCanvas } from './components/CombatCanvas';
 import { CraftingWorkshop } from './components/CraftingWorkshop';
 import { CodexLore } from './components/CodexLore';
 import { GuildHall } from './components/GuildHall';
+import { AffinityManager } from './services/affinityManager';
+import { AffinityEventType } from './types/affinity';
 
 export const App: React.FC = () => {
-  // Safe Zone & Association Lobby State
+  // Safe Zone & City Boundary State (Feature A)
   const [safeZone, setSafeZone] = useState<SafeZoneState>(() => {
     try {
-      const saved = localStorage.getItem('solo_leveling_safezone');
-      return saved ? JSON.parse(saved) : { ...INITIAL_SAFE_ZONE_STATE, locationName: 'Korean Hunters Association Lobby' };
+      const saved = localStorage.getItem('aethelgard_safezone');
+      return saved ? JSON.parse(saved) : INITIAL_SAFE_ZONE_STATE;
     } catch {
-      return { ...INITIAL_SAFE_ZONE_STATE, locationName: 'Korean Hunters Association Lobby' };
+      return INITIAL_SAFE_ZONE_STATE;
     }
   });
 
-  // Guild Estate State
+  // Ancient Teleportation Array State (Feature B)
+  const [teleportArray, setTeleportArray] = useState<TeleportationArray>(() => {
+    try {
+      const saved = localStorage.getItem('aethelgard_teleport');
+      return saved ? JSON.parse(saved) : INITIAL_TELEPORTATION_ARRAY;
+    } catch {
+      return INITIAL_TELEPORTATION_ARRAY;
+    }
+  });
+
+  // Guild Estate State (Feature 4)
   const [guild, setGuild] = useState<GuildEstate>(() => {
     try {
-      const saved = localStorage.getItem('solo_leveling_guild');
+      const saved = localStorage.getItem('aethelgard_guild');
       return saved ? JSON.parse(saved) : INITIAL_GUILD_ESTATE;
     } catch {
       return INITIAL_GUILD_ESTATE;
@@ -55,12 +66,12 @@ export const App: React.FC = () => {
   // Player Inventory
   const [inventory, setInventory] = useState<PlayerInventory>(() => {
     try {
-      const saved = localStorage.getItem('solo_leveling_inventory');
+      const saved = localStorage.getItem('aethelgard_inventory');
       return saved
         ? JSON.parse(saved)
         : {
-            stardust: 50830, // Gold matching Screenshot 3
-            astralPrisms: 1960, // Essence Stones matching Screenshot 3
+            stardust: 50830, // Gold
+            astralPrisms: 1960, // Essence Stones
             riftShards: 120,
             manaPotions: 8,
             goblinLeather: 50,
@@ -69,7 +80,7 @@ export const App: React.FC = () => {
             alchemicalHerbs: 35,
             fairyDust: 30,
             spiritWood: 45,
-            arrayRunes: ['Rune of Ironpeak Magma', 'Rune of Whispering Wood'],
+            arrayRunes: ['Rune of Ironpeak Magma', 'Rune of Whispering Wood', 'Rune of the Golem Core'],
             bountyTokens: 0,
             weapons: INITIAL_WEAPONS,
             relics: INITIAL_RELICS,
@@ -86,7 +97,7 @@ export const App: React.FC = () => {
         alchemicalHerbs: 35,
         fairyDust: 30,
         spiritWood: 45,
-        arrayRunes: ['Rune of Ironpeak Magma', 'Rune of Whispering Wood'],
+        arrayRunes: ['Rune of Ironpeak Magma', 'Rune of Whispering Wood', 'Rune of the Golem Core'],
         bountyTokens: 0,
         weapons: INITIAL_WEAPONS,
         relics: INITIAL_RELICS,
@@ -94,10 +105,10 @@ export const App: React.FC = () => {
     }
   });
 
-  // Hunter Roster: Sung Jinwoo, Baek Yoonho, Lee Joohee, Cha Hae-In
+  // 6-Player Party Strike Team (Elurien, Thorgar, Faelin, Kaelen, Astraea, Valen)
   const [party, setParty] = useState<Character[]>(() => {
     try {
-      const saved = localStorage.getItem('solo_leveling_party');
+      const saved = localStorage.getItem('aethelgard_party');
       return saved ? JSON.parse(saved) : INITIAL_CHARACTERS;
     } catch {
       return INITIAL_CHARACTERS;
@@ -105,12 +116,11 @@ export const App: React.FC = () => {
   });
 
   const [activeCharIndex, setActiveCharIndex] = useState<number>(0);
-  const [inspectedHunterId, setInspectedHunterId] = useState<string>('jinwoo');
 
-  // Dungeon Gates
+  // Continental Realms & Abyss Labyrinths
   const [realms, setRealms] = useState<Realm[]>(() => {
     try {
-      const saved = localStorage.getItem('solo_leveling_realms');
+      const saved = localStorage.getItem('aethelgard_realms');
       return saved ? JSON.parse(saved) : INITIAL_REALMS;
     } catch {
       return INITIAL_REALMS;
@@ -125,16 +135,30 @@ export const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState(sound.getMuted());
   const [systemToast, setSystemToast] = useState<string | null>(null);
 
+  // Dynamic NPC Affinity & Relationship Manager
+  const [affinityManager] = useState<AffinityManager>(() => {
+    try {
+      const saved = localStorage.getItem('aethelgard_affinity');
+      return new AffinityManager(saved || undefined);
+    } catch {
+      return new AffinityManager();
+    }
+  });
+  const [, setAffinityVersion] = useState<number>(0);
+
   useEffect(() => {
     try {
-      localStorage.setItem('solo_leveling_safezone', JSON.stringify(safeZone));
-      localStorage.setItem('solo_leveling_inventory', JSON.stringify(inventory));
-      localStorage.setItem('solo_leveling_party', JSON.stringify(party));
-      localStorage.setItem('solo_leveling_realms', JSON.stringify(realms));
+      localStorage.setItem('aethelgard_safezone', JSON.stringify(safeZone));
+      localStorage.setItem('aethelgard_teleport', JSON.stringify(teleportArray));
+      localStorage.setItem('aethelgard_inventory', JSON.stringify(inventory));
+      localStorage.setItem('aethelgard_party', JSON.stringify(party));
+      localStorage.setItem('aethelgard_realms', JSON.stringify(realms));
+      localStorage.setItem('aethelgard_guild', JSON.stringify(guild));
+      localStorage.setItem('aethelgard_affinity', affinityManager.serialize());
     } catch {
       // ignore
     }
-  }, [safeZone, inventory, party, realms]);
+  }, [safeZone, teleportArray, inventory, party, realms, guild, affinityManager]);
 
   const handleToggleSound = () => {
     const next = !isMuted;
@@ -142,18 +166,18 @@ export const App: React.FC = () => {
     sound.setMuted(next);
   };
 
-  // Collect Activity Funds
+  // Collect Activity Funds / Guild Vanguard Stipend
   const handleCollectActivityFunds = () => {
     setInventory((prev) => ({
       ...prev,
       stardust: prev.stardust + 3850,
       astralPrisms: prev.astralPrisms + 50,
     }));
-    setSystemToast('✦ Activity Funds Collected: +3,850 Gold & +50 Essence Stones!');
+    setSystemToast('✦ Citadel Vanguard Stipend Collected: +3,850 Gold & +50 Essence Stones!');
     setTimeout(() => setSystemToast(null), 4000);
   };
 
-  // Allocate Attribute Point to Sung Jinwoo
+  // Allocate Attribute Point to any of the 6 heroes in the party
   const handleAllocateAttribute = (charId: string, attr: keyof AttributeMatrix) => {
     setParty((prev) =>
       prev.map((c) =>
@@ -162,26 +186,81 @@ export const App: React.FC = () => {
               ...c,
               attributes: {
                 ...c.attributes,
-                [attr]: c.attributes[attr] + 1,
+                [attr]: (c.attributes[attr] ?? 0) + 1,
               },
-              attack: attr === 'strength' ? c.attack + 12 : c.attack,
-              defense: attr === 'endurance' ? c.defense + 6 : c.defense,
-              hp: attr === 'endurance' ? c.hp + 40 : c.hp,
-              maxHp: attr === 'endurance' ? c.maxHp + 40 : c.maxHp,
-              speed: attr === 'agility' ? c.speed * 1.01 : c.speed,
+              attack: attr === 'strength' ? c.attack + 14 : c.attack,
+              defense: attr === 'endurance' ? c.defense + 8 : c.defense,
+              hp: attr === 'endurance' ? c.hp + 45 : c.hp,
+              maxHp: attr === 'endurance' ? c.maxHp + 45 : c.maxHp,
+              speed: attr === 'agility' ? Number((c.speed * 1.012).toFixed(2)) : c.speed,
             }
           : c
       )
     );
   };
 
-  const handleInspectHunter = (charId: string) => {
-    setInspectedHunterId(charId);
-    if (charId === 'jinwoo') {
-      setActiveTab('system');
-    } else {
-      setActiveTab('party');
+  // Full Hunter Attribute Allocator Calibration & Total Power Sync
+  const handleUpdateHeroStats = (
+    charId: string,
+    stats: { strength: number; agility: number; vitality: number; intelligence: number; perception: number },
+    totalPower: number
+  ) => {
+    setParty((prev) =>
+      prev.map((c) => {
+        if (c.id !== charId) return c;
+        const currentEndurance = c.attributes.vitality ?? c.attributes.endurance;
+        const deltaStr = stats.strength - c.attributes.strength;
+        const deltaEnd = stats.vitality - currentEndurance;
+        const deltaAgi = stats.agility - c.attributes.agility;
+
+        return {
+          ...c,
+          attributes: {
+            ...c.attributes,
+            strength: stats.strength,
+            agility: stats.agility,
+            vitality: stats.vitality,
+            endurance: stats.vitality,
+            intelligence: stats.intelligence,
+            perception: stats.perception,
+          },
+          attack: c.attack + Math.max(0, deltaStr * 14),
+          defense: c.defense + Math.max(0, deltaEnd * 8),
+          hp: c.hp + Math.max(0, deltaEnd * 45),
+          maxHp: c.maxHp + Math.max(0, deltaEnd * 45),
+          speed: deltaAgi !== 0 ? Number((c.speed * (1 + 0.002 * stats.agility)).toFixed(2)) : c.speed,
+        };
+      })
+    );
+    setSystemToast(`⚡ Build Confirmed for ${charId.toUpperCase()}! Total Power Calibrated to ${totalPower.toLocaleString()}`);
+    setTimeout(() => setSystemToast(null), 4000);
+  };
+
+  // Record structured NPC relationship event
+  const handleRecordAffinityEvent = (npcId: string, eventType: AffinityEventType, reason?: string) => {
+    const result = affinityManager.recordEvent(npcId, eventType, reason);
+    setAffinityVersion((v) => v + 1);
+    try {
+      localStorage.setItem('aethelgard_affinity', affinityManager.serialize());
+    } catch {
+      // ignore
     }
+    const scoreStr = result.record.compositeScore > 0 ? `+${result.record.compositeScore}` : `${result.record.compositeScore}`;
+    setSystemToast(`✦ [${result.record.npcName}] Relationship Tier: ${result.tier.tier} (${scoreStr}/100)`);
+    setTimeout(() => setSystemToast(null), 3500);
+  };
+
+  // Reset NPC relationship to baseline
+  const handleResetAffinity = (npcId: string) => {
+    affinityManager.resetRelationship(npcId);
+    setAffinityVersion((v) => v + 1);
+    try {
+      localStorage.setItem('aethelgard_affinity', affinityManager.serialize());
+    } catch {
+      // ignore
+    }
+    setSystemToast(`🔄 Reset relationship with ${npcId} to baseline standing.`);
+    setTimeout(() => setSystemToast(null), 3000);
   };
 
   const handleSelectNode = (node: RealmNode) => {
@@ -194,7 +273,7 @@ export const App: React.FC = () => {
 
     setInventory((prev) => ({
       ...prev,
-      stardust: prev.stardust + rewards.stardust,
+      stardust: prev.stardust + (safeZone.wellRestedExpMultiplierActive ? rewards.stardust * 2 : rewards.stardust),
       astralPrisms: prev.astralPrisms + rewards.prisms,
       riftShards: prev.riftShards + rewards.shards,
       goblinLeather: prev.goblinLeather + (rewards.craftingMaterials?.goblinLeather || 0),
@@ -203,25 +282,35 @@ export const App: React.FC = () => {
       alchemicalHerbs: prev.alchemicalHerbs + (rewards.craftingMaterials?.alchemicalHerbs || 0),
       spiritWood: prev.spiritWood + (rewards.craftingMaterials?.spiritWood || 0),
       fairyDust: prev.fairyDust + (rewards.craftingMaterials?.fairyDust || 0),
+      arrayRunes: rewards.arrayRune && !prev.arrayRunes.includes(rewards.arrayRune)
+        ? [...prev.arrayRunes, rewards.arrayRune]
+        : prev.arrayRunes,
     }));
 
-    // Grant EXP to Sung Jinwoo
+    // Grant EXP to party (with Well-Rested bonus if active)
+    const baseExp = 450;
+    const finalExp = safeZone.wellRestedExpMultiplierActive ? baseExp * 2 : baseExp;
+
     setParty((prev) =>
-      prev.map((c) =>
-        c.id === 'jinwoo'
-          ? {
-              ...c,
-              exp: c.exp + 450,
-              level: c.exp + 450 >= c.maxExp ? c.level + 1 : c.level,
-              maxExp: c.exp + 450 >= c.maxExp ? Math.round(c.maxExp * 1.3) : c.maxExp,
-            }
-          : c
-      )
+      prev.map((c) => {
+        const nextExp = c.exp + finalExp;
+        const levelUp = nextExp >= c.maxExp;
+        return {
+          ...c,
+          exp: levelUp ? nextExp - c.maxExp : nextExp,
+          level: levelUp ? c.level + 1 : c.level,
+          maxExp: levelUp ? Math.round(c.maxExp * 1.3) : c.maxExp,
+        };
+      })
     );
 
     setActiveCombatNode(null);
     setActiveTab('lobby');
-    setSystemToast('🎉 Dungeon Purified! Rewards deposited to Inventory.');
+    setSystemToast(
+      safeZone.wellRestedExpMultiplierActive
+        ? '🎉 Dungeon Purified! +200% WELL-RESTED BONUS APPLIED!'
+        : '🎉 Dungeon Purified! Spoils deposited into party cache.'
+    );
     setTimeout(() => setSystemToast(null), 4000);
   };
 
@@ -236,7 +325,41 @@ export const App: React.FC = () => {
     setActiveTab('lobby');
   };
 
-  const jinwoo = party.find((c) => c.id === 'jinwoo') || party[0];
+  // Socket rune into Ancient Teleportation Array Altar (Feature B)
+  const handleSocketRune = (runeName: string) => {
+    setTeleportArray((prev) => {
+      if (prev.socketedRunes.includes(runeName)) return prev;
+      const nextRunes = [...prev.socketedRunes, runeName];
+      const isComplete = nextRunes.length >= 4;
+      return {
+        ...prev,
+        socketedRunes: nextRunes,
+        isActivated: isComplete,
+        tier2Unlocked: isComplete,
+      };
+    });
+  };
+
+  const handleUnsocketRune = (runeName: string) => {
+    setTeleportArray((prev) => ({
+      ...prev,
+      socketedRunes: prev.socketedRunes.filter((r) => r !== runeName),
+      isActivated: false,
+    }));
+  };
+
+  const handleUnlockTier2 = () => {
+    setRealms((prev) =>
+      prev.map((r) => (r.id === 'realm_floating_expanse' ? { ...r, unlocked: true } : r))
+    );
+    setSystemToast('⚡ TIER 2: THE FLOATING EXPANSE UNLOCKED VIA TELEPORTATION ARRAY!');
+    setTimeout(() => setSystemToast(null), 5000);
+  };
+
+  const handleTravelToTier2 = () => {
+    setActiveRealmId('realm_floating_expanse');
+    setActiveTab('dungeon');
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none">
@@ -261,20 +384,115 @@ export const App: React.FC = () => {
 
       {/* Main View Display */}
       <main className="flex-1 p-4 md:p-6 flex flex-col items-center">
-        {/* Screenshot 1: Association Lobby Hub */}
+        {/* Citadel Plaza: Safe-Zone Aegis Dome, Inn Logout Simulator & 6 Biomes */}
         {activeTab === 'lobby' && (
-          <SoloLevelingHub
+          <AethelgardCitadelHub
             inventory={inventory}
             party={party}
             safeZone={safeZone}
-            onOpenSystemWindow={() => setActiveTab('system')}
+            onUpdateSafeZone={setSafeZone}
             onOpenPartyScreen={() => setActiveTab('party')}
+            onOpenTeleportArray={() => setActiveTab('array')}
             onOpenDungeonGate={() => setActiveTab('dungeon')}
+            onOpenBazaar={() => setActiveTab('bazaar')}
+            onOpenWorkshops={() => setActiveTab('workshops')}
+            onOpenGuildHall={() => setActiveTab('guild')}
             onCollectActivityFunds={handleCollectActivityFunds}
           />
         )}
 
-        {/* Guild Estate & Charter Vault */}
+        {/* Dynamic 6-Player Party Strike Team & Attribute Matrix */}
+        {activeTab === 'party' && (
+          <PartyRoster
+            party={party}
+            inventory={inventory}
+            onAllocateAttribute={handleAllocateAttribute}
+            onUpdateHeroAttributes={handleUpdateHeroStats}
+            onDeployParty={() => setActiveTab('dungeon')}
+            onInspectHero={() => {}}
+            onReturnToPlaza={() => setActiveTab('lobby')}
+          />
+        )}
+
+        {/* Feature B: Ancient Teleportation Arrays (Tier 1 → Tier 2 Altar) */}
+        {activeTab === 'array' && (
+          <TeleportationArrayView
+            teleportArray={teleportArray}
+            inventory={inventory}
+            onSocketRune={handleSocketRune}
+            onUnsocketRune={handleUnsocketRune}
+            onUnlockTier2={handleUnlockTier2}
+            onTravelToTier2={handleTravelToTier2}
+          />
+        )}
+
+        {/* Abyss Dungeons & 30 Tier-1 World Bosses */}
+        {activeTab === 'dungeon' && (
+          <StellarMap
+            realms={realms}
+            activeRealmId={activeRealmId}
+            onSelectRealm={setActiveRealmId}
+            onSelectNode={handleSelectNode}
+          />
+        )}
+
+        {/* Fast-Paced Action Combat Canvas (Feature D & Ecology) */}
+        {activeTab === 'combat' && activeCombatNode && (
+          <CombatCanvas
+            party={party}
+            activeCharIndex={activeCharIndex}
+            onSelectCharacter={setActiveCharIndex}
+            node={activeCombatNode}
+            manaPotions={inventory.manaPotions}
+            onUseManaPotion={() => {
+              setInventory((prev) => ({ ...prev, manaPotions: Math.max(0, prev.manaPotions - 1) }));
+            }}
+            onVictory={handleCombatVictory}
+            onDefeat={handleCombatDefeat}
+            onExit={handleExitCombat}
+          />
+        )}
+
+        {/* Grand Artisan Bazaar & Feature C Voice NPC STT/TTS */}
+        {activeTab === 'bazaar' && (
+          <CitadelBazaarNPC
+            inventory={inventory}
+            party={party}
+            safeZone={safeZone}
+            affinityManager={affinityManager}
+            onRecordAffinityEvent={handleRecordAffinityEvent}
+            onResetAffinity={handleResetAffinity}
+            onBuyManaPotion={(cost) => {
+              setInventory((prev) => ({
+                ...prev,
+                stardust: prev.stardust - cost,
+                manaPotions: prev.manaPotions + 1,
+              }));
+              sound.playHit(true);
+            }}
+            onUnlockHiddenQuest={() => {
+              setSystemToast('📜 Dynamic Hidden Quest Unveiled by Voice/Inquiry!');
+              setTimeout(() => setSystemToast(null), 4000);
+            }}
+          />
+        )}
+
+        {/* Dwarven Tempering with Golem Alloys & Elven Arcane Weaving */}
+        {activeTab === 'workshops' && (
+          <CraftingWorkshop
+            inventory={inventory}
+            party={party}
+            onTemperWeapon={(wId, trait) => {
+              setInventory((prev) => ({
+                ...prev,
+                weapons: prev.weapons.map((w) => (w.id === wId ? { ...w, temperingTrait: trait, baseAtk: w.baseAtk + 25 } : w)),
+              }));
+            }}
+            onCraftWeaveItem={() => sound.playVictory()}
+          />
+        )}
+
+        {/* Guild Estates, Shared Storage Vault & Specialized Workshops */}
         {activeTab === 'guild' && (
           <GuildHall
             guild={guild}
@@ -305,92 +523,7 @@ export const App: React.FC = () => {
           />
         )}
 
-        {/* Screenshot 2: Hunter Party Strike Team */}
-        {activeTab === 'party' && (
-          <HunterPartyScreen
-            party={party}
-            inventory={inventory}
-            onDeployParty={() => setActiveTab('dungeon')}
-            onInspectHunter={handleInspectHunter}
-            onReturnToLobby={() => setActiveTab('lobby')}
-          />
-        )}
-
-        {/* Screenshot 3: Sung Jinwoo Player Status & Attribute Matrix */}
-        {activeTab === 'system' && (
-          <SungJinwooSystemStatus
-            hunter={jinwoo}
-            inventory={inventory}
-            onAllocateAttribute={handleAllocateAttribute}
-            onEquipWeapon={() => {}}
-            onClose={() => setActiveTab('lobby')}
-          />
-        )}
-
-        {/* Dungeon Gates Exploration */}
-        {activeTab === 'dungeon' && (
-          <StellarMap
-            realms={realms}
-            activeRealmId={activeRealmId}
-            onSelectRealm={setActiveRealmId}
-            onSelectNode={handleSelectNode}
-          />
-        )}
-
-        {/* Fast-Paced Action Combat Canvas */}
-        {activeTab === 'combat' && activeCombatNode && (
-          <CombatCanvas
-            party={party}
-            activeCharIndex={activeCharIndex}
-            onSelectCharacter={setActiveCharIndex}
-            node={activeCombatNode}
-            manaPotions={inventory.manaPotions}
-            onUseManaPotion={() => {
-              setInventory((prev) => ({ ...prev, manaPotions: Math.max(0, prev.manaPotions - 1) }));
-            }}
-            onVictory={handleCombatVictory}
-            onDefeat={handleCombatDefeat}
-            onExit={handleExitCombat}
-          />
-        )}
-
-        {/* Citadel Bazaar & Voice NPC */}
-        {activeTab === 'bazaar' && (
-          <CitadelBazaarNPC
-            inventory={inventory}
-            party={party}
-            safeZone={safeZone}
-            onBuyManaPotion={(cost) => {
-              setInventory((prev) => ({
-                ...prev,
-                stardust: prev.stardust - cost,
-                manaPotions: prev.manaPotions + 1,
-              }));
-              sound.playHit(true);
-            }}
-            onUnlockHiddenQuest={() => {
-              setSystemToast('📜 Hidden Quest Unveiled in System Window!');
-              setTimeout(() => setSystemToast(null), 4000);
-            }}
-          />
-        )}
-
-        {/* Weapon Workshop */}
-        {activeTab === 'workshops' && (
-          <CraftingWorkshop
-            inventory={inventory}
-            party={party}
-            onTemperWeapon={(wId, trait) => {
-              setInventory((prev) => ({
-                ...prev,
-                weapons: prev.weapons.map((w) => (w.id === wId ? { ...w, temperingTrait: trait, baseAtk: w.baseAtk + 25 } : w)),
-              }));
-            }}
-            onCraftWeaveItem={() => sound.playVictory()}
-          />
-        )}
-
-        {/* Archives & Codex */}
+        {/* Codex, Living Dungeon Ecology & UE5 Technical Blueprint */}
         {activeTab === 'codex' && <CodexLore />}
       </main>
     </div>

@@ -84,9 +84,17 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
     dodge: 0,
   });
 
-  // Combo Counter State (Matching Solo Leveling Screenshot 1 & 2: "18 HITS", "58 HITS")
+  // Combo Counter State (18 HITS, 58 HITS)
   const [comboHits, setComboHits] = useState<number>(0);
   const comboTimerRef = useRef<number>(0);
+
+  // Feature D: Potion Toxicity Meter & Mana Sickness Debuff (GDD Section 3 & Feature D)
+  const [currentToxicity, setCurrentToxicity] = useState<number>(0);
+  const [manaSicknessTimer, setManaSicknessTimer] = useState<number>(0);
+
+  // Feature E: 15-minute (900s) World Boss Enrage & WeatherShift (GDD Feature E)
+  const [enrageTimer, setEnrageTimer] = useState<number>(900);
+  const [enrageWeatherShift, setEnrageWeatherShift] = useState<boolean>(false);
 
   // Game Arena State
   const [enemies, setEnemies] = useState<Enemy[]>([]);
@@ -714,8 +722,24 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
         }
       }
 
-      // Player Movement
+      // Toxicity Decay (2 points per second per GDD Feature D)
+      setCurrentToxicity((prev) => Math.max(0, prev - 2 * dt));
+      setManaSicknessTimer((prev) => Math.max(0, prev - dt));
+
+      // 15-Minute World Boss Enrage Timer (900 seconds per GDD Feature E)
+      setEnrageTimer((prev) => {
+        const next = Math.max(0, prev - dt);
+        if (next === 0 && !enrageWeatherShift) {
+          setEnrageWeatherShift(true);
+          sound.playSynergyTempest();
+          screenShakeRef.current = 15;
+        }
+        return next;
+      });
+
+      // Player Movement with Agility Scaling & Mana Sickness debuff (-30% Agility)
       const player = playerPosRef.current;
+      const effectiveSpeed = manaSicknessTimer > 0 ? activeChar.speed * 0.7 : activeChar.speed;
       let moveX = 0;
       let moveY = 0;
       if (keysRef.current['w'] || keysRef.current['arrowup']) moveY -= 1;
@@ -725,8 +749,8 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
 
       if (moveX !== 0 || moveY !== 0) {
         const len = Math.hypot(moveX, moveY);
-        player.vx = (moveX / len) * activeChar.speed;
-        player.vy = (moveY / len) * activeChar.speed;
+        player.vx = (moveX / len) * effectiveSpeed;
+        player.vy = (moveY / len) * effectiveSpeed;
         player.facing = Math.atan2(moveY, moveX);
       } else {
         player.vx *= 0.8;
@@ -1040,7 +1064,17 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-white font-mono font-bold">⏱️ 02:45</span>
+          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg text-xs font-tech">
+            <span className="text-slate-400">BOSS ENRAGE:</span>
+            <span className={`font-mono font-bold ${enrageTimer < 180 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
+              ⏱️ {Math.floor(enrageTimer / 60)}:{(Math.floor(enrageTimer % 60)).toString().padStart(2, '0')}
+            </span>
+            {enrageWeatherShift && (
+              <span className="text-[10px] text-rose-400 font-bold bg-rose-950 px-1.5 py-0.2 rounded border border-rose-500/50 animate-bounce">
+                WEATHER-SHIFT ACTIVE!
+              </span>
+            )}
+          </div>
           <button
             onClick={onExit}
             className="p-1 px-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 font-rpg"
@@ -1124,6 +1158,32 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
               className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all"
               style={{ width: `${playerEnergy}%` }}
             />
+          </div>
+
+          {/* Feature D: Potion Toxicity Gauge (0 to 100 decaying at 2/sec) */}
+          <div className="w-full mt-1">
+            <div className="flex items-center justify-between text-[9px] font-tech font-bold px-0.5">
+              <span className={manaSicknessTimer > 0 ? 'text-lime-400 animate-pulse font-extrabold' : 'text-slate-400'}>
+                {manaSicknessTimer > 0
+                  ? `☣️ MANA SICKNESS (-30% AGILITY) ${Math.ceil(manaSicknessTimer)}s`
+                  : 'POTION TOXICITY'}
+              </span>
+              <span className={currentToxicity >= 80 ? 'text-lime-400' : 'text-slate-500'}>
+                {Math.round(currentToxicity)} / 100
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-950/90 rounded-full overflow-hidden border border-slate-800/80 p-0.5 shadow-inner">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  currentToxicity >= 100
+                    ? 'bg-lime-400 animate-pulse'
+                    : currentToxicity >= 70
+                    ? 'bg-amber-400'
+                    : 'bg-emerald-600'
+                }`}
+                style={{ width: `${Math.min(100, currentToxicity)}%` }}
+              />
+            </div>
           </div>
         </div>
 
@@ -1232,10 +1292,33 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
             setPlayerEnergy(100);
             setPlayerHp(playerMaxHp);
             onUseManaPotion();
+            setCurrentToxicity((prev) => {
+              const next = prev + 35;
+              if (next >= 100) {
+                setManaSicknessTimer(20);
+                sound.playArmorBreak();
+                floatingTextsRef.current.push({
+                  id: Math.random().toString(),
+                  text: '☣️ MANA SICKNESS! (-30% Agility, +50% Mana Cost for 20s)',
+                  x: playerPosRef.current.x,
+                  y: playerPosRef.current.y - 35,
+                  color: '#a3e635',
+                  alpha: 1,
+                  vy: -1.2,
+                  isCrit: true,
+                  life: 2.2,
+                });
+              }
+              return Math.min(100, next);
+            });
           }}
-          className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-cyan-400 hover:border-cyan-500 transition flex items-center gap-1 font-tech font-bold disabled:text-slate-600"
+          className={`px-3 py-1.5 rounded-xl border text-xs transition flex items-center gap-1 font-tech font-bold disabled:text-slate-600 ${
+            manaSicknessTimer > 0
+              ? 'bg-lime-950/70 border-lime-500 text-lime-400 animate-pulse'
+              : 'bg-slate-950 border-slate-800 text-cyan-400 hover:border-cyan-500'
+          }`}
         >
-          <span>🧪 Use Elixir ({manaPotions})</span>
+          <span>🧪 Drink Mana Potion (+35 Tox) ({manaPotions})</span>
         </button>
       </div>
 

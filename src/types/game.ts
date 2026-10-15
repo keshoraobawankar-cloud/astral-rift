@@ -6,6 +6,7 @@ export interface AttributeMatrix {
   agility: number;
   intelligence: number;
   endurance: number;
+  vitality?: number;
   perception: number;
 }
 
