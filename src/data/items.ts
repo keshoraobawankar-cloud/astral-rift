@@ -56,7 +56,89 @@ export const INITIAL_WEAPONS: Weapon[] = [
     rank: 1,
     description: 'A radiant golden blade channeled from solar flares, searing undead monstrosities with cleansing heat.',
   },
+  {
+    id: 'kasakas_venom_fang',
+    name: "Kasaka's Venom Fang",
+    type: 'Blade',
+    rarity: 4,
+    baseAtk: 245,
+    subStat: { stat: 'CRIT_RATE', value: 0.22 },
+    level: 1,
+    rank: 1,
+    description: 'Carved from the Great Blue Swamp Snake. Inflicts [Bleed] and [Paralysis] on critical hits, dealing 15% damage over 5 seconds.',
+  },
+  {
+    id: 'demonic_plum_flower_sword',
+    name: 'Demonic Plum Flower Sword',
+    type: 'Blade',
+    rarity: 5,
+    baseAtk: 480,
+    subStat: { stat: 'CRIT_DMG', value: 0.32 },
+    level: 1,
+    rank: 1,
+    description: 'Unleashes [Plum Blossom Domain], increasing Critical Strike Damage by 32% and attack speed by 20%.',
+  },
+  {
+    id: 'shadow_scythe',
+    name: 'Shadow Scythe',
+    type: 'Scythe',
+    rarity: 5,
+    baseAtk: 450,
+    subStat: { stat: 'ATK_PERCENT', value: 0.28 },
+    level: 1,
+    rank: 1,
+    description: 'Harvests enemy souls to regenerate 12% max HP and unleashes Dark Decapitation waves.',
+  },
 ];
+
+export interface SoloWeaponItem {
+  id: string;
+  name: string;
+  rarity: 'SR' | 'SSR';
+  type: string;
+  baseAttack: number;
+  effect: string;
+  icon: string;
+}
+
+export const weaponDatabase: Record<string, SoloWeaponItem> = {
+  kasakas_venom_fang: {
+    id: 'kasakas_venom_fang',
+    name: "Kasaka's Venom Fang",
+    rarity: 'SR',
+    type: 'Dagger',
+    baseAttack: 245,
+    effect: 'Inflicts [Bleed] and [Paralysis] on critical hits, dealing 15% damage over 5 seconds.',
+    icon: '🗡️',
+  },
+  demonic_plum_flower_sword: {
+    id: 'demonic_plum_flower_sword',
+    name: 'Demonic Plum Flower Sword',
+    rarity: 'SSR',
+    type: 'Katana',
+    baseAttack: 480,
+    effect: 'Unleashes [Plum Blossom Domain], increasing Critical Strike Damage by 32% and attack speed by 20%.',
+    icon: '🌸',
+  },
+  shadow_scythe: {
+    id: 'shadow_scythe',
+    name: 'Shadow Scythe',
+    rarity: 'SSR',
+    type: 'Scythe',
+    baseAttack: 450,
+    effect: 'Harvests enemy souls to regenerate 12% max HP and unleashes Dark Decapitation waves.',
+    icon: '⚡',
+  },
+  thetis_grimoire: {
+    id: 'thetis_grimoire',
+    name: "Thetis' Grimoire",
+    rarity: 'SSR',
+    type: 'Magic Tome',
+    baseAttack: 460,
+    effect: 'Freezes enemies solid in an icy domain for 3 seconds, amplifying all party elemental damage by 25%.',
+    icon: '❄️',
+  },
+};
 
 export const INITIAL_RELICS: Relic[] = [
   {

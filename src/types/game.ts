@@ -1,5 +1,5 @@
-export type ElementType = 'solar' | 'void' | 'ether' | 'flame' | 'arcane' | 'earth' | 'wind';
-export type RaceType = 'elf' | 'dwarf' | 'human' | 'beastkin' | 'fairy';
+export type ElementType = 'solar' | 'void' | 'ether' | 'flame' | 'arcane' | 'earth' | 'wind' | 'Shadow' | string;
+export type RaceType = 'elf' | 'dwarf' | 'human' | 'beastkin' | 'fairy' | 'Wood Elf' | 'Void-Touched Human' | 'Umbral Elf' | 'Dwarven Colossus' | 'Shadow Monarch' | string;
 
 export interface AttributeMatrix {
   strength: number;
@@ -19,8 +19,8 @@ export interface SkillInfo {
   icon: string;
   type: 'attack' | 'skill' | 'burst' | 'passive';
   scalingPct: number;
-  synergyElement?: 'wind' | 'hammer_impact' | 'mana_pulse' | 'fairy_mark' | 'earth_shatter';
-  appliesTag?: 'Status.Primed.Wind' | 'Status.Primed.Dust' | 'Status.Primed.FairyRing';
+  synergyElement?: 'wind' | 'hammer_impact' | 'mana_pulse' | 'fairy_mark' | 'earth_shatter' | string;
+  appliesTag?: 'Status.Primed.Wind' | 'Status.Primed.Dust' | 'Status.Primed.FairyRing' | string;
 }
 
 export interface Character {
@@ -28,8 +28,10 @@ export interface Character {
   name: string;
   title: string;
   race: RaceType;
+  className?: string;
   element: ElementType;
-  rarity: 4 | 5;
+  rarity: 4 | 5 | 'SSR' | 'SR' | number | string;
+  totalPower?: number;
   level: number;
   exp: number;
   maxExp: number;
@@ -48,7 +50,13 @@ export interface Character {
   avatarIcon: string;
   lore: string;
   weaponName: string;
-  weaponType: 'Blade' | 'Scythe' | 'Bow' | 'Halberd' | 'Runic Hammer' | 'Arcane Staff';
+  weaponType: 'Blade' | 'Scythe' | 'Bow' | 'Halberd' | 'Runic Hammer' | 'Arcane Staff' | 'Soul Scythe' | 'Greatsword' | 'Dagger' | string;
+  equippedWeapon?: {
+    name: string;
+    rarity: string;
+    attackBonus: number;
+    effect: string;
+  };
   skills: {
     normal: SkillInfo;
     active: SkillInfo;
@@ -60,6 +68,9 @@ export interface Character {
     description: string;
     bonusStat: string;
   };
+  modelPath?: string;
+  celShadeColor?: number;
+  skillsList?: string[];
 }
 
 export interface Enemy {

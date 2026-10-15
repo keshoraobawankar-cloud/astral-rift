@@ -16,6 +16,10 @@ import {
   Users,
   Target,
   Crosshair,
+  UserCheck,
+  ChevronDown,
+  Skull,
+  Zap,
 } from 'lucide-react';
 import { sound } from '../services/soundService';
 import { syncPlayerState } from '../services/api';
@@ -27,6 +31,7 @@ import {
 } from '../services/multiplayerSocket';
 import { TargetUnitFrame } from './TargetUnitFrame';
 import { Minimap, MinimapEntity } from './Minimap';
+import { extendedCharacterRoster, CharacterRosterItem, characterRoster } from '../data/characters';
 
 interface GameViewportProps {
   onReturnToDashboard?: () => void;
@@ -76,6 +81,420 @@ interface RemotePlayerContainer {
   isHostile: boolean;
   hitFlashTimer: number;
 }
+
+export interface MonsterEntity {
+  id: string;
+  name: string;
+  level: number;
+  group: THREE.Group;
+  bodyMesh: THREE.Mesh;
+  homePos: THREE.Vector3;
+  targetPos: THREE.Vector3;
+  state: 'patrol' | 'aggro' | 'attack' | 'stagger' | 'dead';
+  currentHp: number;
+  maxHp: number;
+  patrolTimer: number;
+  attackCooldown: number;
+  staggerTimer: number;
+  respawnTimer: number;
+  aggroRange: number; // 15m detection range
+  attackRange: number; // 2.5m melee range
+  moveSpeed: number;
+  role: string;
+}
+
+export interface ProjectileItem {
+  mesh: THREE.Mesh;
+  velocity: THREE.Vector3;
+  distanceTraveled: number;
+  maxDistance: number;
+  isPiercing: boolean;
+  hitEntities: Set<string>;
+  projectileType: string;
+}
+
+// 1. Elven Arcane Ranger: Projectile Physics & Homing Starlight Volley System
+export class ArcaneRangerSystem {
+  scene: THREE.Scene;
+  projectiles: ProjectileItem[];
+  arrowGeometry: THREE.BufferGeometry;
+  arrowMaterial: THREE.Material;
+
+  constructor(scene: THREE.Scene, activeProjectiles: ProjectileItem[]) {
+    this.scene = scene;
+    this.projectiles = activeProjectiles;
+    this.arrowGeometry = new THREE.ConeGeometry(0.18, 1.3, 8);
+    this.arrowMaterial = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+  }
+
+  // Spawn Starlight Volley or Astral Snipe projectile
+  fireProjectile(origin: THREE.Vector3, targetDirection: THREE.Vector3, speed = 45, isPiercing = false, projectileType = 'starlight_arrow') {
+    const mat = isPiercing
+      ? new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+      : this.arrowMaterial;
+    const arrowMesh = new THREE.Mesh(this.arrowGeometry, mat);
+    arrowMesh.position.copy(origin);
+
+    // Align arrow rotation with firing vector
+    arrowMesh.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      targetDirection.clone().normalize()
+    );
+
+    this.scene.add(arrowMesh);
+
+    this.projectiles.push({
+      mesh: arrowMesh,
+      velocity: targetDirection.clone().normalize().multiplyScalar(speed),
+      distanceTraveled: 0,
+      maxDistance: isPiercing ? 55 : 40,
+      isPiercing: isPiercing,
+      hitEntities: new Set(),
+      projectileType,
+    });
+  }
+
+  // Update projectiles each frame (~60 FPS game loop)
+  update(
+    delta: number,
+    monsterColliders: { id: string; name: string; position: THREE.Vector3; takeDamage: (amt: number) => void }[]
+  ) {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const proj = this.projectiles[i];
+      const step = proj.velocity.clone().multiplyScalar(delta);
+      proj.mesh.position.add(step);
+      proj.distanceTraveled += step.length();
+
+      // Check collision against monsters in open world
+      for (const monster of monsterColliders) {
+        if (!proj.hitEntities.has(monster.id) && proj.mesh.position.distanceTo(monster.position) < 2.5) {
+          monster.takeDamage(proj.isPiercing ? 360 : 135);
+          proj.hitEntities.add(monster.id);
+
+          if (!proj.isPiercing) {
+            this.scene.remove(proj.mesh);
+            this.projectiles.splice(i, 1);
+            break;
+          }
+        }
+      }
+
+      // Remove projectile if max range exceeded
+      if (proj.distanceTraveled >= proj.maxDistance) {
+        this.scene.remove(proj.mesh);
+        this.projectiles.splice(i, 1);
+      }
+    }
+  }
+}
+
+// 2. Soul Weaver: Minion AI State Machine (Skeleton Vanguard)
+export class SkeletonMinionAI {
+  mesh: THREE.Group;
+  summonerId: string;
+  targetGroup: { id: string; name: string; position: THREE.Vector3; health: number; takeDamage: (amt: number) => void }[];
+  state: 'FOLLOW' | 'AGGRO' | 'ATTACK';
+  moveSpeed: number;
+  aggroRange: number;
+  attackRange: number;
+  health: number;
+  attackCooldown: number;
+
+  constructor(
+    minionMesh: THREE.Group,
+    summonerId: string,
+    targetGroup: { id: string; name: string; position: THREE.Vector3; health: number; takeDamage: (amt: number) => void }[]
+  ) {
+    this.mesh = minionMesh;
+    this.summonerId = summonerId;
+    this.targetGroup = targetGroup;
+    this.state = 'FOLLOW';
+    this.moveSpeed = 5.0;
+    this.aggroRange = 14.0;
+    this.attackRange = 2.4;
+    this.health = 400;
+    this.attackCooldown = 0;
+  }
+
+  update(delta: number, summonerPosition: THREE.Vector3) {
+    if (this.health <= 0) return;
+    this.attackCooldown = Math.max(0, this.attackCooldown - delta);
+
+    const targetEntity = this.findNearestHostile();
+
+    switch (this.state) {
+      case 'FOLLOW': {
+        if (targetEntity && this.mesh.position.distanceTo(targetEntity.position) <= this.aggroRange) {
+          this.state = 'AGGRO';
+          break;
+        }
+        const distToSummoner = this.mesh.position.distanceTo(summonerPosition);
+        if (distToSummoner > 3.5) {
+          this.moveTowards(summonerPosition, delta);
+        }
+        break;
+      }
+
+      case 'AGGRO': {
+        if (!targetEntity || targetEntity.health <= 0) {
+          this.state = 'FOLLOW';
+          break;
+        }
+        const distToTarget = this.mesh.position.distanceTo(targetEntity.position);
+        if (distToTarget <= this.attackRange) {
+          this.state = 'ATTACK';
+        } else {
+          this.moveTowards(targetEntity.position, delta);
+        }
+        break;
+      }
+
+      case 'ATTACK': {
+        if (!targetEntity || targetEntity.health <= 0 || this.mesh.position.distanceTo(targetEntity.position) > this.attackRange * 1.5) {
+          this.state = 'AGGRO';
+          break;
+        }
+        if (this.attackCooldown <= 0) {
+          targetEntity.takeDamage(55);
+          this.attackCooldown = 1.0;
+        }
+        break;
+      }
+    }
+  }
+
+  findNearestHostile() {
+    let nearest: any = null;
+    let minDist = Infinity;
+    for (const enemy of this.targetGroup) {
+      if (enemy.health > 0) {
+        const d = this.mesh.position.distanceTo(enemy.position);
+        if (d < minDist) {
+          minDist = d;
+          nearest = enemy;
+        }
+      }
+    }
+    return nearest;
+  }
+
+  moveTowards(dest: THREE.Vector3, delta: number) {
+    const dir = dest.clone().sub(this.mesh.position);
+    dir.y = 0;
+    if (dir.lengthSq() > 0.01) {
+      dir.normalize();
+      this.mesh.position.add(dir.multiplyScalar(this.moveSpeed * delta));
+      const targetAngle = Math.atan2(dir.x, dir.z);
+      this.mesh.rotation.y = THREE.MathUtils.damp(this.mesh.rotation.y, targetAngle, 10, delta);
+    }
+  }
+}
+
+// 3. Shadow Monarch System (Sung Jinwoo - Solo Leveling Arise)
+export class ShadowMonarchSystem {
+  player: { characterId: string; name: string };
+  shadows: SkeletonMinionAI[];
+  scene: THREE.Scene;
+  rampTexture: THREE.Texture;
+
+  constructor(
+    playerActor: { characterId: string; name: string },
+    activeShadowsArray: SkeletonMinionAI[],
+    scene: THREE.Scene,
+    rampTexture: THREE.Texture
+  ) {
+    this.player = playerActor;
+    this.shadows = activeShadowsArray;
+    this.scene = scene;
+    this.rampTexture = rampTexture;
+  }
+
+  // Triggered when an enemy's health drops to 0 near Jinwoo or when Jinwoo unleashes "ARISE"
+  extractShadow(
+    defeatedMonster: { id: string; name: string; position: THREE.Vector3 },
+    targetGroup: { id: string; name: string; position: THREE.Vector3; health: number; takeDamage: (amt: number) => void }[]
+  ) {
+    console.log(`[Shadow Extraction]: "Arise." Extracting soul of ${defeatedMonster.name}...`);
+
+    // Spawn loyal shadow soldier at enemy position with Solo Leveling aesthetic:
+    // Dark void/blue-slate armor + glowing electric cyan eyes + shadow blade
+    const shadowGroup = new THREE.Group();
+    shadowGroup.name = `shadow_${defeatedMonster.id}_${Date.now()}`;
+
+    // Deep shadow obsidian body
+    const shadowMat = new THREE.MeshToonMaterial({
+      color: 0x0f172a,
+      gradientMap: this.rampTexture,
+    });
+    const sBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 1.0, 6, 12), shadowMat);
+    sBody.position.y = 1.1;
+    sBody.castShadow = true;
+    shadowGroup.add(sBody);
+
+    // Glowing electric blue eyes (Sung Jinwoo shadow signature)
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), eyeMat);
+    eye1.position.set(-0.16, 1.55, 0.35);
+    const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), eyeMat);
+    eye2.position.set(0.16, 1.55, 0.35);
+    shadowGroup.add(eye1);
+    shadowGroup.add(eye2);
+
+    // Dual Kasaka Shadow Daggers
+    const dMat = new THREE.MeshStandardMaterial({
+      color: 0x1e1b4b,
+      emissive: 0x38bdf8,
+      emissiveIntensity: 0.9,
+    });
+    const dagger1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.04), dMat);
+    dagger1.position.set(0.4, 0.9, 0.3);
+    dagger1.rotation.x = Math.PI / 4;
+    shadowGroup.add(dagger1);
+
+    const dagger2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.04), dMat);
+    dagger2.position.set(-0.4, 0.9, 0.3);
+    dagger2.rotation.x = Math.PI / 4;
+    shadowGroup.add(dagger2);
+
+    // Shadow Aura Mist Ring
+    const auraRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.6, 1.2, 16),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.6 })
+    );
+    auraRing.rotation.x = -Math.PI / 2;
+    auraRing.position.y = 0.05;
+    shadowGroup.add(auraRing);
+
+    shadowGroup.position.copy(defeatedMonster.position);
+    this.scene.add(shadowGroup);
+
+    const shadowAi = new SkeletonMinionAI(shadowGroup, 'sung_jinwoo', targetGroup);
+    shadowAi.health = 650;
+    shadowAi.moveSpeed = 6.2;
+    this.shadows.push(shadowAi);
+
+    // Broadcast spawn to multiplayer WebSocket server if active
+    multiplayerSocket.sendTransform({
+      position: { x: shadowGroup.position.x, y: shadowGroup.position.y, z: shadowGroup.position.z },
+      rotation: { y: 0 },
+      animationState: 'summon_shadow',
+      username: `Shadow_${defeatedMonster.name}`,
+    });
+
+    return shadowAi;
+  }
+}
+
+// Interactive Solo Leveling Hunter Selector Modal
+export interface CharacterSelectorModalProps {
+  roster: CharacterRosterItem[];
+  selectedId: string;
+  onSelect: (char: CharacterRosterItem) => void;
+  onClose: () => void;
+}
+
+export const CharacterSelectorModal: React.FC<CharacterSelectorModalProps> = ({
+  roster,
+  selectedId,
+  onSelect,
+  onClose,
+}) => {
+  return (
+    <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 pointer-events-auto">
+      <div className="max-w-4xl w-full bg-slate-950 border border-cyan-500/40 rounded-3xl p-6 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-tech text-cyan-400 font-bold uppercase tracking-wider">
+              <span>Solo Leveling: Arise • Hunter Roster</span>
+            </div>
+            <h3 className="text-2xl font-rpg font-extrabold text-white">Select Active Hunter Archetype</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-mono transition cursor-pointer"
+          >
+            ✕ CLOSE
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[65vh] overflow-y-auto pr-1">
+          {roster.map((char) => {
+            const isJinwoo = char.id === 'sung_jinwoo';
+            const isCurrent = char.id === selectedId;
+
+            return (
+              <div
+                key={char.id}
+                onClick={() => onSelect(char)}
+                className={`cursor-pointer p-4 rounded-2xl border transition-all bg-slate-900/90 hover:bg-slate-850 hover:scale-[1.02] flex flex-col justify-between ${
+                  isJinwoo
+                    ? 'border-amber-400 shadow-xl shadow-amber-500/20 ring-1 ring-amber-400/50'
+                    : isCurrent
+                    ? 'border-cyan-400 shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400/40'
+                    : 'border-slate-800 hover:border-cyan-500/50'
+                }`}
+              >
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span
+                      className={`text-xs font-black px-2 py-0.5 rounded ${
+                        char.rarity === 'SSR'
+                          ? 'bg-amber-500 text-black'
+                          : 'bg-purple-600 text-white'
+                      }`}
+                    >
+                      {char.rarity || 'SSR'}
+                    </span>
+                    <span className="text-xs text-cyan-300 font-bold uppercase">{char.element}</span>
+                  </div>
+                  <h4 className="text-white font-bold text-lg font-rpg">{char.name}</h4>
+                  <p className="text-xs text-slate-400 font-sans mt-0.5">{char.class}</p>
+
+                  {char.equippedWeapon && (
+                    <div className="mt-3 p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px]">
+                      <div className="flex items-center justify-between text-amber-300 font-tech font-bold">
+                        <span>⚔️ {char.equippedWeapon.name}</span>
+                        <span className="text-[10px] bg-amber-950 text-amber-400 px-1 rounded">
+                          {char.equippedWeapon.rarity}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{char.equippedWeapon.effect}</p>
+                    </div>
+                  )}
+
+                  <div className="mt-2.5 flex flex-wrap gap-1">
+                    {char.skills?.slice(0, 3).map((sk, idx) => (
+                      <span key={idx} className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-tech">
+                        {sk}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+                  <span className="text-xs text-cyan-400 font-semibold font-tech">
+                    Power: {char.totalPower?.toLocaleString() || '4,200'}
+                  </span>
+                  <span
+                    className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                      isCurrent
+                        ? 'bg-emerald-600 text-white'
+                        : isJinwoo
+                        ? 'bg-amber-500 text-black'
+                        : 'bg-cyan-600 text-white'
+                    }`}
+                  >
+                    {isCurrent ? 'ACTIVE ✓' : isJinwoo ? 'ARISE 👑' : 'DEPLOY'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const GameViewport: React.FC<GameViewportProps> = ({
   onReturnToDashboard,
@@ -147,10 +566,19 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     bossStatus: 'Patrolling Badlands',
   });
 
+  // Active Selected Character Archetype (Elven Arcane Ranger, Soul Weaver, etc.)
+  const [selectedArchetype, setSelectedArchetype] = useState<CharacterRosterItem>(extendedCharacterRoster[0]);
+  const [isRosterModalOpen, setIsRosterModalOpen] = useState<boolean>(false);
+  const [minionCount, setMinionCount] = useState<number>(0);
+
   // Action Trigger References for Animation Loop
   const actionTriggerRef = useRef<{
     attackRequested: boolean;
     heavyAttackRequested: boolean;
+    runicFinisherRequested: boolean;
+    summonMinionRequested: boolean;
+    rangerProjectileRequested: boolean;
+    archetypeChangedRequested: CharacterRosterItem | null;
     dodgeRequested: boolean;
     blockRequested: boolean;
     emoteRequested: 'cheer' | 'guard' | 'rest' | 'shout' | null;
@@ -161,6 +589,10 @@ export const GameViewport: React.FC<GameViewportProps> = ({
   }>({
     attackRequested: false,
     heavyAttackRequested: false,
+    runicFinisherRequested: false,
+    summonMinionRequested: false,
+    rangerProjectileRequested: false,
+    archetypeChangedRequested: null,
     dodgeRequested: false,
     blockRequested: false,
     emoteRequested: null,
@@ -202,13 +634,24 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
+    // 3-Tone Cel-Shading Ramp Texture (Shadow, Mid-tone, Highlight)
+    function createThreeToneRamp() {
+      const colors = new Uint8Array([60, 160, 255]);
+      const texture = new THREE.DataTexture(colors, 3, 1, THREE.RedFormat);
+      texture.minFilter = THREE.NearestFilter;
+      texture.magFilter = THREE.NearestFilter;
+      texture.needsUpdate = true;
+      return texture;
+    }
+    const rampTexture = createThreeToneRamp();
+
     const skyColors = {
-      day: 0x090d16,
-      twilight: 0x1c1017,
+      day: 0x0f172a,
+      twilight: 0x1e1b4b,
       night: 0x030712,
     };
     scene.background = new THREE.Color(skyColors.day);
-    scene.fog = new THREE.FogExp2(skyColors.day, 0.016);
+    scene.fog = new THREE.FogExp2(skyColors.day, 0.003); // Expanded distance fade
 
     const camera = new THREE.PerspectiveCamera(
       58,
@@ -217,6 +660,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       1000
     );
     cameraRef.current = camera;
+    camera.position.set(0, 8.2, 11.5);
+    camera.lookAt(0, 1.4, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     rendererRef.current = renderer;
@@ -229,19 +674,21 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     container.appendChild(renderer.domElement);
 
     // ============================================================================
-    // 2. ENVIRONMENT LIGHTING RIG
+    // 2. DYNAMIC ATMOSPHERIC LIGHTING (Warm Golden Sun, Sky-Blue Ambient & Soft Fog)
     // ============================================================================
-    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x1e1b4b, 0.65);
-    scene.add(hemiLight);
+    // 1. Bright Sky-Blue Ambient Light (fills in dark shadow areas with color)
+    const ambientLight = new THREE.HemisphereLight(0x38bdf8, 0x065f46, 0.85);
+    scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfef08a, 1.4);
-    sunLight.position.set(35, 60, 25);
+    // 2. Warm Golden Sunlight casting shadows across the large 1000x1000 map
+    const sunLight = new THREE.DirectionalLight(0xfef08a, 1.5);
+    sunLight.position.set(100, 200, 100);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 1;
-    sunLight.shadow.camera.far = 180;
-    const d = 50;
+    sunLight.shadow.camera.far = 800;
+    const d = 140;
     sunLight.shadow.camera.left = -d;
     sunLight.shadow.camera.right = d;
     sunLight.shadow.camera.top = d;
@@ -249,76 +696,43 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     sunLight.shadow.bias = -0.0004;
     scene.add(sunLight);
 
-    const ambientLight = new THREE.AmbientLight(0x1e293b, 0.45);
-    scene.add(ambientLight);
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x065f46, 0.6);
+    scene.add(hemiLight);
 
     // ============================================================================
-    // 3. PROCEDURAL TERRAIN & SANCTUARY ENVIRONMENT
+    // 3. EXPANDED PROCEDURAL 1KM TERRAIN & SANCTUARY ENVIRONMENT
     // ============================================================================
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, 512, 512);
+    // 1. Massive 1000x1000 terrain plane with vibrant fantasy cel-shaded green
+    const terrainSize = 1000;
+    const groundGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 64, 64);
+    groundGeo.rotateX(-Math.PI / 2); // Make it horizontal
 
-    // Arcane Leyline hex pattern
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
-    ctx.lineWidth = 2;
-    const hexSize = 64;
-    for (let x = 0; x < 512 + hexSize; x += hexSize * 1.5) {
-      for (let y = 0; y < 512 + hexSize; y += hexSize * Math.sqrt(3)) {
-        ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-          const angle = (Math.PI / 3) * i;
-          const px = x + hexSize * 0.5 * Math.cos(angle);
-          const py = y + hexSize * 0.5 * Math.sin(angle);
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-        ctx.stroke();
-      }
-    }
-
-    const groundTexture = new THREE.CanvasTexture(canvas);
-    groundTexture.wrapS = THREE.RepeatWrapping;
-    groundTexture.wrapT = THREE.RepeatWrapping;
-    groundTexture.repeat.set(16, 16);
-    groundTexture.colorSpace = THREE.SRGBColorSpace;
-
-    const groundGeo = new THREE.PlaneGeometry(160, 160, 32, 32);
-    const groundMat = new THREE.MeshStandardMaterial({
-      map: groundTexture,
-      roughness: 0.85,
-      metalness: 0.15,
-      color: 0x1e293b,
+    const groundMat = new THREE.MeshToonMaterial({
+      color: 0x065f46, // Rich forest green
+      gradientMap: rampTexture,
+      wireframe: false,
     });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-    groundMesh.rotation.x = -Math.PI / 2;
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
-    // Inner Sanctuary Stone Courtyard
-    const courtyardGeo = new THREE.CylinderGeometry(20, 22, 0.4, 32);
-    const courtyardMat = new THREE.MeshStandardMaterial({
+    // Inner Sanctuary Stone Courtyard (Cel-Shaded Toon Ramp)
+    const courtyardGeo = new THREE.CylinderGeometry(24, 26, 0.4, 32);
+    const courtyardMat = new THREE.MeshToonMaterial({
       color: 0x334155,
-      roughness: 0.55,
-      metalness: 0.25,
+      gradientMap: rampTexture,
     });
     const courtyard = new THREE.Mesh(courtyardGeo, courtyardMat);
     courtyard.position.y = 0.2;
     courtyard.receiveShadow = true;
     scene.add(courtyard);
 
-    // Arcane Aegis Dome (Translucent glowing shield dome)
-    const domeGeo = new THREE.SphereGeometry(32, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-    const domeMat = new THREE.MeshStandardMaterial({
+    // Arcane Aegis Dome (Semi-transparent glowing hemisphere with wireframe)
+    const domeGeo = new THREE.SphereGeometry(32, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const domeMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
       transparent: true,
-      opacity: 0.15,
-      roughness: 0.1,
-      metalness: 0.9,
+      opacity: 0.18,
       wireframe: true,
     });
     const aegisDome = new THREE.Mesh(domeGeo, domeMat);
@@ -429,6 +843,64 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     });
     scene.add(shardGroup);
 
+    // ============================================================================
+    // 3.4 COLORED BIOME ELEMENTS (Emerald Trees, Rocks & Mana Crystals)
+    // ============================================================================
+    function generateEnvironmentBiomes(targetScene: THREE.Scene, count = 180) {
+      const treeGeometry = new THREE.ConeGeometry(2.5, 7, 6);
+      const treeMaterial = new THREE.MeshToonMaterial({ color: 0x10b981, gradientMap: rampTexture });
+      const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 2.5, 6);
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3f2d1d, roughness: 0.9 });
+
+      const rockGeo = new THREE.DodecahedronGeometry(2.2);
+      const rockMat = new THREE.MeshToonMaterial({ color: 0x475569, gradientMap: rampTexture });
+
+      const crystalGeo = new THREE.OctahedronGeometry(1.6);
+      const crystalMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+      for (let i = 0; i < count; i++) {
+        const x = (Math.random() - 0.5) * 850;
+        const z = (Math.random() - 0.5) * 850;
+        // Keep central citadel courtyard clear (r > 36)
+        if (Math.hypot(x, z) < 36) continue;
+
+        const type = i % 4;
+        if (type === 0 || type === 1) {
+          // Vibrant Emerald Forest Pine
+          const treeGroup = new THREE.Group();
+          const foliage = new THREE.Mesh(treeGeometry, treeMaterial);
+          foliage.position.y = 4.5;
+          foliage.castShadow = true;
+          const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+          trunk.position.y = 1.25;
+          trunk.castShadow = true;
+          treeGroup.add(trunk);
+          treeGroup.add(foliage);
+          treeGroup.position.set(x, 0, z);
+          const s = 0.8 + Math.random() * 0.7;
+          treeGroup.scale.setScalar(s);
+          targetScene.add(treeGroup);
+        } else if (type === 2) {
+          // Badlands Crag / Rock
+          const rock = new THREE.Mesh(rockGeo, rockMat);
+          rock.position.set(x, 1.2, z);
+          rock.scale.set(1 + Math.random() * 0.8, 1 + Math.random() * 1.5, 1 + Math.random() * 0.8);
+          rock.castShadow = true;
+          targetScene.add(rock);
+        } else {
+          // Mana Crystal Shrine
+          const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+          crystal.position.set(x, 2.5, z);
+          const cLight = new THREE.PointLight(0x38bdf8, 1.5, 15);
+          cLight.position.set(x, 3.0, z);
+          targetScene.add(crystal);
+          targetScene.add(cLight);
+        }
+      }
+    }
+
+    generateEnvironmentBiomes(scene);
+
     // Roaming Abyss Void Titan (World Boss)
     const bossGroup = new THREE.Group();
     bossGroup.name = 'abyss_titan';
@@ -462,37 +934,289 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     const bossMaxHp = 100000;
 
     // ============================================================================
-    // 4. HUMAN-LIKE PROCEDURAL LOCAL HERO CHARACTER
+    // 3.5 PROCEDURAL SHATTERED FLOATING ISLANDS IN THE SKY
+    // ============================================================================
+    const floatingIslands: { group: THREE.Group; baseY: number; offset: number }[] = [];
+    const islandGeo = new THREE.ConeGeometry(8, 7, 7);
+    const islandMat = new THREE.MeshToonMaterial({
+      color: 0x1e293b,
+      gradientMap: rampTexture,
+    });
+    const islandGrassMat = new THREE.MeshToonMaterial({
+      color: 0x065f46,
+      gradientMap: rampTexture,
+    });
+
+    const islandPositions = [
+      { x: -50, y: 35, z: -60, s: 1.8 },
+      { x: 55, y: 40, z: -50, s: 2.2 },
+      { x: -65, y: 28, z: 20, s: 1.4 },
+      { x: 45, y: 32, z: 65, s: 1.6 },
+    ];
+
+    islandPositions.forEach((pos, idx) => {
+      const islandGroup = new THREE.Group();
+      const rock = new THREE.Mesh(islandGeo, islandMat);
+      rock.rotation.x = Math.PI;
+      islandGroup.add(rock);
+
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(7.8, 8, 0.8, 7), islandGrassMat);
+      top.position.y = 3.5;
+      islandGroup.add(top);
+
+      const crystal = new THREE.Mesh(
+        new THREE.OctahedronGeometry(1.8),
+        new THREE.MeshBasicMaterial({ color: idx % 2 === 0 ? 0x38bdf8 : 0xa855f7 })
+      );
+      crystal.position.y = 6.5;
+      islandGroup.add(crystal);
+
+      const cLight = new THREE.PointLight(idx % 2 === 0 ? 0x38bdf8 : 0xa855f7, 2, 25);
+      cLight.position.y = 7;
+      islandGroup.add(cLight);
+
+      islandGroup.position.set(pos.x, pos.y, pos.z);
+      islandGroup.scale.setScalar(pos.s);
+      scene.add(islandGroup);
+
+      floatingIslands.push({ group: islandGroup, baseY: pos.y, offset: idx * 1.5 });
+    });
+
+    // ============================================================================
+    // 3.6 ROAMING OPEN-WORLD MONSTERS (Patrol, Aggro, Attack, Stagger State Machine)
+    // ============================================================================
+    const monsters: MonsterEntity[] = [];
+
+    const monsterConfigs = [
+      { id: 'shadow_stalker_1', name: 'Void Shadow Stalker', level: 28, hp: 2200, color: 0x4c0519, x: 36, z: 18, role: 'Wild Predator • Abyss Swarm' },
+      { id: 'golem_scout_1', name: 'Ironpeak Golem Scout', level: 32, hp: 3000, color: 0x78350f, x: -38, z: -25, role: 'Dwarven Caldera Construct' },
+      { id: 'bloodfang_beast_1', name: 'Bloodfang Abyss Beast', level: 30, hp: 2600, color: 0x3f3f46, x: 22, z: -40, role: 'Badlands Carnivore' },
+    ];
+
+    monsterConfigs.forEach((cfg) => {
+      const mGroup = new THREE.Group();
+      mGroup.name = cfg.id;
+
+      // Stylized Cel-shaded Monster Body
+      const mBodyGeo = new THREE.DodecahedronGeometry(1.6);
+      const mBodyMat = new THREE.MeshToonMaterial({
+        color: cfg.color,
+        gradientMap: rampTexture,
+      });
+      const mBody = new THREE.Mesh(mBodyGeo, mBodyMat);
+      mBody.castShadow = true;
+      mGroup.add(mBody);
+
+      // Glowing Hostile Eyes
+      const eyeGeo = new THREE.SphereGeometry(0.35, 8, 8);
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+      leftEye.position.set(-0.6, 0.4, 1.3);
+      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+      rightEye.position.set(0.6, 0.4, 1.3);
+      mGroup.add(leftEye);
+      mGroup.add(rightEye);
+
+      // Horns / Spikes
+      const spikeGeo = new THREE.ConeGeometry(0.3, 1.2, 5);
+      const spikeMat = new THREE.MeshStandardMaterial({ color: 0x18181b, metalness: 0.8 });
+      const s1 = new THREE.Mesh(spikeGeo, spikeMat);
+      s1.position.set(-1.0, 1.2, 0);
+      s1.rotation.z = Math.PI / 4;
+      const s2 = new THREE.Mesh(spikeGeo, spikeMat);
+      s2.position.set(1.0, 1.2, 0);
+      s2.rotation.z = -Math.PI / 4;
+      mGroup.add(s1);
+      mGroup.add(s2);
+
+      // Contact shadow
+      const mShadow = new THREE.Mesh(
+        new THREE.CircleGeometry(1.2, 12),
+        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 })
+      );
+      mShadow.rotation.x = -Math.PI / 2;
+      mShadow.position.y = -1.2;
+      mGroup.add(mShadow);
+
+      mGroup.position.set(cfg.x, 1.4, cfg.z);
+      scene.add(mGroup);
+
+      monsters.push({
+        id: cfg.id,
+        name: cfg.name,
+        level: cfg.level,
+        group: mGroup,
+        bodyMesh: mBody,
+        homePos: new THREE.Vector3(cfg.x, 1.4, cfg.z),
+        targetPos: new THREE.Vector3(cfg.x, 1.4, cfg.z),
+        state: 'patrol',
+        currentHp: cfg.hp,
+        maxHp: cfg.hp,
+        patrolTimer: 2 + Math.random() * 3,
+        attackCooldown: 0,
+        staggerTimer: 0,
+        respawnTimer: 0,
+        aggroRange: 15.0, // 15m detection range
+        attackRange: 2.5, // 2.5m melee range
+        moveSpeed: 4.8,
+        role: cfg.role,
+      });
+    });
+
+    // ============================================================================
+    // 3.7 ARCANERANGER SYSTEM, SHADOW MONARCH SYSTEM & MINIONS REGISTRY
+    // ============================================================================
+    const activeProjectiles: ProjectileItem[] = [];
+    const rangerSystem = new ArcaneRangerSystem(scene, activeProjectiles);
+    const activeMinions: SkeletonMinionAI[] = [];
+
+    const monsterColliders = monsters.map((m) => ({
+      id: m.id,
+      name: m.name,
+      position: m.group.position,
+      health: m.currentHp,
+      takeDamage: (amt: number) => {
+        m.currentHp -= amt;
+        m.state = 'stagger';
+        m.staggerTimer = 0.35;
+        if (m.currentHp <= 0) {
+          m.state = 'dead';
+          m.group.visible = false;
+          m.respawnTimer = 14;
+          if (selectedArchetype.id === 'sung_jinwoo') {
+            shadowMonarchSystem.extractShadow(
+              { id: m.id, name: m.name, position: m.group.position.clone() },
+              monsterColliders
+            );
+            triggerFloatingText('👑 "ARISE." - SHADOW SOLDIER EXTRACTED!', 'crit');
+            setMinionCount(activeMinions.length);
+          }
+        }
+      },
+    }));
+
+    const shadowMonarchSystem = new ShadowMonarchSystem(
+      { characterId: selectedArchetype.id, name: selectedArchetype.name },
+      activeMinions,
+      scene,
+      rampTexture
+    );
+
+    const applyDamageToMonsters = (dmg: number, radius: number) => {
+      monsters.forEach((m) => {
+        if (m.state !== 'dead') {
+          const dist = playerGroup.position.distanceTo(m.group.position);
+          if (dist <= radius) {
+            m.currentHp -= dmg;
+            m.state = 'stagger';
+            m.staggerTimer = 0.35;
+            (m.bodyMesh.material as THREE.MeshToonMaterial).color.setHex(0xf43f5e);
+            triggerFloatingText(`${m.name.slice(0, 10)} -${dmg}`, dmg > 400 ? 'crit' : 'damage');
+
+            if (m.currentHp <= 0) {
+              m.state = 'dead';
+              m.group.visible = false;
+              m.respawnTimer = 14;
+              sound.playVictory();
+              setGoldEarned((g) => g + 120);
+              triggerFloatingText(`DEFEATED ${m.name}! +120 GOLD`, 'loot');
+
+              // Shadow Extraction Trigger
+              if (selectedArchetype.id === 'sung_jinwoo') {
+                shadowMonarchSystem.extractShadow(
+                  { id: m.id, name: m.name, position: m.group.position.clone() },
+                  monsterColliders
+                );
+                triggerFloatingText('👑 "ARISE." - SHADOW SOLDIER EXTRACTED!', 'crit');
+                setMinionCount(activeMinions.length);
+                setCharacterThought(`👑 "Arise, ${m.name}." Welcome to the Shadow Army.`);
+              }
+            }
+          }
+        }
+      });
+    };
+
+    // Helper: Spawn Skeleton Vanguard minion
+    const spawnSkeletonMinion = (targetGroup: { id: string; name: string; position: THREE.Vector3; health: number; takeDamage: (amt: number) => void }[]) => {
+      const minionGroup = new THREE.Group();
+
+      // Bone torso
+      const boneMat = new THREE.MeshToonMaterial({ color: 0xe2e8f0, gradientMap: rampTexture });
+      const boneTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.25, 0.9, 8), boneMat);
+      boneTorso.position.y = 0.9;
+      minionGroup.add(boneTorso);
+
+      // Skull
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10), boneMat);
+      skull.position.set(0, 1.5, 0);
+      minionGroup.add(skull);
+
+      // Glowing emerald eyes
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+      const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.08), eyeMat);
+      eye1.position.set(-0.12, 1.55, 0.3);
+      const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.08), eyeMat);
+      eye2.position.set(0.12, 1.55, 0.3);
+      minionGroup.add(eye1);
+      minionGroup.add(eye2);
+
+      // Bone sword
+      const bSword = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 0.04), boneMat);
+      bSword.position.set(0.45, 0.9, 0.2);
+      bSword.rotation.x = Math.PI / 6;
+      minionGroup.add(bSword);
+
+      const spawnX = playerGroup.position.x + (Math.random() - 0.5) * 3;
+      const spawnZ = playerGroup.position.z + (Math.random() - 0.5) * 3;
+      minionGroup.position.set(spawnX, 0, spawnZ);
+      scene.add(minionGroup);
+
+      const minionAi = new SkeletonMinionAI(minionGroup, 'local_player', targetGroup);
+      activeMinions.push(minionAi);
+      setMinionCount(activeMinions.length);
+      return minionAi;
+    };
+
+    // ============================================================================
+    // 4. HUMAN-LIKE PROCEDURAL LOCAL HERO CHARACTER (Cel-Shaded PBR)
     // ============================================================================
     const playerGroup = new THREE.Group();
+    const isJinwooActive = selectedArchetype.id === 'sung_jinwoo';
 
-    // Torso / Plate Armor
+    // Torso / Plate Armor (MeshToonMaterial with rampTexture)
     const bodyGeo = new THREE.CapsuleGeometry(0.65, 1.1, 8, 16);
-    const armorMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7, // Vanguard Cobalt
-      roughness: 0.35,
-      metalness: 0.85,
+    const armorMat = new THREE.MeshToonMaterial({
+      color: selectedArchetype.celShadeColor || (isJinwooActive ? 0x1e293b : 0x10b981),
+      gradientMap: rampTexture,
     });
     const playerBody = new THREE.Mesh(bodyGeo, armorMat);
     playerBody.position.y = 1.2;
     playerBody.castShadow = true;
     playerGroup.add(playerBody);
 
-    // Helmet & Visor
+    // Helmet & Visor (Electric Blue for Jinwoo, Dark Obsidian)
     const helmGeo = new THREE.SphereGeometry(0.55, 12, 12);
-    const helm = new THREE.Mesh(helmGeo, new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9 }));
+    const helm = new THREE.Mesh(
+      helmGeo,
+      new THREE.MeshStandardMaterial({ color: isJinwooActive ? 0x0f172a : 0x0f172a, metalness: 0.9 })
+    );
     helm.position.set(0, 1.85, 0);
     playerGroup.add(helm);
 
     const visorGeo = new THREE.BoxGeometry(0.58, 0.22, 0.4);
-    const visorMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const visorMat = new THREE.MeshBasicMaterial({ color: isJinwooActive ? 0x38bdf8 : 0x38bdf8 });
     const visor = new THREE.Mesh(visorGeo, visorMat);
     visor.position.set(0, 1.85, 0.35);
     playerGroup.add(visor);
 
     // Pauldrons (Shoulder Armor)
     const pauldronGeo = new THREE.SphereGeometry(0.35, 8, 8);
-    const pauldronMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.2 });
+    const pauldronMat = new THREE.MeshStandardMaterial({
+      color: isJinwooActive ? 0x0f172a : 0x1e293b,
+      metalness: 0.9,
+      roughness: 0.2,
+    });
     const leftPauldron = new THREE.Mesh(pauldronGeo, pauldronMat);
     leftPauldron.position.set(-0.75, 1.6, 0);
     const rightPauldron = new THREE.Mesh(pauldronGeo, pauldronMat);
@@ -500,11 +1224,11 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     playerGroup.add(leftPauldron);
     playerGroup.add(rightPauldron);
 
-    // Flowing Cape
+    // Flowing Cape (Shadow Monarch Cloak for Jinwoo)
     const capeGroup = new THREE.Group();
     const capeGeo = new THREE.PlaneGeometry(0.9, 1.6, 4, 6);
     const capeMat = new THREE.MeshStandardMaterial({
-      color: 0x1e1b4b,
+      color: isJinwooActive ? 0x0f172a : 0x1e1b4b,
       side: THREE.DoubleSide,
       roughness: 0.8,
     });
@@ -515,38 +1239,66 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     capeGroup.add(cape);
     playerGroup.add(capeGroup);
 
-    // Greatsword Rig
+    // Weapon Rig: Dual Kasaka's Venom Fang Daggers for Sung Jinwoo, or Greatsword
     const swordGroup = new THREE.Group();
-    const bladeGeo = new THREE.BoxGeometry(0.12, 1.8, 0.04);
-    const bladeMat = new THREE.MeshStandardMaterial({
-      color: 0xe0f2fe,
-      emissive: 0x0284c7,
-      emissiveIntensity: 0.7,
-      metalness: 0.95,
-      roughness: 0.1,
-    });
-    const blade = new THREE.Mesh(bladeGeo, bladeMat);
-    blade.position.y = 0.9;
-    blade.castShadow = true;
-    swordGroup.add(blade);
 
-    const hilt = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.06, 0.4),
-      new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8 })
-    );
-    hilt.position.y = -0.15;
-    swordGroup.add(hilt);
+    if (isJinwooActive) {
+      // Kasaka's Venom Fang - Dual Daggers with toxic cyan & void purple glow
+      const dBladeMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        emissive: 0x38bdf8,
+        emissiveIntensity: 0.9,
+        metalness: 0.95,
+        roughness: 0.1,
+      });
 
-    const crossguard = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 0.08, 0.1),
-      new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85 })
-    );
-    crossguard.position.y = 0.05;
-    swordGroup.add(crossguard);
+      // Right Hand Kasaka Dagger
+      const rDagger = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.95, 0.03), dBladeMat);
+      rDagger.position.set(0.65, 0.9, 0.35);
+      rDagger.rotation.x = Math.PI / 4;
+      rDagger.rotation.z = -Math.PI / 8;
+      rDagger.castShadow = true;
+      swordGroup.add(rDagger);
 
-    swordGroup.position.set(0.75, 1.1, 0.35);
-    swordGroup.rotation.x = Math.PI / 6;
-    swordGroup.rotation.z = -Math.PI / 12;
+      // Left Hand Kasaka Dagger
+      const lDagger = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.95, 0.03), dBladeMat);
+      lDagger.position.set(-0.65, 0.9, 0.35);
+      lDagger.rotation.x = Math.PI / 4;
+      lDagger.rotation.z = Math.PI / 8;
+      lDagger.castShadow = true;
+      swordGroup.add(lDagger);
+    } else {
+      const bladeGeo = new THREE.BoxGeometry(0.12, 1.8, 0.04);
+      const bladeMat = new THREE.MeshStandardMaterial({
+        color: 0xe0f2fe,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.7,
+        metalness: 0.95,
+        roughness: 0.1,
+      });
+      const blade = new THREE.Mesh(bladeGeo, bladeMat);
+      blade.position.y = 0.9;
+      blade.castShadow = true;
+      swordGroup.add(blade);
+
+      const hilt = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.06, 0.4),
+        new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8 })
+      );
+      hilt.position.y = -0.15;
+      swordGroup.add(hilt);
+
+      const crossguard = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.08, 0.1),
+        new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85 })
+      );
+      crossguard.position.y = 0.05;
+      swordGroup.add(crossguard);
+
+      swordGroup.position.set(0.75, 1.1, 0.35);
+      swordGroup.rotation.x = Math.PI / 6;
+      swordGroup.rotation.z = -Math.PI / 12;
+    }
     playerGroup.add(swordGroup);
 
     // Ground Contact Shadow
@@ -625,10 +1377,9 @@ export const GameViewport: React.FC<GameViewportProps> = ({
 
       // Body (Emerald/Cyan armor distinction for other players)
       const rBodyGeo = new THREE.CapsuleGeometry(0.65, 1.1, 8, 16);
-      const rArmorMat = new THREE.MeshStandardMaterial({
+      const rArmorMat = new THREE.MeshToonMaterial({
         color: 0x059669, // Emerald Knight
-        roughness: 0.35,
-        metalness: 0.8,
+        gradientMap: rampTexture,
       });
       const bodyMesh = new THREE.Mesh(rBodyGeo, rArmorMat);
       bodyMesh.position.y = 1.2;
@@ -837,6 +1588,36 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           }
           break;
 
+        case 'PLAYER_CHARACTER_CHANGED':
+          {
+            const remote = remotePlayersRef.current.get(payload.playerId);
+            if (remote) {
+              if (payload.celShadeColor) {
+                (remote.bodyMesh.material as THREE.MeshToonMaterial).color.setHex(payload.celShadeColor);
+              }
+              triggerFloatingText(`✦ ${remote.username} switched character!`, 'loot');
+              sound.playLootRoll();
+            }
+          }
+          break;
+
+        case 'REMOTE_PROJECTILE':
+          {
+            if (rangerSystem && payload.origin && payload.direction) {
+              const orig = new THREE.Vector3(payload.origin.x, payload.origin.y, payload.origin.z);
+              const dir = new THREE.Vector3(payload.direction.x, payload.direction.y, payload.direction.z);
+              rangerSystem.fireProjectile(orig, dir, 45, payload.projectileType === 'astral_snipe');
+            }
+          }
+          break;
+
+        case 'REMOTE_SUMMON_MINION':
+          {
+            triggerFloatingText('✦ Remote player summoned Skeleton Vanguard!', 'loot');
+            sound.playTrapTrigger();
+          }
+          break;
+
         case 'REMOTE_EMOTE':
           {
             const remote = remotePlayersRef.current.get(payload.playerId);
@@ -884,6 +1665,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         actionTriggerRef.current.attackRequested = true;
       } else if (k === 'q' || e.code === 'KeyQ') {
         actionTriggerRef.current.heavyAttackRequested = true;
+      } else if (k === 'r' || e.code === 'KeyR') {
+        actionTriggerRef.current.runicFinisherRequested = true;
       } else if (k === 'c' || (e.key === ' ' && keys.Shift)) {
         actionTriggerRef.current.dodgeRequested = true;
       } else if (k === 'b' || (k === 'f' && isNearOre)) {
@@ -944,6 +1727,18 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       }
     };
 
+    const handleCanvasMouseDown = (e: MouseEvent) => {
+      if (e.button === 0) {
+        actionTriggerRef.current.attackRequested = true;
+      } else if (e.button === 2) {
+        e.preventDefault();
+        actionTriggerRef.current.blockRequested = true;
+      }
+    };
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+
+    container.addEventListener('mousedown', handleCanvasMouseDown);
+    container.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
@@ -1064,7 +1859,7 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           localCombo === 3 ? 'crit' : 'damage'
         );
 
-        // 3. Melee hit detection against remote players and world boss
+        // 3. Melee hit detection against remote players, monsters and world boss
         const strikeRange = localCombo === 3 ? 5.0 : 3.5;
         remotePlayersRef.current.forEach((remote, id) => {
           const dist = playerGroup.position.distanceTo(remote.group.position);
@@ -1072,6 +1867,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
             multiplayerSocket.dealDamage(id, dmgVal);
           }
         });
+
+        applyDamageToMonsters(dmgVal, strikeRange + 1.2);
 
         // Hit detection against Abyss Titan
         const distToBoss = playerGroup.position.distanceTo(bossGroup.position);
@@ -1107,6 +1904,58 @@ export const GameViewport: React.FC<GameViewportProps> = ({
             multiplayerSocket.dealDamage(id, dmgVal);
           }
         });
+
+        applyDamageToMonsters(dmgVal, 4.5);
+      }
+
+      if (actionTriggerRef.current.runicFinisherRequested && !isAttacking && !isDodging && curStamina >= 20) {
+        actionTriggerRef.current.runicFinisherRequested = false;
+        isAttacking = true;
+        attackTimer = 0.52;
+        curStamina = Math.max(0, curStamina - 20);
+        sound.playVictory();
+
+        const isJinwoo = selectedArchetype.id === 'sung_jinwoo';
+        const dmgVal = isJinwoo ? 1200 : 850;
+
+        triggerSlashVisualEffect(playerGroup.position, facingDir, 'whirlwind');
+        multiplayerSocket.sendAttack({
+          attackType: 'whirlwind',
+          position: { x: playerGroup.position.x, y: playerGroup.position.y, z: playerGroup.position.z },
+          direction: { x: facingDir.x, y: facingDir.y, z: facingDir.z },
+        });
+
+        triggerFloatingText(
+          isJinwoo ? '👑 "ARISE." - 1200 RUNIC FINISHER!' : `RUNIC FINISHER -${dmgVal}!`,
+          'crit'
+        );
+        setCharacterThought(
+          isJinwoo
+            ? '👑 "ARISE." The realm bends to the Shadow Monarch.'
+            : '✦ Apocalyptic Runic Finisher unleashed!'
+        );
+
+        if (isJinwoo) {
+          const spawnTarget = {
+            id: `shadow_kill_${Date.now()}`,
+            name: 'Elite Shadow Soldier',
+            position: playerGroup.position.clone().add(facingDir.clone().multiplyScalar(3.5)),
+          };
+          shadowMonarchSystem.extractShadow(spawnTarget, monsterColliders);
+          setMinionCount(activeMinions.length);
+        }
+
+        applyDamageToMonsters(dmgVal, 6.5);
+
+        // Hit detection against Abyss Titan
+        const distToBoss = playerGroup.position.distanceTo(bossGroup.position);
+        if (distToBoss <= 8.0) {
+          bossCurrentHp = Math.max(0, bossCurrentHp - dmgVal);
+          triggerFloatingText(`TITAN -${dmgVal}`, 'crit');
+          if (selectedTargetIdRef.current === 'abyss_titan') {
+            setSelectedTarget((prev) => (prev ? { ...prev, currentHp: bossCurrentHp } : null));
+          }
+        }
       }
 
       if (actionTriggerRef.current.dodgeRequested && !isDodging && curStamina >= 20) {
@@ -1385,6 +2234,79 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       const distCenter = Math.hypot(playerGroup.position.x, playerGroup.position.z);
       const inAegis = distCenter <= 30;
 
+      // Update active minions & Arcane Ranger projectiles
+      activeMinions.forEach((minion) => {
+        minion.update(delta, playerGroup.position);
+      });
+      rangerSystem.update(delta, monsterColliders);
+
+      // Update Roaming Open-World Monsters State Machine
+      monsters.forEach((m) => {
+        if (m.state === 'dead') {
+          m.respawnTimer -= delta;
+          if (m.respawnTimer <= 0) {
+            m.state = 'patrol';
+            m.currentHp = m.maxHp;
+            m.group.visible = true;
+            m.group.position.copy(m.homePos);
+          }
+          return;
+        }
+
+        if (m.state === 'stagger') {
+          m.staggerTimer -= delta;
+          if (m.staggerTimer <= 0) {
+            m.state = 'aggro';
+            (m.bodyMesh.material as THREE.MeshToonMaterial).color.setHex(0x4c0519);
+          }
+          return;
+        }
+
+        const distToPlayer = playerGroup.position.distanceTo(m.group.position);
+        if (distToPlayer <= m.aggroRange) {
+          m.state = 'aggro';
+          const dir = playerGroup.position.clone().sub(m.group.position);
+          dir.y = 0;
+          if (distToPlayer > m.attackRange) {
+            dir.normalize();
+            m.group.position.add(dir.multiplyScalar(m.moveSpeed * delta));
+            m.group.rotation.y = Math.atan2(dir.x, dir.z);
+          } else {
+            // Melee attack against local player
+            m.attackCooldown -= delta;
+            if (m.attackCooldown <= 0) {
+              m.attackCooldown = 1.6;
+              if (!isBlocking && !isDodging) {
+                curHp = Math.max(0, curHp - 12);
+                sound.playHit(false);
+                triggerFloatingText('-12 HIT', 'damage');
+              } else if (isBlocking) {
+                sound.playTrapTrigger();
+                triggerFloatingText('PARRIED!', 'parry');
+              }
+            }
+          }
+        } else {
+          // Patrol wander
+          m.patrolTimer -= delta;
+          if (m.patrolTimer <= 0) {
+            m.patrolTimer = 3 + Math.random() * 4;
+            m.targetPos.set(
+              m.homePos.x + (Math.random() - 0.5) * 16,
+              m.homePos.y,
+              m.homePos.z + (Math.random() - 0.5) * 16
+            );
+          }
+          const pDir = m.targetPos.clone().sub(m.group.position);
+          pDir.y = 0;
+          if (pDir.lengthSq() > 0.5) {
+            pDir.normalize();
+            m.group.position.add(pDir.multiplyScalar(m.moveSpeed * 0.5 * delta));
+            m.group.rotation.y = Math.atan2(pDir.x, pDir.z);
+          }
+        }
+      });
+
       // ============================================================================
       // 12. PROJECTED 3D FLOATING NAMEPLATES CALCULATION
       // ============================================================================
@@ -1413,6 +2335,30 @@ export const GameViewport: React.FC<GameViewportProps> = ({
             screenY: Math.round(sy),
             isBehindCamera: isBehind,
           });
+        });
+
+        // Projected nameplate for living roaming monsters
+        monsters.forEach((m) => {
+          if (m.state !== 'dead') {
+            const mHeadPos = m.group.position.clone().add(new THREE.Vector3(0, 2.4, 0));
+            mHeadPos.project(camera);
+            const isBehind = mHeadPos.z > 1 || mHeadPos.z < -1;
+            const sx = (mHeadPos.x * 0.5 + 0.5) * clientW;
+            const sy = (-(mHeadPos.y * 0.5) + 0.5) * clientH;
+
+            projectedList.push({
+              id: m.id,
+              name: m.name,
+              level: m.level,
+              currentHp: m.currentHp,
+              maxHp: m.maxHp,
+              isHostile: true,
+              role: m.role,
+              screenX: Math.round(sx),
+              screenY: Math.round(sy),
+              isBehindCamera: isBehind,
+            });
+          }
         });
 
         // Projected nameplate for Abyss Void Titan Boss
@@ -1489,6 +2435,22 @@ export const GameViewport: React.FC<GameViewportProps> = ({
             isHostile: false,
           });
         });
+        monsters.forEach((m) => {
+          if (m.state !== 'dead') {
+            radarEntities.push({
+              id: m.id,
+              name: m.name,
+              position: {
+                x: m.group.position.x,
+                y: m.group.position.y,
+                z: m.group.position.z,
+              },
+              rotationY: m.group.rotation.y,
+              hpPercent: (m.currentHp / m.maxHp) * 100,
+              isHostile: true,
+            });
+          }
+        });
         radarEntities.push({
           id: 'abyss_titan',
           name: 'Abyss Titan',
@@ -1518,6 +2480,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     window.addEventListener('resize', handleResize);
 
     return () => {
+      container.removeEventListener('mousedown', handleCanvasMouseDown);
+      container.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('resize', handleResize);

@@ -149,6 +149,49 @@ class MultiplayerSocketService {
     }
   }
 
+  selectCharacter(characterId: string, celShadeColor?: number, position?: { x: number; y: number; z: number }) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(
+        JSON.stringify({
+          type: 'SELECT_CHARACTER',
+          characterId,
+          celShadeColor,
+          position: position || { x: 0, y: 0, z: 0 },
+        })
+      );
+    }
+  }
+
+  sendProjectile(projectileData: {
+    origin: { x: number; y: number; z: number };
+    direction: { x: number; y: number; z: number };
+    projectileType?: string;
+  }) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(
+        JSON.stringify({
+          type: 'FIRE_PROJECTILE',
+          ...projectileData,
+        })
+      );
+    }
+  }
+
+  sendSummonMinion(minionData: {
+    minionId: string;
+    position: { x: number; y: number; z: number };
+    minionType?: string;
+  }) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(
+        JSON.stringify({
+          type: 'SUMMON_MINION',
+          ...minionData,
+        })
+      );
+    }
+  }
+
   unsubscribe(callback: MultiplayerCallback) {
     this.callbacks.delete(callback);
   }

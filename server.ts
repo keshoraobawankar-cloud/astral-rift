@@ -856,6 +856,39 @@ async function start() {
             emote: payload.emote,
           });
         }
+
+        // E. Character Selection Broadcast
+        if (payload.type === 'SELECT_CHARACTER') {
+          broadcastExcept(playerId, {
+            type: 'PLAYER_CHARACTER_CHANGED',
+            playerId,
+            characterId: payload.characterId,
+            celShadeColor: payload.celShadeColor,
+            position: payload.position,
+          });
+        }
+
+        // F. Projectile Broadcast (Starlight Volley & Astral Snipe)
+        if (payload.type === 'FIRE_PROJECTILE') {
+          broadcastExcept(playerId, {
+            type: 'REMOTE_PROJECTILE',
+            attackerId: playerId,
+            origin: payload.origin,
+            direction: payload.direction,
+            projectileType: payload.projectileType || 'starlight_arrow',
+          });
+        }
+
+        // G. Summon Minion Broadcast (Skeleton Vanguard)
+        if (payload.type === 'SUMMON_MINION') {
+          broadcastExcept(playerId, {
+            type: 'REMOTE_SUMMON_MINION',
+            summonerId: playerId,
+            minionId: payload.minionId,
+            position: payload.position,
+            minionType: payload.minionType || 'skeleton_vanguard',
+          });
+        }
       } catch (err) {
         console.error('Invalid Game WebSocket payload:', err);
       }
