@@ -15,6 +15,9 @@ import {
   Zap,
   Shield,
   Layers,
+  Lock,
+  User,
+  LogOut,
 } from 'lucide-react';
 
 export type NavTab =
@@ -37,6 +40,9 @@ interface HeaderNavProps {
   isCombatActive: boolean;
   isMuted: boolean;
   onToggleSound: () => void;
+  hunterUsername?: string | null;
+  onOpenLoginModal?: () => void;
+  onLogout?: () => void;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -48,6 +54,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   isCombatActive,
   isMuted,
   onToggleSound,
+  hunterUsername,
+  onOpenLoginModal,
+  onLogout,
 }) => {
   return (
     <header className="w-full bg-slate-950/95 border-b border-slate-800 backdrop-blur-md sticky top-0 z-40 select-none">
@@ -213,6 +222,28 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             <span className="font-bold text-cyan-300">{inventory.astralPrisms.toLocaleString()}</span>
             <span className="text-[10px] text-slate-500">Essence</span>
           </div>
+
+          {/* Hunter Portal Auth Status */}
+          {hunterUsername ? (
+            <button
+              onClick={onOpenLoginModal}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-950/80 to-blue-950/80 hover:from-cyan-900 hover:to-blue-900 border border-cyan-500/40 text-cyan-300 px-2.5 py-1 rounded-xl text-xs font-mono transition group shadow-sm"
+              title="Click to view Hunter Gate credentials or switch account"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              <User className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="font-bold max-w-[100px] truncate">{hunterUsername}</span>
+              <Lock className="w-3 h-3 text-emerald-400" title="JWT Session Verified" />
+            </button>
+          ) : (
+            <button
+              onClick={onOpenLoginModal}
+              className="flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-2.5 py-1 rounded-xl text-xs transition shadow-md shadow-cyan-500/20"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>HUNTER LOGIN</span>
+            </button>
+          )}
 
           <button
             onClick={onToggleSound}

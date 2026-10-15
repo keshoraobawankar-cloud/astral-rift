@@ -1,4 +1,5 @@
 import { AttributeStats } from '../components/AttributeAllocator';
+import api from './api';
 
 const JWT_STORAGE_KEY = 'jwt_token';
 const PLAYER_ID_KEY = 'aethelgard_player_id';
@@ -34,17 +35,14 @@ export interface AuthResult {
  */
 export async function loginPlayer(username: string = 'hunter_monarch', password: string = 'hunter2026'): Promise<AuthResult> {
   try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
+    const response = await api.post('/auth/login', { username, password });
+    const data = response.data;
 
-    const data = await response.json();
-    if (response.ok && data.token) {
+    if (data.token) {
       localStorage.setItem(JWT_STORAGE_KEY, data.token);
       localStorage.setItem(PLAYER_ID_KEY, data.playerId || 'player_123_abc');
       localStorage.setItem(USERNAME_KEY, data.username || username);
+      localStorage.setItem('username', data.username || username);
       return {
         success: true,
         token: data.token,
@@ -59,11 +57,19 @@ export async function loginPlayer(username: string = 'hunter_monarch', password:
       };
     }
   } catch (err: any) {
+    if (err.response?.data?.error) {
+      return {
+        success: false,
+        error: err.response.data.error,
+      };
+    }
+
     console.warn('Backend login server unreachable, generating local session token:', err);
     const demoToken = `DEMO_JWT_${btoa(JSON.stringify({ username, playerId: 'player_123_abc', exp: Date.now() + 86400000 }))}`;
     localStorage.setItem(JWT_STORAGE_KEY, demoToken);
     localStorage.setItem(PLAYER_ID_KEY, 'player_123_abc');
     localStorage.setItem(USERNAME_KEY, username);
+    localStorage.setItem('username', username);
     return {
       success: true,
       token: demoToken,
@@ -79,26 +85,20 @@ export async function loginPlayer(username: string = 'hunter_monarch', password:
  */
 export async function registerPlayer(username: string, password: string, playerId?: string): Promise<AuthResult> {
   try {
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, playerId }),
-    });
-
-    const data = await response.json();
-    if (response.ok) {
+    const response = await api.post('/auth/register', { username, password, playerId });
+    if (response.status === 201 || response.status === 200) {
       // Auto-login after registration
       return await loginPlayer(username, password);
     } else {
       return {
         success: false,
-        error: data.error || 'Registration failed.',
+        error: response.data?.error || 'Registration failed.',
       };
     }
   } catch (err: any) {
     return {
       success: false,
-      error: 'Could not connect to registration server.',
+      error: err.response?.data?.error || 'Could not connect to registration server.',
     };
   }
 }
@@ -113,19 +113,15 @@ export async function getOrFetchJwtToken(playerId: string = 'player_123_abc'): P
   }
 
   try {
-    const res = await fetch('/api/auth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerId, username: 'hunter_monarch' }),
+    const res = await api.post('/auth/token', {
+      playerId,
+      username: localStorage.getItem(USERNAME_KEY) || 'hunter_monarch',
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.token) {
-        localStorage.setItem(JWT_STORAGE_KEY, data.token);
-        localStorage.setItem(PLAYER_ID_KEY, playerId);
-        return data.token;
-      }
+    if (res.data?.token) {
+      localStorage.setItem(JWT_STORAGE_KEY, res.data.token);
+      localStorage.setItem(PLAYER_ID_KEY, playerId);
+      return res.data.token;
     }
   } catch {
     // Demo token fallback
@@ -137,7 +133,19 @@ export async function getOrFetchJwtToken(playerId: string = 'player_123_abc'): P
 }
 
 /**
+ * Log out user by clearing JWT tokens and session data
+ */
+export function logoutPlayer(): void {
+  localStorage.removeItem(JWT_STORAGE_KEY);
+  localStorage.removeItem(USERNAME_KEY);
+  localStorage.removeItem('username');
+  localStorage.removeItem(PLAYER_ID_KEY);
+  window.dispatchEvent(new CustomEvent('aethelgard:logged_out'));
+}
+
+/**
  * Sends stat allocation to the server backend with JWT verification and anti-cheat validation
+ * Automatically routed through central Axios instance with JWT interceptor & 401 handling
  */
 export async function saveCharacterAttributes(
   playerId: string = 'player_123_abc',
@@ -145,25 +153,19 @@ export async function saveCharacterAttributes(
   availablePoints: number,
   characterId: string = 'elurien'
 ): Promise<StatSaveResult> {
-  const token = await getOrFetchJwtToken(playerId);
+  // Ensure token exists before request
+  await getOrFetchJwtToken(playerId);
 
   try {
-    const response = await fetch('/api/character/validate-and-save', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        new_stats: stats,
-        available_points: availablePoints,
-        characterId,
-      }),
+    const response = await api.post('/character/validate-and-save', {
+      new_stats: stats,
+      available_points: availablePoints,
+      characterId,
     });
 
-    const data = await response.json();
+    const data = response.data;
 
-    if (response.ok && data.success) {
+    if (data.success) {
       localStorage.setItem(`aethelgard_stats_${characterId}`, JSON.stringify(stats));
       return {
         success: true,
@@ -185,7 +187,19 @@ export async function saveCharacterAttributes(
       };
     }
   } catch (error: any) {
-    // Client-side fallback calculation
+    if (error.response?.data) {
+      const data = error.response.data;
+      return {
+        success: false,
+        error: data.error || `Server error (${error.response.status})`,
+        antiCheatCode: data.antiCheatCode || 'ERR_SERVER_VALIDATION_FAILED',
+        calculatedSpent: data.calculatedSpent,
+        submittedPool: data.submittedPool,
+        expectedEarned: data.expectedEarned,
+      };
+    }
+
+    // Client-side fallback calculation if server is offline
     const baseStats = { strength: 20, agility: 20, vitality: 20, intelligence: 10, perception: 10 };
     const spent =
       stats.strength - baseStats.strength +
@@ -214,7 +228,7 @@ export async function saveCharacterAttributes(
 
     return {
       success: true,
-      message: 'Attributes verified by client security engine (server currently unreachable).',
+      message: 'Attributes verified by client security engine (offline fallback).',
       jwtVerified: false,
       totalPower: calculatedPower,
       verificationToken: `LOCAL_SIG_${Date.now().toString(36).toUpperCase()}`,
@@ -232,7 +246,7 @@ export async function triggerAntiCheatTest(
   stats: AttributeStats,
   availablePoints: number
 ): Promise<StatSaveResult> {
-  const token = await getOrFetchJwtToken(playerId);
+  await getOrFetchJwtToken(playerId);
 
   try {
     const tamperedStats = {
@@ -240,21 +254,14 @@ export async function triggerAntiCheatTest(
       strength: stats.strength + 30, // Illicit stat injection without deducting from pool
     };
 
-    const response = await fetch('/api/character/validate-and-save', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        new_stats: tamperedStats,
-        available_points: availablePoints,
-      }),
+    const response = await api.post('/character/validate-and-save', {
+      new_stats: tamperedStats,
+      available_points: availablePoints,
     });
 
-    const data = await response.json();
+    const data = response.data;
     return {
-      success: response.ok,
+      success: true,
       error: data.error,
       antiCheatCode: data.antiCheatCode || 'ERR_CHEATING_DETECTED',
       calculatedSpent: data.calculatedSpent,
@@ -262,7 +269,19 @@ export async function triggerAntiCheatTest(
       expectedEarned: data.expectedEarned,
       message: data.message,
     };
-  } catch {
+  } catch (err: any) {
+    if (err.response?.data) {
+      const data = err.response.data;
+      return {
+        success: false,
+        error: data.error,
+        antiCheatCode: data.antiCheatCode || 'ERR_CHEATING_DETECTED',
+        calculatedSpent: data.calculatedSpent,
+        submittedPool: data.submittedPool,
+        expectedEarned: data.expectedEarned,
+      };
+    }
+
     return {
       success: false,
       error: 'Cheating detected: Point pool mismatch. Spent (45) + Available (15) !== Total Earned (15).',
@@ -277,7 +296,7 @@ export async function triggerAntiCheatTest(
 export function getCurrentSessionInfo() {
   return {
     playerId: localStorage.getItem(PLAYER_ID_KEY) || 'player_123_abc',
-    username: localStorage.getItem(USERNAME_KEY) || 'hunter_monarch',
+    username: localStorage.getItem(USERNAME_KEY) || localStorage.getItem('username') || 'hunter_monarch',
     hasToken: !!localStorage.getItem(JWT_STORAGE_KEY),
   };
 }

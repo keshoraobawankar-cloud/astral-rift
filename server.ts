@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'aethelgard_anti_cheat_jwt_master_secret_key_2026';
+const REFRESH_SECRET_KEY = process.env.REFRESH_SECRET_KEY || 'aethelgard_refresh_master_secret_key_2026';
 
 app.use(express.json());
 
@@ -112,6 +113,7 @@ interface AuthenticatedRequest extends Request {
 
 // ============================================================================
 // JWT AUTHENTICATION MIDDLEWARE
+// Returns 401 on missing or expired token so Axios interceptor triggers refresh
 // ============================================================================
 const verifyToken = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
@@ -140,9 +142,9 @@ const verifyToken = (req: AuthenticatedRequest, res: Response, next: NextFunctio
       expectedEarned: 0,
       timestamp: new Date().toISOString(),
     });
-    return res.status(403).json({
+    return res.status(401).json({
       success: false,
-      error: 'Invalid or expired token. Authentication failed.',
+      error: 'Invalid or expired token. Authentication required.',
     });
   }
 };
@@ -196,7 +198,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// 2. LOGIN ENDPOINT (Issues JWT Token)
+// 2. LOGIN ENDPOINT (Issues Short-Lived Access Token + Long-Lived Refresh Token)
 // ============================================================================
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
@@ -218,18 +220,25 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, error: 'Invalid username or password.' });
     }
 
-    // Generate JWT token (expires in 24 hours)
+    // Short-lived Access Token (15 min) & Long-lived Refresh Token (7 days)
     const tokenPayload = {
       playerId: user.playerId,
       username: user.username,
       role: 'hunter_expedition_leader',
     };
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
+    const accessToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '15m' });
+    const refreshToken = jwt.sign(
+      { playerId: user.playerId, username: user.username },
+      REFRESH_SECRET_KEY,
+      { expiresIn: '7d' }
+    );
 
     return res.status(200).json({
       success: true,
       message: 'Login successful! JWT authorization granted.',
-      token,
+      token: accessToken,
+      access_token: accessToken,
+      refresh_token: refreshToken,
       playerId: user.playerId,
       username: user.username,
     });
@@ -239,11 +248,50 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// 3. REFRESH TOKEN ENDPOINT
+// ============================================================================
+app.post('/api/auth/refresh', (req: Request, res: Response) => {
+  const { refresh_token } = req.body;
+
+  if (!refresh_token) {
+    return res.status(401).json({ success: false, error: 'Refresh token missing.' });
+  }
+
+  try {
+    // Verify refresh token using secret key
+    const decoded = jwt.verify(refresh_token, REFRESH_SECRET_KEY) as { playerId: string; username: string };
+
+    // Issue new short-lived access token
+    const newAccessToken = jwt.sign(
+      { playerId: decoded.playerId, username: decoded.username, role: 'hunter_expedition_leader' },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+    const newRefreshToken = jwt.sign(
+      { playerId: decoded.playerId, username: decoded.username },
+      REFRESH_SECRET_KEY,
+      { expiresIn: '7d' }
+    );
+
+    return res.status(200).json({
+      success: true,
+      access_token: newAccessToken,
+      token: newAccessToken,
+      refresh_token: newRefreshToken,
+      new_refresh_token: newRefreshToken,
+    });
+  } catch {
+    return res.status(403).json({ success: false, error: 'Invalid or expired refresh token.' });
+  }
+});
+
 // Quick token generation for dev / guest access
 app.post('/api/auth/token', (req: Request, res: Response) => {
   const { playerId = 'player_123_abc', username = 'hunter_monarch' } = req.body;
   const tokenPayload = { playerId, username, role: 'hunter_expedition_leader' };
-  const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
+  const accessToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '15m' });
+  const refreshToken = jwt.sign({ playerId, username }, REFRESH_SECRET_KEY, { expiresIn: '7d' });
 
   if (!characterDatabase[playerId]) {
     characterDatabase[playerId] = {
@@ -259,7 +307,9 @@ app.post('/api/auth/token', (req: Request, res: Response) => {
 
   return res.json({
     success: true,
-    token,
+    token: accessToken,
+    access_token: accessToken,
+    refresh_token: refreshToken,
     playerId,
     username,
     message: 'Fast JWT token generated for guest hunter session.',
