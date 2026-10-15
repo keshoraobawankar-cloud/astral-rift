@@ -233,7 +233,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
               <User className="w-3.5 h-3.5 text-cyan-400" />
               <span className="font-bold max-w-[100px] truncate">{hunterUsername}</span>
-              <Lock className="w-3 h-3 text-emerald-400" title="JWT Session Verified" />
+              <span title="JWT Session Verified">
+                <Lock className="w-3 h-3 text-emerald-400" />
+              </span>
             </button>
           ) : (
             <button
