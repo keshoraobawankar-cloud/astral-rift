@@ -1242,18 +1242,28 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     // Weapon Rig: Dual Kasaka's Venom Fang Daggers for Sung Jinwoo, or Greatsword
     const swordGroup = new THREE.Group();
 
+    const bladeMat = new THREE.MeshStandardMaterial(
+      isJinwooActive
+        ? {
+            color: 0x0f172a,
+            emissive: 0x38bdf8,
+            emissiveIntensity: 0.9,
+            metalness: 0.95,
+            roughness: 0.1,
+          }
+        : {
+            color: 0xe0f2fe,
+            emissive: 0x0284c7,
+            emissiveIntensity: 0.7,
+            metalness: 0.95,
+            roughness: 0.1,
+          }
+    );
+
     if (isJinwooActive) {
       // Kasaka's Venom Fang - Dual Daggers with toxic cyan & void purple glow
-      const dBladeMat = new THREE.MeshStandardMaterial({
-        color: 0x0f172a,
-        emissive: 0x38bdf8,
-        emissiveIntensity: 0.9,
-        metalness: 0.95,
-        roughness: 0.1,
-      });
-
       // Right Hand Kasaka Dagger
-      const rDagger = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.95, 0.03), dBladeMat);
+      const rDagger = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.95, 0.03), bladeMat);
       rDagger.position.set(0.65, 0.9, 0.35);
       rDagger.rotation.x = Math.PI / 4;
       rDagger.rotation.z = -Math.PI / 8;
@@ -1261,7 +1271,7 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       swordGroup.add(rDagger);
 
       // Left Hand Kasaka Dagger
-      const lDagger = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.95, 0.03), dBladeMat);
+      const lDagger = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.95, 0.03), bladeMat);
       lDagger.position.set(-0.65, 0.9, 0.35);
       lDagger.rotation.x = Math.PI / 4;
       lDagger.rotation.z = Math.PI / 8;
@@ -1269,13 +1279,6 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       swordGroup.add(lDagger);
     } else {
       const bladeGeo = new THREE.BoxGeometry(0.12, 1.8, 0.04);
-      const bladeMat = new THREE.MeshStandardMaterial({
-        color: 0xe0f2fe,
-        emissive: 0x0284c7,
-        emissiveIntensity: 0.7,
-        metalness: 0.95,
-        roughness: 0.1,
-      });
       const blade = new THREE.Mesh(bladeGeo, bladeMat);
       blade.position.y = 0.9;
       blade.castShadow = true;
