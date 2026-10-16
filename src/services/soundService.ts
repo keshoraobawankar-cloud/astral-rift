@@ -1,5 +1,4 @@
-// Procedural Web Audio API sound synthesizer
-// Zero external asset dependencies - instant response, zero latency, runs offline.
+import { dungeonSynth, DungeonSynthMood } from './dungeonSynthService';
 
 class SoundService {
   private ctx: AudioContext | null = null;
@@ -19,15 +18,43 @@ class SoundService {
 
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
+    if (this.isMuted) {
+      dungeonSynth.stop();
+    }
     return this.isMuted;
   }
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
+    if (this.isMuted) {
+      dungeonSynth.stop();
+    }
   }
 
   public getMuted(): boolean {
     return this.isMuted;
+  }
+
+  public get synth() {
+    return dungeonSynth;
+  }
+
+  public toggleDungeonSynth(mood?: DungeonSynthMood): boolean {
+    if (this.isMuted) {
+      this.isMuted = false;
+    }
+    return dungeonSynth.toggle();
+  }
+
+  public startDungeonSynth(mood?: DungeonSynthMood) {
+    if (this.isMuted) {
+      this.isMuted = false;
+    }
+    dungeonSynth.start(mood);
+  }
+
+  public stopDungeonSynth() {
+    dungeonSynth.stop();
   }
 
   public playHit(isCrit?: boolean) {

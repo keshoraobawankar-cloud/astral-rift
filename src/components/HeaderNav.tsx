@@ -20,6 +20,7 @@ import {
   LogOut,
   Database,
 } from 'lucide-react';
+import { DungeonSynthWidget } from './DungeonSynthWidget';
 
 export type NavTab =
   | 'lobby'
@@ -280,6 +281,8 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               <span className="hidden sm:inline font-bold">SUPABASE VAULT</span>
             </button>
           )}
+
+          <DungeonSynthWidget compact={true} />
 
           <button
             onClick={onToggleSound}

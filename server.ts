@@ -497,7 +497,75 @@ app.get('/api/character/audit-logs', (_req: Request, res: Response) => {
 });
 
 // ============================================================================
-// 4. PLAYER STATE SYNC & SAFE-ZONE ENDPOINTS (Option 1: Express REST API)
+// REDIS IN-MEMORY STATE STORE & ASYNCHRONOUS WRITE-BEHIND BUFFER
+// ============================================================================
+class InMemoryRedis {
+  private store = new Map<string, string>();
+  private hashes = new Map<string, Map<string, string>>();
+
+  async get(key: string): Promise<string | null> {
+    return this.store.get(key) ?? null;
+  }
+  async set(key: string, val: string): Promise<'OK'> {
+    this.store.set(key, val);
+    return 'OK';
+  }
+  async del(key: string): Promise<number> {
+    const deleted = this.store.delete(key) ? 1 : 0;
+    this.hashes.delete(key);
+    return deleted;
+  }
+  async hset(key: string, field: string, val: string): Promise<number> {
+    if (!this.hashes.has(key)) this.hashes.set(key, new Map());
+    this.hashes.get(key)!.set(field, val);
+    return 1;
+  }
+  async hget(key: string, field: string): Promise<string | null> {
+    return this.hashes.get(key)?.get(field) ?? null;
+  }
+  async hgetall(key: string): Promise<Record<string, string>> {
+    const map = this.hashes.get(key);
+    if (!map) return {};
+    return Object.fromEntries(map.entries());
+  }
+  async hdel(key: string, field: string): Promise<number> {
+    return this.hashes.get(key)?.delete(field) ? 1 : 0;
+  }
+}
+export const redis = new InMemoryRedis();
+
+// Buffer for debounced database persistence
+const writeBehindBuffer = new Map<string, Partial<PlayerProfileRecord> & { timestamp: number }>();
+let lastFlushTime = Date.now();
+const PERSISTENCE_FLUSH_INTERVAL = 10000; // 10s debounced flush
+
+export function queuePlayerStateSave(playerId: string, state: Partial<PlayerProfileRecord>) {
+  const existing = writeBehindBuffer.get(playerId) || { timestamp: Date.now() };
+  writeBehindBuffer.set(playerId, { ...existing, ...state, timestamp: Date.now() });
+}
+
+export function flushWriteBehindBuffer() {
+  if (writeBehindBuffer.size === 0) return;
+  const count = writeBehindBuffer.size;
+  writeBehindBuffer.forEach((updates, pId) => {
+    const profile = playerProfiles[pId] || playerProfiles['player_123_abc'];
+    if (profile) {
+      if (typeof updates.gold === 'number') profile.gold = updates.gold;
+      if (typeof updates.essence === 'number') profile.essence = updates.essence;
+      if (Array.isArray(updates.inventory)) profile.inventory = updates.inventory;
+      if (updates.safeZone) profile.safeZone = updates.safeZone;
+      profile.updatedAt = new Date().toISOString();
+    }
+  });
+  writeBehindBuffer.clear();
+  lastFlushTime = Date.now();
+  console.log(`[Persistence Worker] Flushed write-behind buffer (${count} profiles synchronized).`);
+}
+
+setInterval(flushWriteBehindBuffer, PERSISTENCE_FLUSH_INTERVAL);
+
+// ============================================================================
+// 4. PLAYER STATE SYNC & SAFE-ZONE ENDPOINTS (Decoupled Persistence)
 // ============================================================================
 interface PlayerProfileRecord {
   id: string;
@@ -573,9 +641,12 @@ app.post('/api/player/sync', (req: Request, res: Response) => {
       profile.updatedAt = new Date().toISOString();
     }
 
+    // Decouple persistence: enqueue into write-behind buffer
+    queuePlayerStateSave(playerId, { gold, essence, inventory, safeZone: profile.safeZone });
+
     return res.status(200).json({
       success: true,
-      message: 'Player state synchronized successfully',
+      message: 'Player state synchronized and buffered asynchronously',
       profile,
     });
   } catch (err: any) {
@@ -674,6 +745,7 @@ async function start() {
 
   // ============================================================================
   // MULTIPLAYER WEBSOCKET SERVICES (/ws/chat and /ws/game)
+  // Authoritative 20 TPS Engine with Distance Verification & Cooldowns
   // ============================================================================
   const wssChat = new WebSocketServer({ noServer: true });
   const wssGame = new WebSocketServer({ noServer: true });
@@ -721,190 +793,705 @@ async function start() {
     });
   });
 
-  // 2. 3D Multiplayer Game & Combat Movement WebSocket Handler
-  interface ConnectedGamePlayer {
-    ws: WebSocket;
-    data: {
-      id: string;
-      username: string;
-      position: { x: number; y: number; z: number };
-      rotation: { y: number };
-      animationState: string;
-      hp: number;
-      maxHp: number;
-    };
+  // 2. Authoritative 3D Multiplayer Game & Combat Engine
+  const TICK_RATE = 20; // 20 updates per second (50ms per tick)
+  const FRAME_TIME = 1000 / TICK_RATE;
+
+  interface EquippedWeapon {
+    type: string;
+    damageBonus: number;
   }
 
-  const connectedPlayers = new Map<string, ConnectedGamePlayer>();
+  interface InventoryItem {
+    type: string;
+    count: number;
+    rarity?: string;
+  }
+
+  interface AuthoritativePlayer {
+    ws: WebSocket;
+    id: string;
+    username: string;
+    x: number;
+    y: number;
+    z: number;
+    rotation: number;
+    animationState: string;
+    hp: number;
+    maxHp: number;
+    inventory: InventoryItem[];
+    equippedWeapon: EquippedWeapon | null;
+    isAttacking: boolean;
+    lastAttackTime: number;
+    lastUpdated: number;
+    characterId?: string;
+    celShadeColor?: number;
+  }
+
+  interface WorldItem {
+    id: string;
+    type: string;
+    x: number;
+    y: number;
+    z: number;
+    count: number;
+  }
+
+  const worldItems = new Map<string, WorldItem>();
+
+  function spawnWorldDrop(x: number, z: number, itemType = 'Health Potion') {
+    const itemId = `item_${Math.random().toString(36).substring(2, 9)}`;
+    worldItems.set(itemId, {
+      id: itemId,
+      type: itemType,
+      x: Number(x.toFixed(2)),
+      y: 0.5,
+      z: Number(z.toFixed(2)),
+      count: 1,
+    });
+    console.log(`[Loot Engine] Spawned ${itemType} drop at (${x.toFixed(1)}, ${z.toFixed(1)})`);
+  }
+
+  // Pre-seed ambient item drops in sanctuary
+  spawnWorldDrop(12, 10, 'Health Potion');
+  spawnWorldDrop(-14, 8, 'Iron Greatsword');
+  spawnWorldDrop(8, -16, 'Kasaka Dagger');
+
+  interface ServerMonster {
+    id: string;
+    name: string;
+    type: string;
+    level: number;
+    x: number;
+    y: number;
+    z: number;
+    homeX: number;
+    homeZ: number;
+    hp: number;
+    maxHp: number;
+    state: 'IDLE' | 'CHASE' | 'ATTACK' | 'DEAD';
+    targetPlayerId: string | null;
+    lastAttackTime: number;
+    respawnTimer: number;
+    role: string;
+  }
+
+  const players = new Map<string, AuthoritativePlayer>();
+  const monsters = new Map<string, ServerMonster>();
+
+  function spawnInitialMonsters() {
+    const initialMobs: ServerMonster[] = [
+      { id: 'mob_1', name: 'Void Shadow Stalker', type: 'Stalker', level: 28, x: 36, y: 0, z: 18, homeX: 36, homeZ: 18, hp: 1200, maxHp: 1200, state: 'IDLE', targetPlayerId: null, lastAttackTime: 0, respawnTimer: 0, role: 'Wild Predator • Abyss Swarm' },
+      { id: 'mob_2', name: 'Ironpeak Golem Scout', type: 'Golem', level: 32, x: -38, y: 0, z: -25, homeX: -38, homeZ: -25, hp: 1800, maxHp: 1800, state: 'IDLE', targetPlayerId: null, lastAttackTime: 0, respawnTimer: 0, role: 'Dwarven Caldera Construct' },
+      { id: 'mob_3', name: 'Bloodfang Abyss Beast', type: 'Beast', level: 30, x: 22, y: 0, z: -40, homeX: 22, homeZ: -40, hp: 1500, maxHp: 1500, state: 'IDLE', targetPlayerId: null, lastAttackTime: 0, respawnTimer: 0, role: 'Badlands Carnivore' },
+    ];
+    initialMobs.forEach((mob) => monsters.set(mob.id, mob));
+    console.log(`[PvE Engine] Spawned ${monsters.size} server-managed roaming monsters.`);
+  }
+  spawnInitialMonsters();
+
+  // Authoritative World Boss State (Abyss Void Titan)
+  const worldBoss = {
+    id: 'abyss_titan',
+    name: 'Abyss Void Titan',
+    x: 45,
+    y: 3.5,
+    z: -45,
+    rotation: 0,
+    angle: 0,
+    radius: 45,
+    hp: 85000,
+    maxHp: 100000,
+    status: 'Patrolling Badlands',
+  };
+
+  function calculateDistance(
+    p1: { x: number; y?: number; z: number },
+    p2: { x: number; y?: number; z: number }
+  ): number {
+    const dx = p1.x - p2.x;
+    const dy = (p1.y || 0) - (p2.y || 0);
+    const dz = p1.z - p2.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
 
   function broadcastExcept(senderId: string, data: object) {
     const payload = JSON.stringify(data);
-    connectedPlayers.forEach(({ ws }, id) => {
-      if (id !== senderId && ws.readyState === WebSocket.OPEN) {
-        ws.send(payload);
+    players.forEach((player, id) => {
+      if (id !== senderId && player.ws.readyState === WebSocket.OPEN) {
+        player.ws.send(payload);
       }
     });
   }
 
   function broadcastAll(data: object) {
     const payload = JSON.stringify(data);
-    connectedPlayers.forEach(({ ws }) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(payload);
+    players.forEach((player) => {
+      if (player.ws.readyState === WebSocket.OPEN) {
+        player.ws.send(payload);
+      }
+    });
+  }
+
+  // --- SERVER-MANAGED AI & PvE LOOP (Runs every tick) ---
+  function updateServerAI(deltaTime: number) {
+    const now = Date.now();
+
+    monsters.forEach((mob, mobId) => {
+      // 1. Handle Respawn Logic
+      if (mob.state === 'DEAD') {
+        if (now >= mob.respawnTimer) {
+          mob.hp = mob.maxHp;
+          mob.state = 'IDLE';
+          mob.targetPlayerId = null;
+          mob.x = mob.homeX;
+          mob.z = mob.homeZ;
+          console.log(`[PvE Engine] Monster ${mobId} (${mob.name}) has respawned!`);
+        }
+        return;
+      }
+
+      // 2. Find nearest living player for aggro
+      let nearestPlayer: AuthoritativePlayer | null = null;
+      let minDistance = Infinity;
+      const AGGRO_RANGE = 14.0;
+      const ATTACK_RANGE = 2.4;
+      const MOB_SPEED = 3.2 * deltaTime;
+
+      players.forEach((player) => {
+        if (player.hp <= 0) return;
+        const dist = calculateDistance(mob, player);
+        if (dist < minDistance) {
+          minDistance = dist;
+          nearestPlayer = player;
+        }
+      });
+
+      // 3. AI State Machine
+      if (nearestPlayer && minDistance <= AGGRO_RANGE) {
+        mob.state = 'CHASE';
+        mob.targetPlayerId = (nearestPlayer as any).id;
+
+        if (minDistance <= ATTACK_RANGE) {
+          const MOB_DAMAGE = 12;
+          if (!mob.lastAttackTime || now - mob.lastAttackTime > 1600) {
+            (nearestPlayer as any).hp = Math.max(0, (nearestPlayer as any).hp - MOB_DAMAGE);
+            mob.lastAttackTime = now;
+            broadcastAll({
+              type: 'PLAYER_DAMAGED',
+              attackerId: mobId,
+              targetId: (nearestPlayer as any).id,
+              damageAmount: MOB_DAMAGE,
+              remainingHp: (nearestPlayer as any).hp,
+              timestamp: now,
+            });
+            console.log(
+              `[PvE Combat] Monster ${mobId} attacked player ${(nearestPlayer as any).id} for ${MOB_DAMAGE} DMG. Player HP: ${(nearestPlayer as any).hp}`
+            );
+          }
+        } else {
+          // Walk toward target player
+          const dx = (nearestPlayer as any).x - mob.x;
+          const dz = (nearestPlayer as any).z - mob.z;
+          const angle = Math.atan2(dx, dz);
+          mob.x += Math.sin(angle) * MOB_SPEED;
+          mob.z += Math.cos(angle) * MOB_SPEED;
+        }
+      } else {
+        mob.state = 'IDLE';
+        mob.targetPlayerId = null;
       }
     });
   }
 
   wssGame.on('connection', (ws: WebSocket) => {
-    const playerId = `player_${Math.random().toString(36).substring(2, 9)}`;
+    const clientId = `player_${Math.random().toString(36).substring(2, 9)}`;
     const spawnOffsetX = (Math.random() - 0.5) * 6;
     const spawnOffsetZ = (Math.random() - 0.5) * 6;
 
-    const initialData = {
-      id: playerId,
-      username: `Hunter_${playerId.substring(7, 11)}`,
-      position: { x: spawnOffsetX, y: 0, z: spawnOffsetZ },
-      rotation: { y: 0 },
+    const initialPlayer: AuthoritativePlayer = {
+      ws,
+      id: clientId,
+      username: `Hunter_${clientId.substring(7, 11)}`,
+      x: spawnOffsetX,
+      y: 0,
+      z: spawnOffsetZ,
+      rotation: 0,
       animationState: 'idle',
       hp: 100,
       maxHp: 100,
+      inventory: [
+        { type: 'Health Potion', count: 3 },
+        { type: 'Iron Greatsword', count: 1 },
+      ],
+      equippedWeapon: { type: 'Iron Greatsword', damageBonus: 20 },
+      isAttacking: false,
+      lastAttackTime: 0,
+      lastUpdated: Date.now(),
     };
 
-    connectedPlayers.set(playerId, { ws, data: initialData });
-    console.log(`[Game WebSocket] Player ${playerId} connected. Total active: ${connectedPlayers.size}`);
+    players.set(clientId, initialPlayer);
+    console.log(`[Multiplayer] Player connected: ${clientId}. Total active: ${players.size}`);
 
-    // Send newly joined player their assigned ID and list of existing remote players
-    const existingPlayers = Array.from(connectedPlayers.values())
-      .filter((p) => p.data.id !== playerId)
-      .map((p) => p.data);
-
+    // Welcome payload with client ID and initial world snapshot
     ws.send(
       JSON.stringify({
-        type: 'INIT_WORLD',
-        playerId,
-        player: initialData,
-        existingPlayers,
+        type: 'WELCOME',
+        id: clientId,
+        playerId: clientId,
+        player: {
+          id: clientId,
+          username: initialPlayer.username,
+          position: { x: initialPlayer.x, y: initialPlayer.y, z: initialPlayer.z },
+          rotation: { y: initialPlayer.rotation },
+          animationState: initialPlayer.animationState,
+          hp: initialPlayer.hp,
+          maxHp: initialPlayer.maxHp,
+        },
+        worldBoss: {
+          id: worldBoss.id,
+          name: worldBoss.name,
+          x: worldBoss.x,
+          y: worldBoss.y,
+          z: worldBoss.z,
+          hp: worldBoss.hp,
+          maxHp: worldBoss.maxHp,
+        },
       })
     );
 
-    // Broadcast new player presence to all other connected clients
-    broadcastExcept(playerId, {
+    // Broadcast new player joined to existing players
+    broadcastExcept(clientId, {
       type: 'PLAYER_JOINED',
-      player: initialData,
+      player: {
+        id: clientId,
+        username: initialPlayer.username,
+        position: { x: initialPlayer.x, y: initialPlayer.y, z: initialPlayer.z },
+        rotation: { y: initialPlayer.rotation },
+        animationState: initialPlayer.animationState,
+        hp: initialPlayer.hp,
+        maxHp: initialPlayer.maxHp,
+      },
     });
 
     ws.on('message', (message: string) => {
       try {
-        const payload = JSON.parse(message.toString());
+        const data = JSON.parse(message.toString());
+        const player = players.get(clientId);
+        if (!player || player.hp <= 0) return;
 
-        // A. 3D Locomotion & Position Update
-        if (payload.type === 'PLAYER_MOVE') {
-          const session = connectedPlayers.get(playerId);
-          if (session) {
-            if (payload.position) session.data.position = payload.position;
-            if (payload.rotation) session.data.rotation = payload.rotation;
-            if (payload.animationState) session.data.animationState = payload.animationState;
-            if (payload.username) session.data.username = payload.username;
+        // 1. Client Input: Movement & Transform
+        if (data.type === 'PLAYER_MOVE') {
+          if (typeof data.x === 'number') player.x = data.x;
+          else if (data.position && typeof data.position.x === 'number') player.x = data.position.x;
 
-            // Broadcast smooth transform coordinates to all other clients
-            broadcastExcept(playerId, {
-              type: 'PLAYER_MOVED',
-              id: playerId,
-              username: session.data.username,
-              position: session.data.position,
-              rotation: session.data.rotation,
-              animationState: session.data.animationState,
+          if (typeof data.y === 'number') player.y = data.y;
+          else if (data.position && typeof data.position.y === 'number') player.y = data.position.y;
+
+          if (typeof data.z === 'number') player.z = data.z;
+          else if (data.position && typeof data.position.z === 'number') player.z = data.position.z;
+
+          if (typeof data.rotation === 'number') player.rotation = data.rotation;
+          else if (data.rotation && typeof data.rotation.y === 'number') player.rotation = data.rotation.y;
+
+          if (data.animationState) player.animationState = data.animationState;
+          if (data.username) player.username = data.username;
+          player.lastUpdated = Date.now();
+        }
+
+        // 2. Authoritative Combat Verification (Server checks cooldown, distance & damage)
+        else if (data.type === 'PLAYER_ATTACK') {
+          const now = Date.now();
+          const ATTACK_COOLDOWN = 450; // 450ms cooldown between attacks
+
+          // Enforce server-side cooldown against macro scripts or speed-hacking
+          if (now - player.lastAttackTime < ATTACK_COOLDOWN) return;
+
+          player.lastAttackTime = now;
+          player.isAttacking = true;
+
+          const atkType = data.attackType || 'light_slash';
+          const ATTACK_RANGE = atkType === 'whirlwind' ? 6.0 : atkType === 'heavy_cleave' ? 5.2 : 4.2;
+          const UNARMED_DAMAGE = atkType === 'whirlwind' ? 680 : atkType === 'heavy_cleave' ? 320 : 140;
+          const weaponBonus = player.equippedWeapon ? player.equippedWeapon.damageBonus : 0;
+          const BASE_DAMAGE = UNARMED_DAMAGE + weaponBonus;
+
+          // Broadcast attack visual event immediately for responsive feedback
+          broadcastExcept(clientId, {
+            type: 'REMOTE_ATTACK',
+            attackerId: clientId,
+            attackType: atkType,
+            position: { x: player.x, y: player.y, z: player.z },
+            direction: data.direction || { x: 0, y: 0, z: 1 },
+          });
+
+          // Server-Side 3D Distance Verification against other players (PvP)
+          players.forEach((target, targetId) => {
+            if (targetId === clientId || target.hp <= 0) return;
+
+            const distance = calculateDistance(player, target);
+            if (distance <= ATTACK_RANGE) {
+              target.hp = Math.max(0, target.hp - BASE_DAMAGE);
+              console.log(
+                `[PvP Engine] Player ${clientId} hit ${targetId} for ${BASE_DAMAGE} DMG. Remaining HP: ${target.hp}/${target.maxHp}`
+              );
+
+              broadcastAll({
+                type: 'PLAYER_DAMAGED',
+                attackerId: clientId,
+                targetId,
+                damageAmount: BASE_DAMAGE,
+                remainingHp: target.hp,
+                timestamp: Date.now(),
+              });
+
+              if (target.hp === 0) {
+                console.log(`[Combat Engine] Player ${targetId} has fallen in battle! Respawning in 5 seconds...`);
+                setTimeout(() => {
+                  const respawning = players.get(targetId);
+                  if (respawning) {
+                    respawning.hp = respawning.maxHp;
+                    respawning.x = 0;
+                    respawning.y = 0;
+                    respawning.z = 0;
+                    broadcastAll({
+                      type: 'PLAYER_RESPAWNED',
+                      id: targetId,
+                      hp: respawning.maxHp,
+                      position: { x: 0, y: 0, z: 0 },
+                    });
+                  }
+                }, 5000);
+              }
+            }
+          });
+
+          // Server-Side 3D Distance Verification against Mobs (PvE)
+          monsters.forEach((mob, mobId) => {
+            if (mob.hp <= 0) return;
+            const distance = calculateDistance(player, mob);
+            if (distance <= ATTACK_RANGE + 1.2) {
+              mob.hp = Math.max(0, mob.hp - BASE_DAMAGE);
+              mob.targetPlayerId = clientId;
+              mob.state = 'CHASE';
+
+              console.log(
+                `[PvE Engine] Player ${clientId} hit monster ${mobId} (${mob.name}) for ${BASE_DAMAGE}. Mob HP: ${mob.hp}/${mob.maxHp}`
+              );
+
+              broadcastAll({
+                type: 'MONSTER_DAMAGED',
+                attackerId: clientId,
+                mobId,
+                damageAmount: BASE_DAMAGE,
+                remainingHp: mob.hp,
+                timestamp: Date.now(),
+              });
+
+              if (mob.hp === 0) {
+                mob.state = 'DEAD';
+                mob.respawnTimer = Date.now() + 10000;
+                const dropPool = ['Health Potion', 'Iron Greatsword', 'Kasaka Dagger', 'Golem Core'];
+                const droppedItem = dropPool[Math.floor(Math.random() * dropPool.length)];
+                spawnWorldDrop(mob.x, mob.z, droppedItem);
+                console.log(`[PvE Engine] Monster ${mobId} defeated! Spawned ${droppedItem}. Respawning in 10s.`);
+              }
+            }
+          });
+
+          // Server-Side Hit Detection against Abyss Titan World Boss
+          const distToBoss = calculateDistance(player, worldBoss);
+          if (distToBoss <= ATTACK_RANGE + 3.2) {
+            worldBoss.hp = Math.max(0, worldBoss.hp - BASE_DAMAGE);
+            broadcastAll({
+              type: 'PLAYER_DAMAGED',
+              attackerId: clientId,
+              targetId: 'abyss_titan',
+              damageAmount: BASE_DAMAGE,
+              remainingHp: worldBoss.hp,
+              timestamp: Date.now(),
+            });
+          }
+
+          setTimeout(() => {
+            player.isAttacking = false;
+          }, 200);
+        }
+
+        // 3. Real-Time In-Game Chat Handling
+        else if (data.type === 'CHAT_MESSAGE') {
+          const cleanText = typeof data.text === 'string' ? data.text.substring(0, 140) : '';
+          if (cleanText.trim().length > 0) {
+            broadcastAll({
+              type: 'CHAT_MESSAGE',
+              senderId: clientId,
+              sender: player.username,
+              text: cleanText.trim(),
+              timestamp: new Date().toISOString(),
             });
           }
         }
 
-        // B. Real-time Combat Action (Sword slash, Heavy Cleave, Whirlwind)
-        if (payload.type === 'PLAYER_ATTACK') {
-          broadcastExcept(playerId, {
-            type: 'REMOTE_ATTACK',
-            attackerId: playerId,
-            attackType: payload.attackType || 'light_slash',
-            position: payload.position,
-            direction: payload.direction,
-          });
-        }
+        // 4. Item Pickup (Authoritative Range Verification)
+        else if (data.type === 'PICKUP_ITEM') {
+          const targetItem = worldItems.get(data.itemId);
+          if (player && targetItem && player.hp > 0) {
+            const PICKUP_RANGE = 3.8;
+            if (calculateDistance(player, targetItem) <= PICKUP_RANGE) {
+              if (player.inventory.length < 10) {
+                player.inventory.push({ type: targetItem.type, count: targetItem.count || 1 });
+                worldItems.delete(targetItem.id);
+                console.log(`[Loot Engine] Player ${clientId} picked up ${targetItem.type}`);
 
-        // C. Damage Broadcast & Health Update
-        if (payload.type === 'DEAL_DAMAGE') {
-          const { targetId, damageAmount } = payload;
-          const targetSession = connectedPlayers.get(targetId);
-          if (targetSession) {
-            targetSession.data.hp = Math.max(0, targetSession.data.hp - damageAmount);
+                broadcastAll({
+                  type: 'WORLD_ITEM_COLLECTED',
+                  itemId: targetItem.id,
+                  collectorId: clientId,
+                  itemType: targetItem.type,
+                });
+
+                ws.send(
+                  JSON.stringify({
+                    type: 'INVENTORY_UPDATED',
+                    inventory: player.inventory,
+                    equippedWeapon: player.equippedWeapon,
+                    pickedItem: targetItem.type,
+                  })
+                );
+              }
+            }
           }
-
-          // Broadcast damage event to everyone (including attacker for UI confirmation)
-          broadcastAll({
-            type: 'PLAYER_DAMAGED',
-            attackerId: playerId,
-            targetId,
-            damageAmount,
-            remainingHp: targetSession?.data.hp ?? 100,
-            timestamp: Date.now(),
-          });
         }
 
-        // D. Emote Broadcast (Cheer, Guard, Rest, Shout)
-        if (payload.type === 'PLAYER_EMOTE') {
-          broadcastExcept(playerId, {
+        // 5. Equip / Unequip Item
+        else if (data.type === 'EQUIP_ITEM') {
+          const index = data.inventoryIndex;
+          if (typeof index === 'number' && player.inventory[index]) {
+            const itemToEquip = player.inventory[index];
+            const isWeapon =
+              itemToEquip.type.includes('Sword') ||
+              itemToEquip.type.includes('Dagger') ||
+              itemToEquip.type.includes('Blade') ||
+              itemToEquip.type.includes('Bow');
+
+            if (isWeapon) {
+              const prevEquipped = player.equippedWeapon;
+              player.inventory.splice(index, 1);
+              if (prevEquipped) {
+                player.inventory.push({ type: prevEquipped.type, count: 1 });
+              }
+              const bonus = itemToEquip.type.includes('Dagger') ? 25 : itemToEquip.type.includes('Greatsword') ? 40 : 20;
+              player.equippedWeapon = {
+                type: itemToEquip.type,
+                damageBonus: bonus,
+              };
+
+              console.log(
+                `[Equipment] Player ${clientId} equipped ${player.equippedWeapon.type} (+${bonus} DMG)`
+              );
+
+              ws.send(
+                JSON.stringify({
+                  type: 'INVENTORY_UPDATED',
+                  inventory: player.inventory,
+                  equippedWeapon: player.equippedWeapon,
+                })
+              );
+            } else if (itemToEquip.type.includes('Potion') || itemToEquip.type.includes('Flask')) {
+              player.inventory.splice(index, 1);
+              player.hp = Math.min(player.maxHp, player.hp + 40);
+              console.log(`[Item] Player ${clientId} consumed ${itemToEquip.type}. HP: ${player.hp}`);
+
+              ws.send(
+                JSON.stringify({
+                  type: 'INVENTORY_UPDATED',
+                  inventory: player.inventory,
+                  equippedWeapon: player.equippedWeapon,
+                  hp: player.hp,
+                })
+              );
+            }
+          }
+        }
+
+        // 6. Emotes, Character Archetypes & Projectiles
+        else if (data.type === 'PLAYER_EMOTE') {
+          broadcastExcept(clientId, {
             type: 'REMOTE_EMOTE',
-            playerId,
-            emote: payload.emote,
+            playerId: clientId,
+            emote: data.emote,
           });
-        }
-
-        // E. Character Selection Broadcast
-        if (payload.type === 'SELECT_CHARACTER') {
-          broadcastExcept(playerId, {
+        } else if (data.type === 'SELECT_CHARACTER') {
+          player.characterId = data.characterId;
+          player.celShadeColor = data.celShadeColor;
+          broadcastExcept(clientId, {
             type: 'PLAYER_CHARACTER_CHANGED',
-            playerId,
-            characterId: payload.characterId,
-            celShadeColor: payload.celShadeColor,
-            position: payload.position,
+            playerId: clientId,
+            characterId: data.characterId,
+            celShadeColor: data.celShadeColor,
+            position: { x: player.x, y: player.y, z: player.z },
           });
-        }
-
-        // F. Projectile Broadcast (Starlight Volley & Astral Snipe)
-        if (payload.type === 'FIRE_PROJECTILE') {
-          broadcastExcept(playerId, {
+        } else if (data.type === 'FIRE_PROJECTILE') {
+          broadcastExcept(clientId, {
             type: 'REMOTE_PROJECTILE',
-            attackerId: playerId,
-            origin: payload.origin,
-            direction: payload.direction,
-            projectileType: payload.projectileType || 'starlight_arrow',
+            attackerId: clientId,
+            origin: data.origin,
+            direction: data.direction,
+            projectileType: data.projectileType || 'starlight_arrow',
           });
-        }
-
-        // G. Summon Minion Broadcast (Skeleton Vanguard)
-        if (payload.type === 'SUMMON_MINION') {
-          broadcastExcept(playerId, {
+        } else if (data.type === 'SUMMON_MINION') {
+          broadcastExcept(clientId, {
             type: 'REMOTE_SUMMON_MINION',
-            summonerId: playerId,
-            minionId: payload.minionId,
-            position: payload.position,
-            minionType: payload.minionType || 'skeleton_vanguard',
+            summonerId: clientId,
+            minionId: data.minionId,
+            position: data.position,
+            minionType: data.minionType || 'skeleton_vanguard',
           });
         }
-      } catch (err) {
-        console.error('Invalid Game WebSocket payload:', err);
+      } catch (err: any) {
+        console.error(`[Error] Processing message from ${clientId}:`, err.message);
       }
     });
 
     ws.on('close', () => {
-      connectedPlayers.delete(playerId);
-      console.log(`[Game WebSocket] Player ${playerId} disconnected. Total active: ${connectedPlayers.size}`);
-      broadcastExcept(playerId, {
+      console.log(`[Disconnection] Player disconnected: ${clientId}`);
+      players.delete(clientId);
+      broadcastAll({
+        type: 'PLAYER_DISCONNECTED',
+        id: clientId,
+      });
+      broadcastAll({
         type: 'PLAYER_LEFT',
-        id: playerId,
+        id: clientId,
       });
     });
 
     ws.on('error', (err) => {
-      console.error(`[Game WebSocket] Player ${playerId} socket error:`, err);
+      console.error(`[Socket Error] ${clientId}:`, err.message);
+    });
+  });
+
+  // ============================================================================
+  // AUTHORITATIVE 20 TPS WORLD GAME LOOP (50ms Fixed Timestep)
+  // ============================================================================
+  let tickCount = 0;
+  let lastTickTime = Date.now();
+  let tickJitterMs = 0;
+
+  setInterval(() => {
+    const now = Date.now();
+    const actualDelta = now - lastTickTime;
+    tickJitterMs = Math.abs(actualDelta - FRAME_TIME);
+    lastTickTime = now;
+    tickCount++;
+
+    const dtSeconds = Math.min(actualDelta / 1000, 0.1);
+
+    // 1. Run Server-Side PvE Monster AI updates
+    updateServerAI(dtSeconds);
+
+    // 2. Authoritative World Boss Orbital Movement
+    worldBoss.angle += 0.05 * (FRAME_TIME / 1000) * 4.4;
+    worldBoss.x = Math.cos(worldBoss.angle) * worldBoss.radius;
+    worldBoss.z = Math.sin(worldBoss.angle) * worldBoss.radius;
+    worldBoss.y = 3.5 + Math.sin(worldBoss.angle * 2) * 0.6;
+    worldBoss.rotation = worldBoss.angle + Math.PI / 2;
+
+    // 3. Broadcast Batched World State to all Connected Clients
+    if (players.size > 0 || monsters.size > 0 || worldItems.size > 0) {
+      const playerArray = Array.from(players.values()).map((p) => ({
+        id: p.id,
+        username: p.username,
+        x: Number(p.x.toFixed(2)),
+        y: Number(p.y.toFixed(2)),
+        z: Number(p.z.toFixed(2)),
+        position: { x: Number(p.x.toFixed(2)), y: Number(p.y.toFixed(2)), z: Number(p.z.toFixed(2)) },
+        rotation: Number(p.rotation.toFixed(2)),
+        animationState: p.animationState,
+        hp: p.hp,
+        maxHp: p.maxHp,
+        isAttacking: p.isAttacking,
+        equippedWeapon: p.equippedWeapon,
+        inventory: p.inventory,
+        lastUpdated: p.lastUpdated,
+      }));
+
+      const monsterArray = Array.from(monsters.values()).map((m) => ({
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        level: m.level,
+        x: Number(m.x.toFixed(2)),
+        y: Number(m.y.toFixed(2)),
+        z: Number(m.z.toFixed(2)),
+        position: { x: Number(m.x.toFixed(2)), y: Number(m.y.toFixed(2)), z: Number(m.z.toFixed(2)) },
+        hp: m.hp,
+        maxHp: m.maxHp,
+        state: m.state,
+        role: m.role,
+      }));
+
+      const itemArray = Array.from(worldItems.values()).map((it) => ({
+        id: it.id,
+        type: it.type,
+        x: Number(it.x.toFixed(2)),
+        y: Number(it.y.toFixed(2)),
+        z: Number(it.z.toFixed(2)),
+        position: { x: Number(it.x.toFixed(2)), y: Number(it.y.toFixed(2)), z: Number(it.z.toFixed(2)) },
+        count: it.count,
+      }));
+
+      const payload = JSON.stringify({
+        type: 'WORLD_STATE',
+        timestamp: now,
+        tick: tickCount,
+        players: playerArray,
+        monsters: monsterArray,
+        worldItems: itemArray,
+        worldBoss: {
+          id: worldBoss.id,
+          name: worldBoss.name,
+          x: Number(worldBoss.x.toFixed(2)),
+          y: Number(worldBoss.y.toFixed(2)),
+          z: Number(worldBoss.z.toFixed(2)),
+          rotation: Number(worldBoss.rotation.toFixed(2)),
+          hp: worldBoss.hp,
+          maxHp: worldBoss.maxHp,
+          status: worldBoss.status,
+        },
+      });
+
+      players.forEach((player) => {
+        if (player.ws.readyState === WebSocket.OPEN) {
+          player.ws.send(payload);
+        }
+      });
+    }
+
+    // Telemetry log every 10 seconds (200 ticks)
+    if (tickCount % 200 === 0) {
+      console.log(
+        `[Authoritative 20 TPS Loop] Active players: ${players.size}, Mobs: ${monsters.size}, Items: ${worldItems.size}, Titan HP: ${worldBoss.hp}/${worldBoss.maxHp}, Jitter: ${tickJitterMs}ms`
+      );
+    }
+  }, FRAME_TIME);
+
+  // Server Telemetry Endpoint for Monitoring and Verification
+  app.get('/api/server/telemetry', (_req: Request, res: Response) => {
+    return res.json({
+      success: true,
+      tps: TICK_RATE,
+      targetFrameTimeMs: FRAME_TIME,
+      activePlayers: players.size,
+      bufferedPersistenceCount: writeBehindBuffer.size,
+      lastPersistenceFlush: new Date(lastFlushTime).toISOString(),
+      worldBoss: {
+        name: worldBoss.name,
+        hp: worldBoss.hp,
+        maxHp: worldBoss.maxHp,
+        position: { x: worldBoss.x, y: worldBoss.y, z: worldBoss.z },
+      },
+      uptimeSeconds: Math.floor(process.uptime()),
     });
   });
 
@@ -927,7 +1514,7 @@ async function start() {
   });
 
   httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Aethelgard Server] Full-Stack HTTP & WebSocket Server active on port ${PORT}`);
+    console.log(`[Aethelgard Server] Full-Stack HTTP & Authoritative 20 TPS WebSocket Engine active on port ${PORT}`);
   });
 }
 

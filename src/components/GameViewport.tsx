@@ -32,6 +32,7 @@ import {
 import { TargetUnitFrame } from './TargetUnitFrame';
 import { Minimap, MinimapEntity } from './Minimap';
 import { extendedCharacterRoster, CharacterRosterItem, characterRoster } from '../data/characters';
+import { DungeonSynthWidget } from './DungeonSynthWidget';
 
 interface GameViewportProps {
   onReturnToDashboard?: () => void;
@@ -2771,6 +2772,9 @@ export const GameViewport: React.FC<GameViewportProps> = ({
             />
           ))}
         </div>
+
+        {/* Procedural Dungeon Synth Ambience */}
+        <DungeonSynthWidget compact={true} />
 
         {/* Return Button */}
         {onReturnToDashboard && (
