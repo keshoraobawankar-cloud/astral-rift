@@ -171,10 +171,20 @@ export const HunterPartyGrid: React.FC<HunterPartyGridProps> = ({
               <span className="text-xs text-cyan-300 font-bold uppercase font-tech">{hunter.element}</span>
             </div>
 
-            {/* Hunter Portrait Icon */}
-            <div className="absolute inset-0 flex items-center justify-center text-7xl opacity-35 group-hover:opacity-50 transition">
-              {hunter.avatarIcon}
-            </div>
+            {/* Hunter Portrait Art / Icon */}
+            {hunter.portraitImage ? (
+              <img
+                src={hunter.portraitImage}
+                alt={hunter.name}
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 w-full h-full object-cover object-top opacity-65 group-hover:opacity-90 group-hover:scale-105 transition-all duration-300"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-7xl opacity-35 group-hover:opacity-50 transition">
+                {hunter.avatarIcon}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
             {/* Details & Combat Power */}
             <div className="z-10 bg-slate-950/90 p-3 rounded-xl backdrop-blur-md border border-white/10">

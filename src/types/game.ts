@@ -69,6 +69,7 @@ export interface Character {
     bonusStat: string;
   };
   modelPath?: string;
+  portraitImage?: string;
   celShadeColor?: number;
   skillsList?: string[];
 }

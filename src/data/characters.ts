@@ -837,6 +837,7 @@ export const INITIAL_CHARACTERS: Character[] = [
       effect: 'Inflicts [Bleed] and [Paralysis] on critical hits.',
     },
     modelPath: '/models/characters/sung_jinwoo.glb',
+    portraitImage: '/src/assets/images/hunter_monarch_1792207007018.jpg',
     celShadeColor: 0x1e293b,
     skillsList: ['Dagger Rush', 'Shadow Extraction', 'Mutilate', "Dominator's Touch"],
     lore: 'Awakened as the sole Hunter who grows beyond limits. Channels the sovereign authority of the Shadow Monarch to command extracted shadows and wield Kasaka’s Venom Fang.',
@@ -914,6 +915,7 @@ export interface CharacterRosterItem {
     effect: string;
   };
   modelPath: string;
+  portraitImage?: string;
   celShadeColor: number;
 }
 
@@ -941,6 +943,7 @@ export const extendedCharacterRoster: CharacterRosterItem[] = [
       effect: 'Inflicts [Bleed] and [Paralysis] on critical hits.',
     },
     modelPath: '/models/characters/sung_jinwoo.glb',
+    portraitImage: '/src/assets/images/hunter_monarch_1792207007018.jpg',
     celShadeColor: 0x1e293b,
   },
   {

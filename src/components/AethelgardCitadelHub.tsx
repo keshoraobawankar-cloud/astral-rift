@@ -324,6 +324,98 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
         </div>
       </div>
 
+      {/* Hunter Monarch Character Spotlight (Solo Leveling: Arise Aesthetic) */}
+      <div className="relative rounded-3xl overflow-hidden border-2 border-cyan-500/50 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/90 p-6 md:p-8 shadow-2xl shadow-cyan-500/10">
+        <div className="flex flex-col lg:flex-row items-center gap-8">
+          {/* Character Anime Portrait Card */}
+          <div className="relative shrink-0 w-64 md:w-72 h-96 rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-2xl shadow-cyan-500/30 group">
+            <img
+              src="/src/assets/images/hunter_monarch_1792207007018.jpg"
+              alt="Sung Jinwoo - The Shadow Monarch"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-500"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute top-3 left-3 flex gap-2">
+              <span className="px-2 py-0.5 rounded-md bg-amber-500 text-black text-[11px] font-black shadow">
+                SSR
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-950/80 border border-cyan-400/50 text-cyan-300 text-[10px] font-tech font-bold uppercase">
+                Shadow Element
+              </span>
+            </div>
+            <div className="absolute bottom-3 left-3 right-3 text-center bg-slate-950/90 p-2.5 rounded-xl border border-white/10 backdrop-blur">
+              <div className="text-xs font-rpg font-bold text-white">Kasaka's Venom Fang</div>
+              <div className="text-[10px] text-cyan-400 font-tech">Equipped Weapon • +Bleed & Paralysis</div>
+            </div>
+          </div>
+
+          {/* Dossier & Actions */}
+          <div className="flex-1 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-tech font-bold uppercase">
+                SOLO LEVELING: ARISE AESTHETIC • SHADOW MONARCH SYSTEM
+              </span>
+              <span className="text-xs font-tech text-amber-400 font-bold">
+                Combat Power: 4,516 CP
+              </span>
+            </div>
+
+            <div>
+              <h2 className="text-3xl font-rpg font-extrabold text-white">
+                Sung Jinwoo • The Shadow Monarch
+              </h2>
+              <p className="text-sm font-tech text-cyan-300 mt-0.5">
+                Master Hunter Class: Assassin / Necromancer • Awakened Sovereign
+              </p>
+            </div>
+
+            <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-sans bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+              Awakened as the sole Hunter who grows beyond limits. Channels the sovereign authority of the Shadow Monarch to extract the shadows of defeated dungeon beasts, commanding an unstoppable army with Kasaka’s Venom Fang and Dominator’s Touch telekinesis.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                <div className="text-[10px] text-slate-400 font-tech">STRENGTH</div>
+                <div className="text-base font-bold text-cyan-300 font-tech">48</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                <div className="text-[10px] text-slate-400 font-tech">AGILITY</div>
+                <div className="text-base font-bold text-cyan-300 font-tech">52</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                <div className="text-[10px] text-slate-400 font-tech">INTELLIGENCE</div>
+                <div className="text-base font-bold text-purple-400 font-tech">36</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                <div className="text-[10px] text-slate-400 font-tech">PERCEPTION</div>
+                <div className="text-base font-bold text-amber-300 font-tech">44</div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button
+                onClick={onOpenPartyScreen}
+                className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-rpg font-bold text-xs shadow-lg shadow-cyan-500/20 transition flex items-center gap-2 cursor-pointer"
+              >
+                <Users className="w-4 h-4" />
+                <span>Allocate Attributes & Inspect In Roster</span>
+              </button>
+
+              {onEnter3DPlayableWorld && (
+                <button
+                  onClick={onEnter3DPlayableWorld}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-rpg font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
+                >
+                  <Gamepad2 className="w-4 h-4" />
+                  <span>Deploy in 3D Playable Viewport</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Feature A Simulator: The Inn Logout Rule vs Wilderness Exhausted Sleeper */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 backdrop-blur space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">

@@ -144,9 +144,18 @@ export const PartyRoster: React.FC<PartyRosterProps> = ({
               }`}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-2xl p-1.5 rounded-2xl bg-slate-950/60 border border-slate-800">
-                  {hero.avatarIcon}
-                </span>
+                {hero.portraitImage ? (
+                  <img
+                    src={hero.portraitImage}
+                    alt={hero.name}
+                    referrerPolicy="no-referrer"
+                    className="w-10 h-10 rounded-xl object-cover object-top border border-cyan-400/50 shadow-md shadow-cyan-500/20"
+                  />
+                ) : (
+                  <span className="text-2xl p-1.5 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    {hero.avatarIcon}
+                  </span>
+                )}
                 <span
                   className="text-[10px] font-tech font-bold uppercase px-2 py-0.5 rounded-md"
                   style={{
@@ -185,12 +194,21 @@ export const PartyRoster: React.FC<PartyRosterProps> = ({
           <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-4">
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-inner"
-                  style={{ backgroundColor: `${activeChar.color}20`, border: `1px solid ${activeChar.color}50` }}
-                >
-                  {activeChar.avatarIcon}
-                </div>
+                {activeChar.portraitImage ? (
+                  <img
+                    src={activeChar.portraitImage}
+                    alt={activeChar.name}
+                    referrerPolicy="no-referrer"
+                    className="w-20 h-24 rounded-2xl object-cover object-top border-2 border-cyan-400 shadow-xl shadow-cyan-500/30 ring-2 ring-cyan-500/40"
+                  />
+                ) : (
+                  <div
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-inner"
+                    style={{ backgroundColor: `${activeChar.color}20`, border: `1px solid ${activeChar.color}50` }}
+                  >
+                    {activeChar.avatarIcon}
+                  </div>
+                )}
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-rpg font-extrabold text-white">{activeChar.name}</h2>

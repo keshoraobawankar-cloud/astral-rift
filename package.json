@@ -7,7 +7,7 @@
     "dev": "tsx server.ts",
     "build": "tsc && vite build",
     "lint": "tsc --noEmit",
-    "start": "tsx server.ts",
+    "start": "node server.ts",
     "preview": "vite preview --port 3000"
   },
   "dependencies": {
