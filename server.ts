@@ -728,19 +728,6 @@ app.post('/api/player/safe-zone/wilderness-disconnect', (req: Request, res: Resp
 async function start() {
   const isDev = process.env.NODE_ENV !== 'production';
 
-  if (isDev) {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    app.use(express.static(path.join(__dirname, 'dist')));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-    });
-  }
-
   const httpServer = createHttpServer(app);
 
   // ============================================================================
@@ -1494,6 +1481,20 @@ async function start() {
       uptimeSeconds: Math.floor(process.uptime()),
     });
   });
+
+  // Mount Vite middleware in development or static assets in production
+  if (isDev) {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    app.use(express.static(path.join(__dirname, 'dist')));
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    });
+  }
 
   // Upgrade HTTP request to appropriate WebSocket server
   httpServer.on('upgrade', (request, socket, head) => {

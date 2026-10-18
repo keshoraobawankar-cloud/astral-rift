@@ -1,5 +1,5 @@
 export type ElementType = 'solar' | 'void' | 'ether' | 'flame' | 'arcane' | 'earth' | 'wind' | 'Shadow' | string;
-export type RaceType = 'elf' | 'dwarf' | 'human' | 'beastkin' | 'fairy' | 'Wood Elf' | 'Void-Touched Human' | 'Umbral Elf' | 'Dwarven Colossus' | 'Shadow Monarch' | string;
+export type RaceType = 'elf' | 'dwarf' | 'human' | 'beastkin' | 'fairy' | 'Wood Elf' | 'Void-Touched Human' | 'Umbral Elf' | 'Dwarven Colossus' | 'Umbral Sovereign' | 'Shadow Monarch' | string;
 
 export interface AttributeMatrix {
   strength: number;
