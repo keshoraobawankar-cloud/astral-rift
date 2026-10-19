@@ -59,13 +59,13 @@ export const AuthAndInventory: React.FC<AuthAndInventoryProps> = ({ onSyncInvent
           throw new Error('Username, email, and password are required for sign up.');
         }
         await signUpPlayer(email, password, username);
-        setStatusMsg({ text: 'Account forged! Signed in to Supabase.' });
+        setStatusMsg({ text: 'Account forged! Signed in to Astral Vault.' });
       } else {
         if (!email || !password) {
           throw new Error('Email and password are required for login.');
         }
         await signInPlayer(email, password);
-        setStatusMsg({ text: 'Session authenticated with Supabase!' });
+        setStatusMsg({ text: 'Session authenticated with Astral Vault!' });
       }
     } catch (err: any) {
       setStatusMsg({ text: err.message || 'Authentication failed', error: true });
@@ -86,7 +86,7 @@ export const AuthAndInventory: React.FC<AuthAndInventoryProps> = ({ onSyncInvent
     }
     try {
       await savePlayerData(user.id, updated);
-      setStatusMsg({ text: '✓ Loot saved to Supabase profiles table (+25 Gold, +1 Magic Scroll)!' });
+      setStatusMsg({ text: '✓ Loot secured in Astral Vault (+25 Gold, +1 Magic Scroll)!' });
       setTimeout(() => setStatusMsg(null), 3500);
     } catch (err: any) {
       setStatusMsg({ text: `Failed to save: ${err.message}`, error: true });
@@ -100,16 +100,16 @@ export const AuthAndInventory: React.FC<AuthAndInventoryProps> = ({ onSyncInvent
         <div className="flex items-center gap-2">
           <Database className="w-5 h-5 text-cyan-400" />
           <div>
-            <h2 className="text-base font-bold font-rpg text-cyan-300">Supabase Cloud Vault</h2>
+            <h2 className="text-base font-bold font-rpg text-cyan-300">Astral Storage Vault</h2>
             <p className="text-[10px] text-slate-400">
-              {isSupabaseLive ? '🟢 Connected to Live Supabase Project' : '⚡ Local Emulator / Fallback Active'}
+              {isSupabaseLive ? '✦ Synchronized with Continental Relays' : '✦ Local Vault Cache Active'}
             </p>
           </div>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-slate-800"
+            className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-slate-800 cursor-pointer"
           >
             ✕
           </button>
@@ -130,8 +130,8 @@ export const AuthAndInventory: React.FC<AuthAndInventoryProps> = ({ onSyncInvent
 
       {!user ? (
         <div className="space-y-3">
-          <p className="text-xs text-slate-300">
-            Sign in or create a Supabase account to persist your gold, essence, and bag inventory across devices.
+          <p className="text-xs text-slate-300 font-sans">
+            Access your secure Astral Storage Vault to preserve your gold, essence, and equipment cache across realms.
           </p>
 
           <div>

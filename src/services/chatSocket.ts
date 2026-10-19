@@ -8,6 +8,9 @@ class ChatSocketService {
   private socket: WebSocket | null = null;
   private onMessageCallback: ((msg: ChatMessage) => void) | null = null;
   private isConnecting: boolean = false;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 4;
+  private reconnectTimer: any = null;
 
   connect(onMessage: (msg: ChatMessage) => void) {
     this.onMessageCallback = onMessage;
@@ -24,7 +27,7 @@ class ChatSocketService {
 
       this.socket.onopen = () => {
         this.isConnecting = false;
-        console.log('[WebSocket] Chat connected successfully');
+        this.reconnectAttempts = 0;
       };
 
       this.socket.onmessage = (event) => {
@@ -37,49 +40,61 @@ class ChatSocketService {
               timestamp: data.timestamp,
             });
           }
-        } catch (err) {
-          console.error('Failed to parse WebSocket message:', err);
+        } catch {
+          // Silently ignore invalid chat JSON
         }
       };
 
       this.socket.onclose = () => {
         this.isConnecting = false;
         this.socket = null;
-        console.log('Chat socket closed. Reconnecting in 3s...');
-        setTimeout(() => {
-          if (this.onMessageCallback) {
-            this.connect(this.onMessageCallback);
-          }
-        }, 3000);
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.reconnectAttempts++;
+          clearTimeout(this.reconnectTimer);
+          this.reconnectTimer = setTimeout(() => {
+            if (this.onMessageCallback) {
+              this.connect(this.onMessageCallback);
+            }
+          }, Math.min(2000 * this.reconnectAttempts, 8000));
+        }
       };
 
-      this.socket.onerror = (err) => {
-        console.warn('Chat WebSocket warning:', err);
+      this.socket.onerror = () => {
+        // Silently handle chat connection warnings
       };
-    } catch (err) {
+    } catch {
       this.isConnecting = false;
-      console.warn('Failed to initialize WebSocket client:', err);
+      this.socket = null;
     }
   }
 
   sendMessage(sender: string, text: string) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type: 'CHAT_MESSAGE', sender, text }));
-    } else {
-      // Local broadcast fallback if socket is reconnecting
-      if (this.onMessageCallback) {
-        this.onMessageCallback({
-          sender,
-          text,
-          timestamp: new Date().toISOString(),
-        });
+      try {
+        this.socket.send(JSON.stringify({ type: 'CHAT_MESSAGE', sender, text }));
+        return;
+      } catch {
+        // Fall back to local broadcast below
       }
+    }
+    // Local broadcast fallback if socket is disconnected/reconnecting
+    if (this.onMessageCallback) {
+      this.onMessageCallback({
+        sender,
+        text,
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
   disconnect() {
+    clearTimeout(this.reconnectTimer);
     if (this.socket) {
-      this.socket.close();
+      try {
+        this.socket.close();
+      } catch {
+        // Ignore
+      }
       this.socket = null;
     }
     this.onMessageCallback = null;

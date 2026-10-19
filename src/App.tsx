@@ -18,6 +18,7 @@ import {
   INITIAL_TELEPORTATION_ARRAY,
 } from './data/aethelgardWorld';
 import { sound } from './services/soundService';
+import { dungeonSynth } from './services/dungeonSynthService';
 
 import { HeaderNav, NavTab } from './components/HeaderNav';
 import { AethelgardCitadelHub } from './components/AethelgardCitadelHub';
@@ -423,6 +424,13 @@ export const App: React.FC = () => {
         onSelectTab={(tab) => {
           setIsPlaying3D(false);
           setActiveTab(tab);
+          if (['lobby', 'bazaar', 'guild', 'codex'].includes(tab)) {
+            dungeonSynth.setMood('oakhaven_breeze');
+          } else if (['party', 'array', 'workshops'].includes(tab)) {
+            dungeonSynth.setMood('sylph_voyage');
+          } else if (['dungeon', 'combat'].includes(tab)) {
+            dungeonSynth.setMood('radiant_vanguard');
+          }
         }}
         inventory={inventory}
         guild={guild}
@@ -434,7 +442,15 @@ export const App: React.FC = () => {
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
         onOpenCloudVault={() => setIsCloudVaultOpen(true)}
         isPlaying3D={isPlaying3D}
-        onToggle3DPlayable={() => setIsPlaying3D((prev) => !prev)}
+        onToggle3DPlayable={() => {
+          setIsPlaying3D((prev) => {
+            const next = !prev;
+            if (next) {
+              dungeonSynth.setMood('sylph_voyage');
+            }
+            return next;
+          });
+        }}
       />
 
       {/* System Toast Banner */}

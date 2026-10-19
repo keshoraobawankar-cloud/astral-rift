@@ -79,7 +79,7 @@ class MockSupabaseClient {
             if (table === 'chat_messages') {
               const raw = localStorage.getItem('aethelgard_supabase_chat_history');
               const msgs = raw ? JSON.parse(raw) : [
-                { id: 1, created_at: new Date(Date.now() - 3600000).toISOString(), username: 'Monarch_Jin', message: 'The Abyss gate in the Calamity Trench is pulsating void energy.', zone: 'Citadel Plaza' },
+                { id: 1, created_at: new Date(Date.now() - 3600000).toISOString(), username: 'Vaelen_Thorne', message: 'The Abyss gate in the Calamity Trench is pulsating void energy.', zone: 'Citadel Plaza' },
                 { id: 2, created_at: new Date(Date.now() - 1800000).toISOString(), username: 'ElvenArchmage', message: 'Stocked fresh Mana Flasks at Master Alden\'s stall.', zone: 'Artisan Bazaar' },
                 { id: 3, created_at: new Date(Date.now() - 600000).toISOString(), username: 'IronDwarf_Thorgar', message: 'Looted 45 Golem Alloy from Ironpeak Caldera!', zone: 'Dwarven Forge' },
               ];
@@ -88,7 +88,7 @@ class MockSupabaseClient {
             if (table === 'profiles') {
               return {
                 data: [
-                  { username: 'Monarch_Jin', gold: 142500, essence: 8400 },
+                  { username: 'Vaelen_Thorne', gold: 142500, essence: 8400 },
                   { username: 'Elurien_Vanguard', gold: 89200, essence: 5120 },
                   { username: 'Thorgar_Hammer', gold: 76400, essence: 3890 },
                   { username: 'Astraea_Solaris', gold: 64100, essence: 3450 },

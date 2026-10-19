@@ -82,8 +82,6 @@ export default function LoginScreen({ onLoginSuccess, onClose, isModal = false }
         // Trigger success callback to update parent state or route user forward
         if (onLoginSuccess) {
           onLoginSuccess(token, username);
-        } else {
-          alert('Login successful! Token saved.');
         }
       }, 500);
     } catch (error: any) {

@@ -256,14 +256,14 @@ export const CitadelBazaarNPC: React.FC<CitadelBazaarNPCProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <div className="flex items-center gap-2 text-cyan-400 font-tech font-bold text-xs uppercase tracking-wider mb-1">
-            <Radio className="w-4 h-4" />
-            <span>FEATURE C • DYNAMIC AFFINITY MATRIX & VOICE AI NPC DIALOGUE</span>
+            <Compass className="w-4 h-4" />
+            <span>CITADEL COMMERCE & GUILD ENVOYS</span>
           </div>
           <h1 className="text-3xl font-rpg font-extrabold text-white">
-            Grand Artisan Bazaar & Dynamic Affinity Outpost
+            Grand Artisan Bazaar & Merchant Envoys
           </h1>
           <p className="text-slate-400 text-sm mt-1 max-w-xl font-sans">
-            NPCs feature dynamic Affinity & Trust tracking with qualitative tier mapping (Devoted, Friendly, Neutral, Suspicious, Hostile). Dialogue tone, voice delivery, and trade tariffs adapt to your standing.
+            Engage with Citadel merchant guilds, discuss ancient lore, barter for rare provisions, and cultivate long-term merchant standing across biomes.
           </p>
         </div>
 
@@ -272,25 +272,25 @@ export const CitadelBazaarNPC: React.FC<CitadelBazaarNPCProps> = ({
             onClick={() => setShowMemoryJson(!showMemoryJson)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-tech text-cyan-400 hover:text-white"
           >
-            <FileCode className="w-4 h-4" />
-            <span>{showMemoryJson ? 'Hide LLM Context' : 'Inspect Prompt & Affinity Context'}</span>
+            <BookOpen className="w-4 h-4" />
+            <span>{showMemoryJson ? 'Hide Merchant Ledger' : 'Merchant Standing & Diplomatic Ledger'}</span>
           </button>
 
           <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-500/40 px-4 py-2 rounded-2xl text-emerald-300 font-rpg text-xs">
             <Shield className="w-4 h-4 text-emerald-400" />
-            <span>Safe-Zone Sanctuary: PVP Prohibited</span>
+            <span>Sanctuary Aegis: Combat Prohibited</span>
           </div>
         </div>
       </div>
 
-      {/* LLM & Prompt Injection Drawer */}
+      {/* Diplomatic Standing & Merchant History Drawer */}
       {showMemoryJson && (
         <div className="mb-6 p-4 rounded-3xl bg-slate-950 border border-cyan-500/40 text-xs font-mono text-cyan-300">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
             <span className="font-tech font-bold uppercase text-slate-300">
-              AI Character Engine • System Prompt Injection Block
+              Citadel Diplomatic Ledger • Active Standing & Tone
             </span>
-            <span className="text-[10px] text-slate-500">Injected into LLM context on every turn</span>
+            <span className="text-[10px] text-slate-500">Recorded commercial and dialogue standing</span>
           </div>
           <pre className="overflow-x-auto text-[11px] leading-relaxed text-slate-300 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
             {promptInjectionContext}

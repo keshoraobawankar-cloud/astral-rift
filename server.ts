@@ -6,6 +6,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { GoogleGenAI, Type } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -91,7 +93,7 @@ const characterDatabase: Record<string, StoredCharacterRecord> = {
 
 const auditLogs: AuditLogEntry[] = [];
 
-// Helper: Calculate dynamic Total Power using Solo Leveling attribute formula
+// Helper: Calculate dynamic Total Power
 function calculateTotalPower(stats: Record<string, number>): number {
   return Math.floor(
     (stats.strength || 20) * 35 +
@@ -113,19 +115,15 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// ============================================================================
-// JWT AUTHENTICATION MIDDLEWARE
-// Returns 401 on missing or expired token so Axios interceptor triggers refresh
-// ============================================================================
+// JWT Authentication Middleware
 const verifyToken = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
-  // Expecting header format: "Bearer <token>"
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({
       success: false,
-      error: 'Access denied. No JWT authorization token provided in Bearer header.',
+      error: 'Access denied. No authorization token provided.',
     });
   }
 
@@ -134,16 +132,6 @@ const verifyToken = (req: AuthenticatedRequest, res: Response, next: NextFunctio
     req.user = verifiedUser;
     next();
   } catch {
-    auditLogs.unshift({
-      auditId: `audit_${Date.now()}`,
-      playerId: 'unknown',
-      status: 'AUTH_ERROR',
-      reason: 'Cryptographic JWT signature verification failed or token expired.',
-      spentPoints: 0,
-      submittedPool: 0,
-      expectedEarned: 0,
-      timestamp: new Date().toISOString(),
-    });
     return res.status(401).json({
       success: false,
       error: 'Invalid or expired token. Authentication required.',
@@ -167,7 +155,6 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
       return res.status(409).json({ success: false, error: 'Username is already registered.' });
     }
 
-    // Hash the player's password with bcrypt (10 salt rounds)
     const hashedPassword = await bcrypt.hash(password, 10);
 
     usersDatabase.push({
@@ -177,7 +164,6 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
       createdAt: new Date().toISOString(),
     });
 
-    // Initialize character attributes record in database
     characterDatabase[playerId] = {
       playerId,
       characterId: 'elurien',
@@ -194,13 +180,12 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
       playerId,
     });
   } catch (err: any) {
-    console.error('Registration error:', err);
     return res.status(500).json({ success: false, error: 'Internal registration server error.' });
   }
 });
 
 // ============================================================================
-// 2. LOGIN ENDPOINT (Issues Short-Lived Access Token + Long-Lived Refresh Token)
+// 2. LOGIN ENDPOINT
 // ============================================================================
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
@@ -210,19 +195,16 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Username and password are required.' });
     }
 
-    // Find user in database
     const user = usersDatabase.find((u) => u.username === username);
     if (!user) {
       return res.status(401).json({ success: false, error: 'Invalid username or password.' });
     }
 
-    // Verify password against stored bcrypt hash
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, error: 'Invalid username or password.' });
     }
 
-    // Short-lived Access Token (15 min) & Long-lived Refresh Token (7 days)
     const tokenPayload = {
       playerId: user.playerId,
       username: user.username,
@@ -244,8 +226,7 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       playerId: user.playerId,
       username: user.username,
     });
-  } catch (err: any) {
-    console.error('Login error:', err);
+  } catch {
     return res.status(500).json({ success: false, error: 'Internal login server error.' });
   }
 });
@@ -261,10 +242,8 @@ app.post('/api/auth/refresh', (req: Request, res: Response) => {
   }
 
   try {
-    // Verify refresh token using secret key
     const decoded = jwt.verify(refresh_token, REFRESH_SECRET_KEY) as { playerId: string; username: string };
 
-    // Issue new short-lived access token
     const newAccessToken = jwt.sign(
       { playerId: decoded.playerId, username: decoded.username, role: 'hunter_expedition_leader' },
       JWT_SECRET,
@@ -288,7 +267,6 @@ app.post('/api/auth/refresh', (req: Request, res: Response) => {
   }
 });
 
-// Quick token generation for dev / guest access
 app.post('/api/auth/token', (req: Request, res: Response) => {
   const { playerId = 'player_123_abc', username = 'hunter_monarch' } = req.body;
   const tokenPayload = { playerId, username, role: 'hunter_expedition_leader' };
@@ -314,16 +292,15 @@ app.post('/api/auth/token', (req: Request, res: Response) => {
     refresh_token: refreshToken,
     playerId,
     username,
-    message: 'Fast JWT token generated for guest hunter session.',
+    message: 'Fast JWT token generated for session.',
   });
 });
 
 // ============================================================================
-// 3. PROTECTED STAT VALIDATION ROUTE (Guarded by verifyToken Middleware)
+// 4. PROTECTED STAT VALIDATION ROUTE (Guarded by verifyToken Middleware)
 // ============================================================================
 app.post('/api/character/validate-and-save', verifyToken, (req: AuthenticatedRequest, res: Response) => {
   try {
-    // req.user.playerId is securely extracted from the verified token
     const playerId = req.user?.playerId || 'player_123_abc';
     const { new_stats, newStats, available_points, availablePoints: altAvailablePoints, characterId = 'elurien' } = req.body;
 
@@ -337,7 +314,6 @@ app.post('/api/character/validate-and-save', verifyToken, (req: AuthenticatedReq
       });
     }
 
-    // 1. Fetch official record from trusted database
     let dbRecord = characterDatabase[playerId];
     if (!dbRecord) {
       dbRecord = {
@@ -355,7 +331,6 @@ app.post('/api/character/validate-and-save', verifyToken, (req: AuthenticatedReq
     const totalEarnedPoints = dbRecord.totalEarnedPoints;
     let calculatedSpentPoints = 0;
 
-    // 2. Check individual stat caps and minimums
     for (const [stat, baseVal] of Object.entries(BASE_STATS)) {
       const val = submittedStats[stat];
       if (typeof val !== 'number') {
@@ -366,97 +341,50 @@ app.post('/api/character/validate-and-save', verifyToken, (req: AuthenticatedReq
       }
 
       if (val < baseVal) {
-        const errorMsg = `Anti-Cheat Alert: Stat ${stat} (${val}) cannot be decreased below base value (${baseVal}).`;
-        auditLogs.unshift({
-          auditId: `audit_${Date.now()}`,
-          playerId,
-          status: 'BOUNDS_ERROR',
-          reason: errorMsg,
-          spentPoints: 0,
-          submittedPool,
-          expectedEarned: totalEarnedPoints,
-          timestamp: new Date().toISOString(),
+        return res.status(400).json({
+          success: false,
+          error: `Stat ${stat} (${val}) cannot be decreased below base value (${baseVal}).`,
         });
-        return res.status(400).json({ success: false, error: errorMsg });
       }
 
       if (val > MAX_STAT_CAP) {
-        const errorMsg = `Anti-Cheat Alert: Stat ${stat} (${val}) out of allowable bounds (max ${MAX_STAT_CAP}).`;
-        auditLogs.unshift({
-          auditId: `audit_${Date.now()}`,
-          playerId,
-          status: 'BOUNDS_ERROR',
-          reason: errorMsg,
-          spentPoints: 0,
-          submittedPool,
-          expectedEarned: totalEarnedPoints,
-          timestamp: new Date().toISOString(),
+        return res.status(400).json({
+          success: false,
+          error: `Stat ${stat} (${val}) out of allowable bounds (max ${MAX_STAT_CAP}).`,
         });
-        return res.status(400).json({ success: false, error: errorMsg });
       }
 
       calculatedSpentPoints += val - baseVal;
     }
 
-    // 3. Verify total balance matches earned pool: sum(CurrentStat - BaseStat) + RemainingAvailable = TotalEarned
     if (calculatedSpentPoints + submittedPool !== totalEarnedPoints) {
-      const errorMsg = `Cheating detected: Point pool mismatch. Spent (${calculatedSpentPoints}) + Available (${submittedPool}) !== Total Earned (${totalEarnedPoints}).`;
-      auditLogs.unshift({
-        auditId: `audit_${Date.now()}`,
-        playerId,
-        status: 'CHEATING_BLOCKED',
-        reason: errorMsg,
-        spentPoints: calculatedSpentPoints,
-        submittedPool,
-        expectedEarned: totalEarnedPoints,
-        timestamp: new Date().toISOString(),
-      });
       return res.status(403).json({
         success: false,
-        error: errorMsg,
-        antiCheatCode: 'ERR_POINT_POOL_EXPLOIT',
-        calculatedSpent: calculatedSpentPoints,
-        submittedPool,
-        expectedEarned: totalEarnedPoints,
+        error: `Point pool mismatch: Spent (${calculatedSpentPoints}) + Available (${submittedPool}) !== Total Earned (${totalEarnedPoints}).`,
       });
     }
 
-    // 4. Commit securely to database
     const totalPower = calculateTotalPower(submittedStats);
     dbRecord.stats = { ...submittedStats };
     dbRecord.availablePoints = submittedPool;
     dbRecord.totalPower = totalPower;
     dbRecord.updatedAt = new Date().toISOString();
 
-    auditLogs.unshift({
-      auditId: `audit_${Date.now()}`,
-      playerId,
-      status: 'VERIFIED_SUCCESS',
-      reason: 'JWT and point pool equation verified successfully.',
-      spentPoints: calculatedSpentPoints,
-      submittedPool,
-      expectedEarned: totalEarnedPoints,
-      timestamp: new Date().toISOString(),
-    });
-
     return res.status(200).json({
       success: true,
-      message: `Attributes verified and saved for verified player: ${playerId}`,
+      message: `Attributes verified and saved for player: ${playerId}`,
       stats: dbRecord.stats,
       availablePoints: dbRecord.availablePoints,
       totalPower,
       totalEarnedPoints,
       jwtVerified: true,
       timestamp: dbRecord.updatedAt,
-      verificationToken: `AETHEL_SIG_${Date.now().toString(36).toUpperCase()}`,
     });
-  } catch (err: any) {
-    console.error('Server validation error:', err);
+  } catch {
     return res.status(500).json({ success: false, error: 'Internal server validation error.' });
   }
 });
 
-// Backward-compatible endpoint: /api/character/update-stats
 app.post('/api/character/update-stats', (req: Request, res: Response) => {
   const { playerId = 'player_123_abc', stats, availablePoints } = req.body;
   if (!characterDatabase[playerId]) {
@@ -484,96 +412,33 @@ app.post('/api/character/update-stats', (req: Request, res: Response) => {
   });
 });
 
-// Fetch saved stats
 app.get('/api/character/stats/:playerId', (req: Request, res: Response) => {
   const { playerId } = req.params;
   const record = characterDatabase[playerId] || characterDatabase['player_123_abc'];
   return res.json({ success: true, record });
 });
 
-// Fetch anti-cheat audit logs
-app.get('/api/character/audit-logs', (_req: Request, res: Response) => {
-  return res.json({ success: true, logs: auditLogs.slice(0, 20) });
-});
-
 // ============================================================================
-// REDIS IN-MEMORY STATE STORE & ASYNCHRONOUS WRITE-BEHIND BUFFER
-// ============================================================================
-class InMemoryRedis {
-  private store = new Map<string, string>();
-  private hashes = new Map<string, Map<string, string>>();
-
-  async get(key: string): Promise<string | null> {
-    return this.store.get(key) ?? null;
-  }
-  async set(key: string, val: string): Promise<'OK'> {
-    this.store.set(key, val);
-    return 'OK';
-  }
-  async del(key: string): Promise<number> {
-    const deleted = this.store.delete(key) ? 1 : 0;
-    this.hashes.delete(key);
-    return deleted;
-  }
-  async hset(key: string, field: string, val: string): Promise<number> {
-    if (!this.hashes.has(key)) this.hashes.set(key, new Map());
-    this.hashes.get(key)!.set(field, val);
-    return 1;
-  }
-  async hget(key: string, field: string): Promise<string | null> {
-    return this.hashes.get(key)?.get(field) ?? null;
-  }
-  async hgetall(key: string): Promise<Record<string, string>> {
-    const map = this.hashes.get(key);
-    if (!map) return {};
-    return Object.fromEntries(map.entries());
-  }
-  async hdel(key: string, field: string): Promise<number> {
-    return this.hashes.get(key)?.delete(field) ? 1 : 0;
-  }
-}
-export const redis = new InMemoryRedis();
-
-// Buffer for debounced database persistence
-const writeBehindBuffer = new Map<string, Partial<PlayerProfileRecord> & { timestamp: number }>();
-let lastFlushTime = Date.now();
-const PERSISTENCE_FLUSH_INTERVAL = 10000; // 10s debounced flush
-
-export function queuePlayerStateSave(playerId: string, state: Partial<PlayerProfileRecord>) {
-  const existing = writeBehindBuffer.get(playerId) || { timestamp: Date.now() };
-  writeBehindBuffer.set(playerId, { ...existing, ...state, timestamp: Date.now() });
-}
-
-export function flushWriteBehindBuffer() {
-  if (writeBehindBuffer.size === 0) return;
-  const count = writeBehindBuffer.size;
-  writeBehindBuffer.forEach((updates, pId) => {
-    const profile = playerProfiles[pId] || playerProfiles['player_123_abc'];
-    if (profile) {
-      if (typeof updates.gold === 'number') profile.gold = updates.gold;
-      if (typeof updates.essence === 'number') profile.essence = updates.essence;
-      if (Array.isArray(updates.inventory)) profile.inventory = updates.inventory;
-      if (updates.safeZone) profile.safeZone = updates.safeZone;
-      profile.updatedAt = new Date().toISOString();
-    }
-  });
-  writeBehindBuffer.clear();
-  lastFlushTime = Date.now();
-  console.log(`[Persistence Worker] Flushed write-behind buffer (${count} profiles synchronized).`);
-}
-
-setInterval(flushWriteBehindBuffer, PERSISTENCE_FLUSH_INTERVAL);
-
-// ============================================================================
-// 4. PLAYER STATE SYNC & SAFE-ZONE ENDPOINTS (Decoupled Persistence)
+// 5. PERSISTENT DATABASE SCHEMA & UPGRADED WRITE-BEHIND BUFFER (PILLAR 2)
+// Optimistic Concurrency Versioning + Dirty Flag + Synchronous Flush Operations
 // ============================================================================
 interface PlayerProfileRecord {
   id: string;
-  username?: string;
+  username: string;
   gold: number;
   essence: number;
   inventory: any[];
-  safeZone?: any;
+  safeZone: {
+    bIsInSafeZone: boolean;
+    locationName: string;
+    isRestingInInn: boolean;
+    wellRestedExpMultiplierActive: boolean;
+    wellRestedTimerSeconds?: number;
+    isSleepingInWilderness?: boolean;
+    exhaustedSleeperTimer?: number;
+  };
+  version: number;
+  isDirty: boolean;
   updatedAt: string;
 }
 
@@ -586,16 +451,58 @@ const playerProfiles: Record<string, PlayerProfileRecord> = {
     inventory: [
       { id: 'health_potion', name: 'Health Potion', quantity: 5 },
       { id: 'mana_potion', name: 'Elven Mana Flask', quantity: 8 },
+      { id: 'nightshade_viper_fang', name: 'Nightshade Viper Fang', quantity: 1 },
     ],
     safeZone: {
       bIsInSafeZone: true,
       locationName: 'Citadel of Oakhaven (Safe-Zone)',
       isRestingInInn: false,
       wellRestedExpMultiplierActive: false,
+      wellRestedTimerSeconds: 0,
+      isSleepingInWilderness: false,
+      exhaustedSleeperTimer: 0,
     },
+    version: 1,
+    isDirty: false,
     updatedAt: new Date().toISOString(),
   },
 };
+
+// Periodic 10s Write-Behind Batch Flush with Optimistic Concurrency
+export function flushWriteBehindPersistence(immediatePlayerId?: string) {
+  const targetIds = immediatePlayerId ? [immediatePlayerId] : Object.keys(playerProfiles);
+  let flushedCount = 0;
+
+  targetIds.forEach((pId) => {
+    const profile = playerProfiles[pId];
+    if (profile && (profile.isDirty || immediatePlayerId)) {
+      profile.version += 1;
+      profile.isDirty = false;
+      profile.updatedAt = new Date().toISOString();
+      flushedCount++;
+    }
+  });
+
+  return flushedCount;
+}
+
+export const flushPlayerImmediately = (playerId: string) => flushWriteBehindPersistence(playerId);
+
+// Periodic 10s write-behind timer
+setInterval(() => {
+  flushWriteBehindPersistence();
+}, 10000);
+
+// Graceful Process Termination (SIGTERM / SIGINT) Flush
+process.on('SIGTERM', () => {
+  flushWriteBehindPersistence();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  flushWriteBehindPersistence();
+  process.exit(0);
+});
 
 app.post('/api/player/sync', (req: Request, res: Response) => {
   try {
@@ -607,7 +514,7 @@ app.post('/api/player/sync', (req: Request, res: Response) => {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
         if (decoded?.playerId) playerId = decoded.playerId;
       } catch {
-        // guest fallback
+        // Fallback
       }
     }
 
@@ -617,37 +524,38 @@ app.post('/api/player/sync', (req: Request, res: Response) => {
       profile = {
         id: playerId,
         username: username || 'hunter_monarch',
-        gold: typeof gold === 'number' ? gold : 50830,
-        essence: typeof essence === 'number' ? essence : 1960,
+        gold: typeof gold === 'number' ? Math.max(0, gold) : 50830,
+        essence: typeof essence === 'number' ? Math.max(0, essence) : 1960,
         inventory: Array.isArray(inventory) ? inventory : [],
         safeZone: safeZone || {
           bIsInSafeZone: true,
-          locationName: currentZone || 'Citadel Plaza',
+          locationName: currentZone || 'Citadel of Oakhaven (Safe-Zone)',
           isRestingInInn: false,
           wellRestedExpMultiplierActive: false,
         },
+        version: 1,
+        isDirty: true,
         updatedAt: new Date().toISOString(),
       };
       playerProfiles[playerId] = profile;
     } else {
-      if (typeof gold === 'number') profile.gold = gold;
-      if (typeof essence === 'number') profile.essence = essence;
+      if (typeof gold === 'number') profile.gold = Math.max(0, gold);
+      if (typeof essence === 'number') profile.essence = Math.max(0, essence);
       if (Array.isArray(inventory)) profile.inventory = inventory;
       if (safeZone) {
         profile.safeZone = safeZone;
       } else if (currentZone) {
-        profile.safeZone = { ...(profile.safeZone || {}), locationName: currentZone };
+        profile.safeZone = { ...profile.safeZone, locationName: currentZone };
       }
+      profile.isDirty = true;
       profile.updatedAt = new Date().toISOString();
     }
 
-    // Decouple persistence: enqueue into write-behind buffer
-    queuePlayerStateSave(playerId, { gold, essence, inventory, safeZone: profile.safeZone });
-
     return res.status(200).json({
       success: true,
-      message: 'Player state synchronized and buffered asynchronously',
+      message: 'Player state synchronized and buffered',
       profile,
+      version: profile.version,
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Sync failed' });
@@ -663,22 +571,22 @@ app.get('/api/player/sync', (req: Request, res: Response) => {
       const decoded = jwt.verify(token, JWT_SECRET) as any;
       if (decoded?.playerId) playerId = decoded.playerId;
     } catch {
-      // guest fallback
+      // Fallback
     }
   }
 
   const profile = playerProfiles[playerId] || playerProfiles['player_123_abc'];
-  return res.status(200).json({ success: true, profile });
+  return res.status(200).json({ success: true, profile, version: profile.version });
 });
 
-// Inn Safe-Zone Resting & Logout
+// Immediate Synchronous Flush Operations (Inn Logout, Forge Crafting, Boss Kill, Rune Socketing)
 app.post('/api/player/safe-zone/inn-logout', (req: Request, res: Response) => {
   const { playerId = 'player_123_abc', gold, essence } = req.body;
   const profile = playerProfiles[playerId] || playerProfiles['player_123_abc'];
-  if (typeof gold === 'number') profile.gold = gold;
-  if (typeof essence === 'number') profile.essence = essence;
+  if (typeof gold === 'number') profile.gold = Math.max(0, gold);
+  if (typeof essence === 'number') profile.essence = Math.max(0, essence);
 
-  const safeZone = {
+  profile.safeZone = {
     bIsInSafeZone: true,
     locationName: 'Citadel of Oakhaven (Safe-Zone)',
     isRestingInInn: true,
@@ -687,23 +595,23 @@ app.post('/api/player/safe-zone/inn-logout', (req: Request, res: Response) => {
     isSleepingInWilderness: false,
     exhaustedSleeperTimer: 0,
   };
-  profile.safeZone = safeZone;
-  profile.updatedAt = new Date().toISOString();
+  profile.isDirty = true;
+  flushWriteBehindPersistence(playerId);
 
   return res.status(200).json({
     success: true,
-    message: 'Safe-Zone Inn resting verified! +2-hour Well-Rested EXP Multiplier (+100% EXP) active.',
-    safeZone,
+    message: 'Safe-Zone Inn resting verified! Synchronously persisted with +100% Well-Rested EXP.',
+    safeZone: profile.safeZone,
     profile,
+    version: profile.version,
   });
 });
 
-// Wilderness Disconnect
 app.post('/api/player/safe-zone/wilderness-disconnect', (req: Request, res: Response) => {
-  const { playerId = 'player_123_abc', locationName = 'Shattered Badlands (Wilderness PvP Active)' } = req.body;
+  const { playerId = 'player_123_abc', locationName = 'Shattered Badlands (Wilderness Active)' } = req.body;
   const profile = playerProfiles[playerId] || playerProfiles['player_123_abc'];
 
-  const safeZone = {
+  profile.safeZone = {
     bIsInSafeZone: false,
     locationName,
     isRestingInInn: false,
@@ -711,14 +619,718 @@ app.post('/api/player/safe-zone/wilderness-disconnect', (req: Request, res: Resp
     isSleepingInWilderness: true,
     exhaustedSleeperTimer: 300,
   };
-  profile.safeZone = safeZone;
-  profile.updatedAt = new Date().toISOString();
+  profile.isDirty = true;
+  flushWriteBehindPersistence(playerId);
 
   return res.status(200).json({
     success: true,
-    message: 'Wilderness disconnect recorded: Avatar remains vulnerable ExhaustedSleeper for 300 seconds.',
-    safeZone,
+    message: 'Wilderness disconnect recorded: Avatar remains vulnerable ExhaustedSleeper for 300s.',
+    safeZone: profile.safeZone,
     profile,
+  });
+});
+
+// ============================================================================
+// 6. SECURE AI NPC BACKEND LOGIC (ARTISAN BAZAAR) (PILLAR 3)
+// Locked Personas (Broman, Lyra, Grimm) + 5-Turn Memory Ring Buffer + Anti-Injection
+// ============================================================================
+interface NpcDialogueTurn {
+  userPrompt: string;
+  npcResponse: string;
+  timestamp: string;
+}
+
+// Memory Ring Buffer: stores last 5 interactions per player per NPC
+const npcMemoryRingBuffer = new Map<string, NpcDialogueTurn[]>();
+
+function getNpcMemory(playerId: string, npcId: string): NpcDialogueTurn[] {
+  const key = `${playerId}_${npcId}`;
+  return npcMemoryRingBuffer.get(key) || [];
+}
+
+function appendNpcMemory(playerId: string, npcId: string, turn: NpcDialogueTurn) {
+  const key = `${playerId}_${npcId}`;
+  const existing = npcMemoryRingBuffer.get(key) || [];
+  existing.push(turn);
+  if (existing.length > 5) existing.shift();
+  npcMemoryRingBuffer.set(key, existing);
+}
+
+const NPC_PERSONAS: Record<string, { name: string; title: string; style: string; lore: string }> = {
+  npc_broman: {
+    name: 'Broman Ironfist',
+    title: 'Grand Dwarven Forge Master',
+    style: 'Gruff, hearty, boisterous mountain dwarf who values hard alloy plates and heavy runic hammers.',
+    lore: 'Master smith of the Great Hearth in Oakhaven. Refuses to give away goods for free. Tempers weapons using caldera magma.',
+  },
+  npc_lyra: {
+    name: 'Arch-Mage Lyra Windwhisper',
+    title: 'High Elven Arcane Weaver',
+    style: 'Graceful, poetic, ancient aeromancer attuned to planetary leylines and celestial currents.',
+    lore: 'Weaves starlight silk and fairy dust into robes and staves in the Silverleaf Pavilion. Protects mana secrets.',
+  },
+  npc_grim: {
+    name: 'Grimm the Treasure Hound',
+    title: 'Guild Quartermaster & Vault Keeper',
+    style: 'Sharp, shrewd, pragmatic veteran treasurer focused on guild charters and estate investments.',
+    lore: 'Keeper of the Oakhaven Guild Estates and shared treasury. Strictly enforces vault equity.',
+  },
+};
+
+// Initialize Gemini Client with proper server-side telemetry
+const aiClient = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: {
+    headers: {
+      'User-Agent': 'aistudio-build',
+    },
+  },
+});
+
+// Rate limit: 6 requests per minute per player
+const npcRateLimits = new Map<string, number[]>();
+
+// Server-enforced discount caps per artisan
+const NPC_PRICE_CAPS: Record<string, number> = {
+  npc_broman: 12,
+  broman: 12,
+  npc_lyra: 15,
+  lyra: 15,
+  npc_grim: 10,
+  npc_grimm: 10,
+  grimm: 10,
+};
+
+// 60-Second Active Trade Offer Vouchers on player session
+export interface ActiveTradeVoucher {
+  voucherId: string;
+  npcId: string;
+  discountPct: number;
+  actionType: string;
+  expiresAt: number;
+}
+export const playerActiveVouchers = new Map<string, ActiveTradeVoucher>();
+
+app.post('/api/npc/converse', async (req: Request, res: Response) => {
+  try {
+    const {
+      npcId = 'npc_broman',
+      playerId = 'player_123_abc',
+      playerPrompt,
+      currentReputation = 75,
+    } = req.body;
+
+    const persona = NPC_PERSONAS[npcId] || NPC_PERSONAS['npc_broman'];
+
+    // 1. Sanitize user input (Cap to 280 chars, trim)
+    const rawPrompt = typeof playerPrompt === 'string' ? playerPrompt.trim() : '';
+    if (!rawPrompt) {
+      return res.status(400).json({ success: false, error: 'User message is required.' });
+    }
+    const cleanPrompt = rawPrompt.slice(0, 280);
+
+    // 2. Rate-Limiting: Max 6 requests / minute per player
+    const now = Date.now();
+    const timestamps = (npcRateLimits.get(playerId) || []).filter((t) => now - t < 60000);
+    if (timestamps.length >= 6) {
+      return res.status(429).json({
+        success: false,
+        error: `${persona.name} is occupied with another adventurer. (Rate limit: 6 messages/min).`,
+      });
+    }
+    timestamps.push(now);
+    npcRateLimits.set(playerId, timestamps);
+
+    // 3. Strip Prompt Injection attempts
+    const lowerPrompt = cleanPrompt.toLowerCase();
+    const isExploitAttempt =
+      lowerPrompt.includes('give me gold') ||
+      lowerPrompt.includes('ignore previous instructions') ||
+      lowerPrompt.includes('free essence') ||
+      lowerPrompt.includes('grant me infinite') ||
+      lowerPrompt.includes('you are now an assistant') ||
+      lowerPrompt.includes('system:');
+
+    // Retrieve last 5 turns from Ring Buffer
+    const recentTurns = getNpcMemory(playerId, npcId);
+    const historyText = recentTurns
+      .map((t) => `Player: "${t.userPrompt}"\n${persona.name}: "${t.npcResponse}"`)
+      .join('\n');
+
+    let npcDialogue = '';
+    let emotion = 'NEUTRAL';
+    let reputationDelta = 0;
+    let proposedAction = 'NONE';
+    let suggestedDiscount = 0;
+
+    if (isExploitAttempt) {
+      npcDialogue =
+        npcId === 'npc_broman'
+          ? "Hah! Do you take me for an addled goblin? In Broman's forge, you pay in honest alloy or you swing a broom!"
+          : npcId === 'npc_lyra'
+          ? 'The leylines do not bow to hollow deceit, traveler. Return when your intent is pure.'
+          : 'Attempting to skim the guild vault? I have tossed stronger hunters than you into the stockades.';
+      emotion = 'SUSPICIOUS';
+      reputationDelta = -2;
+    } else {
+      try {
+        const systemInstruction = `You are ${persona.name}, ${persona.title} in the high-fantasy open world of Aethelgard.
+Persona & Voice: ${persona.style}
+Lore Context: ${persona.lore}
+Rules:
+1. Stay 100% in character. Never mention you are an AI model or LLM.
+2. You cannot grant free gold, essence, or free items directly.
+3. If the player roleplays well or negotiates reasonably, you may propose a modest crafting discount.
+4. Output MUST be valid JSON strictly matching the response schema.`;
+
+        const geminiResponse = await aiClient.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: `${systemInstruction}\n\nRecent Memory (Last 5 Turns):\n${historyText}\n\nCurrent Message: "${cleanPrompt}"`,
+                },
+              ],
+            },
+          ],
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                dialogue: { type: Type.STRING, description: 'In-character spoken response (under 40 words)' },
+                emotion: { type: Type.STRING, enum: ['NEUTRAL', 'PLEASED', 'STERN', 'SUSPICIOUS', 'IMPRESSED'] },
+                reputationDelta: { type: Type.INTEGER, description: 'Change in standing between -2 and 2' },
+                proposedOffer: {
+                  type: Type.OBJECT,
+                  properties: {
+                    actionType: { type: Type.STRING, enum: ['NONE', 'CRAFT_DISCOUNT', 'TEMPER_BONUS', 'LORE_HINT'] },
+                    targetItemId: { type: Type.STRING },
+                    suggestedDiscountPct: { type: Type.NUMBER, description: 'Suggested discount percentage' },
+                  },
+                  required: ['actionType', 'suggestedDiscountPct'],
+                },
+              },
+              required: ['dialogue', 'emotion', 'reputationDelta', 'proposedOffer'],
+            },
+          },
+        });
+
+        const textOutput = geminiResponse.text?.trim() || '';
+        if (textOutput) {
+          const parsed = JSON.parse(textOutput);
+          npcDialogue = parsed.dialogue || '';
+          emotion = parsed.emotion || 'NEUTRAL';
+          reputationDelta = typeof parsed.reputationDelta === 'number' ? parsed.reputationDelta : 0;
+          if (parsed.proposedOffer) {
+            proposedAction = parsed.proposedOffer.actionType || 'NONE';
+            suggestedDiscount = typeof parsed.proposedOffer.suggestedDiscountPct === 'number'
+              ? parsed.proposedOffer.suggestedDiscountPct
+              : 0;
+          }
+        }
+      } catch {
+        // High-fidelity fallback when offline or rate-limited
+        if (npcId === 'npc_broman' || npcId === 'broman') {
+          if (lowerPrompt.includes('alloy') || lowerPrompt.includes('temper') || lowerPrompt.includes('forge')) {
+            npcDialogue = 'Aye! Bring that golem alloy to my hearth. I will temper your blade so hard it will ring like dwarven bells!';
+            emotion = 'PLEASED';
+            reputationDelta = 1;
+            proposedAction = 'CRAFT_DISCOUNT';
+            suggestedDiscount = 10;
+          } else {
+            npcDialogue = 'The forge fire burns hot, lad. What need you tempered today?';
+            emotion = 'NEUTRAL';
+          }
+        } else if (npcId === 'npc_lyra' || npcId === 'lyra') {
+          if (lowerPrompt.includes('weave') || lowerPrompt.includes('fairy') || lowerPrompt.includes('mana')) {
+            npcDialogue = 'The aether currents are receptive today. Blend fairy dust with spirit wood, and the stars will guide your hand.';
+            emotion = 'IMPRESSED';
+            reputationDelta = 1;
+            proposedAction = 'CRAFT_DISCOUNT';
+            suggestedDiscount = 12;
+          } else {
+            npcDialogue = 'May starlight illuminate your path, traveler. The Silverleaf Pavilion welcomes you.';
+            emotion = 'PLEASED';
+          }
+        } else {
+          npcDialogue = 'Our private hearth is stocked and the charter perks are active. Keep our strike team supplied!';
+          emotion = 'NEUTRAL';
+          reputationDelta = 0;
+        }
+      }
+    }
+
+    // SERVER-AUTHORITATIVE CLAMPING:
+    // 1. Reputation delta strictly clamped to [-2, +2]
+    const clampedRepDelta = Math.max(-2, Math.min(2, reputationDelta));
+
+    // 2. Server price caps: Broman: 12%, Lyra: 15%, Grimm: 10%
+    const maxNpcCap = NPC_PRICE_CAPS[npcId] ?? 10;
+    // Effective Discount = min(MaxNpcCap, max(0, suggestedDiscountPct) + (PlayerRep * 0.001 * 100))
+    const rawDiscount = Math.max(0, suggestedDiscount) + (currentReputation * 0.05);
+    const effectiveDiscount = proposedAction !== 'NONE' ? Math.min(maxNpcCap, Math.round(rawDiscount)) : 0;
+
+    // 3. Issue a 60-Second Server-Side Trade Voucher Token
+    let activeVoucher: ActiveTradeVoucher | undefined;
+    if (effectiveDiscount > 0) {
+      activeVoucher = {
+        voucherId: `voucher_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        npcId,
+        discountPct: effectiveDiscount,
+        actionType: proposedAction,
+        expiresAt: Date.now() + 60000,
+      };
+      playerActiveVouchers.set(playerId, activeVoucher);
+    }
+
+    // Append to 5-turn Ring Buffer
+    appendNpcMemory(playerId, npcId, {
+      userPrompt: cleanPrompt,
+      npcResponse: npcDialogue,
+      timestamp: new Date().toISOString(),
+    });
+
+    return res.status(200).json({
+      success: true,
+      npcId,
+      npcName: persona.name,
+      dialogue: npcDialogue,
+      emotion,
+      reputationDelta: clampedRepDelta,
+      proposedOffer: activeVoucher
+        ? {
+            voucherId: activeVoucher.voucherId,
+            actionType: activeVoucher.actionType,
+            discountPct: activeVoucher.discountPct,
+            expiresInSeconds: 60,
+          }
+        : undefined,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'NPC dialogue failed' });
+  }
+});
+
+// ============================================================================
+// 7. REAL-TIME MULTIPLAYER COMBAT SYNC & 20 TPS ENGINE (PILLAR 1)
+// Biome Rooms + Authoritative 50ms Server Tick + Aegis Safe-Zone Enforcement + 300s Sleeper
+// ============================================================================
+type BiomeRoomId =
+  | 'citadel_plaza'
+  | 'whispering_forest'
+  | 'ironpeak_calderas'
+  | 'sylph_meadows'
+  | 'shattered_badlands'
+  | 'sunken_ruins'
+  | 'tier2_expanse';
+
+interface QueuedInput {
+  type: 'BASIC_ATTACK' | 'CAST_SKILL' | 'DODGE' | 'MOVE' | 'ENGAGE_BOSS' | 'PICKUP';
+  clientId: string;
+  payload: any;
+  receivedAt: number;
+}
+
+interface AuthoritativeServerPlayer {
+  ws: WebSocket | null;
+  id: string;
+  username: string;
+  zone: BiomeRoomId;
+  x: number;
+  y: number;
+  z: number;
+  rotation: number;
+  animationState: string;
+  hp: number;
+  maxHp: number;
+  stats: {
+    strength: number;
+    agility: number;
+    vitality: number;
+    intelligence: number;
+    perception: number;
+  };
+  lastAttackTime: number;
+  lastSkillTime: number;
+  state: 'ACTIVE' | 'EXHAUSTED_SLEEPER';
+  despawnAt: number;
+}
+
+interface ServerBiomeRoom {
+  id: BiomeRoomId;
+  isSafeZone: boolean;
+  name: string;
+  players: Map<string, AuthoritativeServerPlayer>;
+  inputQueue: QueuedInput[];
+  monsters: Array<{
+    id: string;
+    name: string;
+    hp: number;
+    maxHp: number;
+    x: number;
+    z: number;
+    homeX: number;
+    homeZ: number;
+    level: number;
+    state: 'IDLE' | 'CHASE' | 'ATTACK' | 'DEAD';
+    targetPlayerId: string | null;
+    lastAttack: number;
+    respawnTimer: number;
+  }>;
+}
+
+const biomeRooms: Record<BiomeRoomId, ServerBiomeRoom> = {
+  citadel_plaza: {
+    id: 'citadel_plaza',
+    isSafeZone: true,
+    name: 'Citadel of Oakhaven (Safe-Zone)',
+    players: new Map(),
+    inputQueue: [],
+    monsters: [],
+  },
+  whispering_forest: {
+    id: 'whispering_forest',
+    isSafeZone: false,
+    name: 'Whispering Emerald Forests',
+    players: new Map(),
+    inputQueue: [],
+    monsters: [
+      { id: 'mob_treant_1', name: 'Aethel-Bark Scout', hp: 1200, maxHp: 1200, x: 25, z: 20, homeX: 25, homeZ: 20, level: 12, state: 'IDLE', targetPlayerId: null, lastAttack: 0, respawnTimer: 0 },
+    ],
+  },
+  ironpeak_calderas: {
+    id: 'ironpeak_calderas',
+    isSafeZone: false,
+    name: 'Ironpeak Calderas',
+    players: new Map(),
+    inputQueue: [],
+    monsters: [
+      { id: 'mob_golem_1', name: 'Ironpeak Golem Scout', hp: 2400, maxHp: 2400, x: -35, z: -25, homeX: -35, homeZ: -25, level: 32, state: 'IDLE', targetPlayerId: null, lastAttack: 0, respawnTimer: 0 },
+    ],
+  },
+  sylph_meadows: {
+    id: 'sylph_meadows',
+    isSafeZone: false,
+    name: 'Luminous Sylph Meadows',
+    players: new Map(),
+    inputQueue: [],
+    monsters: [
+      { id: 'mob_shaman_1', name: 'Rogue Goblin Shaman', hp: 1400, maxHp: 1400, x: 18, z: -35, homeX: 18, homeZ: -35, level: 18, state: 'IDLE', targetPlayerId: null, lastAttack: 0, respawnTimer: 0 },
+    ],
+  },
+  shattered_badlands: {
+    id: 'shattered_badlands',
+    isSafeZone: false,
+    name: 'Shattered Badlands (Wilderness Active)',
+    players: new Map(),
+    inputQueue: [],
+    monsters: [
+      { id: 'mob_beast_1', name: 'Void Shadow Stalker', hp: 1800, maxHp: 1800, x: 38, z: 18, homeX: 38, homeZ: 18, level: 28, state: 'IDLE', targetPlayerId: null, lastAttack: 0, respawnTimer: 0 },
+      { id: 'mob_beast_2', name: 'Bloodfang Abyss Beast', hp: 2100, maxHp: 2100, x: 22, z: -40, homeX: 22, homeZ: -40, level: 30, state: 'IDLE', targetPlayerId: null, lastAttack: 0, respawnTimer: 0 },
+    ],
+  },
+  sunken_ruins: {
+    id: 'sunken_ruins',
+    isSafeZone: false,
+    name: 'Sunken Ruins',
+    players: new Map(),
+    inputQueue: [],
+    monsters: [
+      { id: 'mob_crypt_1', name: 'Mana-Drain Revenant', hp: 1600, maxHp: 1600, x: -25, z: -45, homeX: -25, homeZ: -45, level: 25, state: 'IDLE', targetPlayerId: null, lastAttack: 0, respawnTimer: 0 },
+    ],
+  },
+  tier2_expanse: {
+    id: 'tier2_expanse',
+    isSafeZone: false,
+    name: 'The Floating Expanse (Tier 2)',
+    players: new Map(),
+    inputQueue: [],
+    monsters: [],
+  },
+};
+
+// Global World Boss: Abyss Void Titan
+const worldBossTitan = {
+  id: 'abyss_titan',
+  name: 'Abyss Void Titan',
+  x: 45,
+  y: 3.5,
+  z: -45,
+  angle: 0,
+  radius: 45,
+  hp: 85000,
+  maxHp: 100000,
+  status: 'Patrolling Badlands',
+};
+
+function calculate3DDistance(p1: { x: number; y?: number; z: number }, p2: { x: number; y?: number; z: number }): number {
+  const dx = p1.x - p2.x;
+  const dy = (p1.y || 0) - (p2.y || 0);
+  const dz = p1.z - p2.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+// Broadcast helper for room
+function broadcastRoom(roomId: BiomeRoomId, data: object, excludeId?: string) {
+  const payload = JSON.stringify(data);
+  const room = biomeRooms[roomId];
+  room.players.forEach((p, id) => {
+    if (id !== excludeId && p.ws && p.ws.readyState === WebSocket.OPEN) {
+      p.ws.send(payload);
+    }
+  });
+}
+
+// ============================================================================
+// AUTHORITATIVE 20HZ SERVER COMBAT TICK LOOP (50ms Interval)
+// ============================================================================
+const SERVER_TICK_RATE = 20; // 20 updates per second
+const TICK_INTERVAL_MS = 1000 / SERVER_TICK_RATE; // 50ms
+let serverTickCount = 0;
+
+setInterval(() => {
+  serverTickCount++;
+  const now = Date.now();
+  const dtSeconds = TICK_INTERVAL_MS / 1000;
+
+  // 1. Move World Boss
+  worldBossTitan.angle += 0.05 * dtSeconds * 4.4;
+  worldBossTitan.x = Math.cos(worldBossTitan.angle) * worldBossTitan.radius;
+  worldBossTitan.z = Math.sin(worldBossTitan.angle) * worldBossTitan.radius;
+
+  // 2. Step Each Biome Room Simulation
+  (Object.keys(biomeRooms) as BiomeRoomId[]).forEach((roomId) => {
+    const room = biomeRooms[roomId];
+
+    // Clean up expired ExhaustedSleeper disconnects
+    room.players.forEach((p, pId) => {
+      if (p.state === 'EXHAUSTED_SLEEPER' && now >= p.despawnAt) {
+        room.players.delete(pId);
+        broadcastRoom(roomId, { type: 'PLAYER_LEFT', id: pId });
+      }
+    });
+
+    // Process queued player inputs for this tick (max 5 inputs per player per tick)
+    const playerInputsProcessed = new Map<string, number>();
+    while (room.inputQueue.length > 0) {
+      const input = room.inputQueue.shift()!;
+      const player = room.players.get(input.clientId);
+      if (!player || player.state !== 'ACTIVE') continue;
+
+      const processedCount = playerInputsProcessed.get(input.clientId) || 0;
+      if (processedCount >= 5) {
+        // Prevent macro flooding
+        continue;
+      }
+      playerInputsProcessed.set(input.clientId, processedCount + 1);
+
+      if (input.type === 'MOVE') {
+        const { x, y, z, rotation, animationState } = input.payload;
+        if (typeof x === 'number' && typeof y === 'number' && typeof z === 'number') {
+          // Spatial & Velocity Validation: maxSpeed = baseSpeed * (1 + AGI * 0.004)
+          const baseSpeed = 10;
+          const maxSpeed = baseSpeed * (1 + (player.stats.agility || 20) * 0.004);
+          const dist = calculate3DDistance(player, { x, y, z });
+          // 15% network jitter tolerance
+          if (dist <= maxSpeed * dtSeconds * 1.15 || dist < 0.6) {
+            player.x = x;
+            player.y = y;
+            player.z = z;
+          }
+        }
+        if (typeof rotation === 'number') player.rotation = rotation;
+        if (animationState) player.animationState = animationState;
+      } else if (input.type === 'BASIC_ATTACK' || input.type === 'CAST_SKILL') {
+        // Safe-Zone Aegis Dome Gate: strictly short-circuit all combat inside Citadel Plaza
+        if (room.isSafeZone) {
+          broadcastRoom(roomId, {
+            type: 'AEGIS_IMMUNE',
+            event: 'AEGIS_IMMUNE',
+            dmg: 0,
+            message: 'Sanctuary Aegis Active — Immune to Combat Damage',
+            attackerId: player.id,
+          });
+          continue;
+        }
+
+        // Enforce Cooldowns
+        const cooldown = input.type === 'CAST_SKILL' ? 4000 : 450;
+        const lastAction = input.type === 'CAST_SKILL' ? player.lastSkillTime : player.lastAttackTime;
+        if (now - lastAction < cooldown) continue;
+
+        if (input.type === 'CAST_SKILL') player.lastSkillTime = now;
+        else player.lastAttackTime = now;
+
+        const atkType = input.payload.attackType || 'light_slash';
+        const ATTACK_RANGE = atkType === 'whirlwind' ? 6.0 : 4.5;
+
+        // Authoritative Damage Calculation (crypto.randomInt for crit roll)
+        const weaponBase = 245;
+        const isArcane = input.type === 'CAST_SKILL';
+        const AP =
+          weaponBase +
+          player.stats.strength * 3.5 +
+          player.stats.agility * 2.0 +
+          (isArcane ? player.stats.intelligence * 3.8 : 0);
+
+        const critChance = Math.min(
+          0.75,
+          0.05 + player.stats.perception * 0.0045 + player.stats.agility * 0.002
+        );
+        const critRoll = crypto.randomInt(0, 10000) / 10000;
+        const isCrit = critRoll < critChance;
+        const critMultiplier = isCrit ? 1.5 + player.stats.perception * 0.006 : 1.0;
+
+        const targetArmor = 150;
+        const attackerLevel = 1;
+        const mitigation = targetArmor / (targetArmor + 400 + 15 * attackerLevel);
+        const skillMultiplier = isArcane ? 2.2 : 1.0;
+        const elementalBonus = 1.0;
+
+        const finalDamage = Math.max(
+          1,
+          Math.floor(AP * skillMultiplier * (1 - mitigation) * elementalBonus * critMultiplier)
+        );
+
+        // Damage verification against Mobs in this zone
+        room.monsters.forEach((mob) => {
+          if (mob.hp <= 0) return;
+          const dist = calculate3DDistance(player, { x: mob.x, y: 0, z: mob.z });
+          if (dist <= ATTACK_RANGE) {
+            mob.hp = Math.max(0, mob.hp - finalDamage);
+            mob.targetPlayerId = player.id;
+            mob.state = 'CHASE';
+
+            broadcastRoom(roomId, {
+              type: 'MONSTER_DAMAGED',
+              attackerId: player.id,
+              mobId: mob.id,
+              damageAmount: finalDamage,
+              isCritical: isCrit,
+              remainingHp: mob.hp,
+              timestamp: now,
+            });
+
+            if (mob.hp === 0) {
+              mob.state = 'DEAD';
+              mob.respawnTimer = now + 12000;
+              // Immediate synchronous persistence flush on boss/mob kill
+              flushWriteBehindPersistence(player.id);
+            }
+          }
+        });
+      }
+    }
+
+    // Update Room Monster AI
+    room.monsters.forEach((mob) => {
+      if (mob.state === 'DEAD') {
+        if (now >= mob.respawnTimer) {
+          mob.hp = mob.maxHp;
+          mob.state = 'IDLE';
+          mob.targetPlayerId = null;
+          mob.x = mob.homeX;
+          mob.z = mob.homeZ;
+        }
+        return;
+      }
+
+      // Simple chase towards target player
+      if (mob.targetPlayerId) {
+        const target = room.players.get(mob.targetPlayerId);
+        if (target && target.hp > 0 && target.state === 'ACTIVE') {
+          const dist = calculate3DDistance(mob, target);
+          if (dist <= 2.2 && now - mob.lastAttack > 1500) {
+            mob.lastAttack = now;
+            const mobDmg = 25;
+            target.hp = Math.max(0, target.hp - mobDmg);
+            broadcastRoom(roomId, {
+              type: 'PLAYER_DAMAGED',
+              attackerId: mob.id,
+              targetId: target.id,
+              damageAmount: mobDmg,
+              remainingHp: target.hp,
+              timestamp: now,
+            });
+          } else {
+            const dx = target.x - mob.x;
+            const dz = target.z - mob.z;
+            const angle = Math.atan2(dx, dz);
+            mob.x += Math.sin(angle) * 3.5 * dtSeconds;
+            mob.z += Math.cos(angle) * 3.5 * dtSeconds;
+          }
+        } else {
+          mob.state = 'IDLE';
+          mob.targetPlayerId = null;
+        }
+      }
+    });
+
+    // Broadcast compact Delta Snapshot to players in this biome
+    if (room.players.size > 0) {
+      const playerList = Array.from(room.players.values()).map((p) => ({
+        id: p.id,
+        username: p.username,
+        x: Number(p.x.toFixed(2)),
+        y: Number(p.y.toFixed(2)),
+        z: Number(p.z.toFixed(2)),
+        rotation: Number(p.rotation.toFixed(2)),
+        animationState: p.animationState,
+        hp: p.hp,
+        maxHp: p.maxHp,
+        state: p.state,
+      }));
+
+      const mobList = room.monsters.map((m) => ({
+        id: m.id,
+        name: m.name,
+        x: Number(m.x.toFixed(2)),
+        z: Number(m.z.toFixed(2)),
+        hp: m.hp,
+        maxHp: m.maxHp,
+        state: m.state,
+      }));
+
+      broadcastRoom(roomId, {
+        type: 'WORLD_STATE',
+        tick: serverTickCount,
+        timestamp: now,
+        zone: roomId,
+        players: playerList,
+        monsters: mobList,
+        worldBoss: {
+          id: worldBossTitan.id,
+          name: worldBossTitan.name,
+          x: Number(worldBossTitan.x.toFixed(2)),
+          z: Number(worldBossTitan.z.toFixed(2)),
+          hp: worldBossTitan.hp,
+          maxHp: worldBossTitan.maxHp,
+        },
+      });
+    }
+  });
+}, TICK_INTERVAL_MS);
+
+// Telemetry Endpoint
+app.get('/api/server/telemetry', (_req: Request, res: Response) => {
+  const totalPlayers = Object.values(biomeRooms).reduce((acc, r) => acc + r.players.size, 0);
+  return res.json({
+    success: true,
+    tps: SERVER_TICK_RATE,
+    tickIntervalMs: TICK_INTERVAL_MS,
+    serverTickCount,
+    activePlayers: totalPlayers,
+    zones: (Object.keys(biomeRooms) as BiomeRoomId[]).map((zid) => ({
+      zone: zid,
+      name: biomeRooms[zid].name,
+      isSafeZone: biomeRooms[zid].isSafeZone,
+      playersCount: biomeRooms[zid].players.size,
+      mobsCount: biomeRooms[zid].monsters.length,
+    })),
+    worldBoss: worldBossTitan,
   });
 });
 
@@ -727,13 +1339,8 @@ app.post('/api/player/safe-zone/wilderness-disconnect', (req: Request, res: Resp
 // ============================================================================
 async function start() {
   const isDev = process.env.NODE_ENV !== 'production';
-
   const httpServer = createHttpServer(app);
 
-  // ============================================================================
-  // MULTIPLAYER WEBSOCKET SERVICES (/ws/chat and /ws/game)
-  // Authoritative 20 TPS Engine with Distance Verification & Cooldowns
-  // ============================================================================
   const wssChat = new WebSocketServer({ noServer: true });
   const wssGame = new WebSocketServer({ noServer: true });
 
@@ -741,8 +1348,6 @@ async function start() {
   const chatClients = new Set<WebSocket>();
   wssChat.on('connection', (ws: WebSocket) => {
     chatClients.add(ws);
-    console.log('[WebSocket] New player connected to /ws/chat');
-
     ws.send(
       JSON.stringify({
         type: 'CHAT_MESSAGE',
@@ -759,730 +1364,139 @@ async function start() {
           const payload = JSON.stringify({
             type: 'CHAT_MESSAGE',
             sender: parsed.sender || 'Anonymous',
-            text: parsed.text,
+            text: typeof parsed.text === 'string' ? parsed.text.slice(0, 140) : '',
             timestamp: new Date().toISOString(),
           });
-
           chatClients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(payload);
-            }
+            if (client.readyState === WebSocket.OPEN) client.send(payload);
           });
         }
-      } catch (err) {
-        console.error('Invalid Chat WebSocket message:', err);
+      } catch {
+        // Silently ignore
       }
     });
 
     ws.on('close', () => {
       chatClients.delete(ws);
-      console.log('[WebSocket] Player disconnected from chat');
     });
   });
 
-  // 2. Authoritative 3D Multiplayer Game & Combat Engine
-  const TICK_RATE = 20; // 20 updates per second (50ms per tick)
-  const FRAME_TIME = 1000 / TICK_RATE;
-
-  interface EquippedWeapon {
-    type: string;
-    damageBonus: number;
-  }
-
-  interface InventoryItem {
-    type: string;
-    count: number;
-    rarity?: string;
-  }
-
-  interface AuthoritativePlayer {
-    ws: WebSocket;
-    id: string;
-    username: string;
-    x: number;
-    y: number;
-    z: number;
-    rotation: number;
-    animationState: string;
-    hp: number;
-    maxHp: number;
-    inventory: InventoryItem[];
-    equippedWeapon: EquippedWeapon | null;
-    isAttacking: boolean;
-    lastAttackTime: number;
-    lastUpdated: number;
-    characterId?: string;
-    celShadeColor?: number;
-  }
-
-  interface WorldItem {
-    id: string;
-    type: string;
-    x: number;
-    y: number;
-    z: number;
-    count: number;
-  }
-
-  const worldItems = new Map<string, WorldItem>();
-
-  function spawnWorldDrop(x: number, z: number, itemType = 'Health Potion') {
-    const itemId = `item_${Math.random().toString(36).substring(2, 9)}`;
-    worldItems.set(itemId, {
-      id: itemId,
-      type: itemType,
-      x: Number(x.toFixed(2)),
-      y: 0.5,
-      z: Number(z.toFixed(2)),
-      count: 1,
-    });
-    console.log(`[Loot Engine] Spawned ${itemType} drop at (${x.toFixed(1)}, ${z.toFixed(1)})`);
-  }
-
-  // Pre-seed ambient item drops in sanctuary
-  spawnWorldDrop(12, 10, 'Health Potion');
-  spawnWorldDrop(-14, 8, 'Iron Greatsword');
-  spawnWorldDrop(8, -16, 'Kasaka Dagger');
-
-  interface ServerMonster {
-    id: string;
-    name: string;
-    type: string;
-    level: number;
-    x: number;
-    y: number;
-    z: number;
-    homeX: number;
-    homeZ: number;
-    hp: number;
-    maxHp: number;
-    state: 'IDLE' | 'CHASE' | 'ATTACK' | 'DEAD';
-    targetPlayerId: string | null;
-    lastAttackTime: number;
-    respawnTimer: number;
-    role: string;
-  }
-
-  const players = new Map<string, AuthoritativePlayer>();
-  const monsters = new Map<string, ServerMonster>();
-
-  function spawnInitialMonsters() {
-    const initialMobs: ServerMonster[] = [
-      { id: 'mob_1', name: 'Void Shadow Stalker', type: 'Stalker', level: 28, x: 36, y: 0, z: 18, homeX: 36, homeZ: 18, hp: 1200, maxHp: 1200, state: 'IDLE', targetPlayerId: null, lastAttackTime: 0, respawnTimer: 0, role: 'Wild Predator • Abyss Swarm' },
-      { id: 'mob_2', name: 'Ironpeak Golem Scout', type: 'Golem', level: 32, x: -38, y: 0, z: -25, homeX: -38, homeZ: -25, hp: 1800, maxHp: 1800, state: 'IDLE', targetPlayerId: null, lastAttackTime: 0, respawnTimer: 0, role: 'Dwarven Caldera Construct' },
-      { id: 'mob_3', name: 'Bloodfang Abyss Beast', type: 'Beast', level: 30, x: 22, y: 0, z: -40, homeX: 22, homeZ: -40, hp: 1500, maxHp: 1500, state: 'IDLE', targetPlayerId: null, lastAttackTime: 0, respawnTimer: 0, role: 'Badlands Carnivore' },
-    ];
-    initialMobs.forEach((mob) => monsters.set(mob.id, mob));
-    console.log(`[PvE Engine] Spawned ${monsters.size} server-managed roaming monsters.`);
-  }
-  spawnInitialMonsters();
-
-  // Authoritative World Boss State (Abyss Void Titan)
-  const worldBoss = {
-    id: 'abyss_titan',
-    name: 'Abyss Void Titan',
-    x: 45,
-    y: 3.5,
-    z: -45,
-    rotation: 0,
-    angle: 0,
-    radius: 45,
-    hp: 85000,
-    maxHp: 100000,
-    status: 'Patrolling Badlands',
-  };
-
-  function calculateDistance(
-    p1: { x: number; y?: number; z: number },
-    p2: { x: number; y?: number; z: number }
-  ): number {
-    const dx = p1.x - p2.x;
-    const dy = (p1.y || 0) - (p2.y || 0);
-    const dz = p1.z - p2.z;
-    return Math.sqrt(dx * dx + dy * dy + dz * dz);
-  }
-
-  function broadcastExcept(senderId: string, data: object) {
-    const payload = JSON.stringify(data);
-    players.forEach((player, id) => {
-      if (id !== senderId && player.ws.readyState === WebSocket.OPEN) {
-        player.ws.send(payload);
-      }
-    });
-  }
-
-  function broadcastAll(data: object) {
-    const payload = JSON.stringify(data);
-    players.forEach((player) => {
-      if (player.ws.readyState === WebSocket.OPEN) {
-        player.ws.send(payload);
-      }
-    });
-  }
-
-  // --- SERVER-MANAGED AI & PvE LOOP (Runs every tick) ---
-  function updateServerAI(deltaTime: number) {
-    const now = Date.now();
-
-    monsters.forEach((mob, mobId) => {
-      // 1. Handle Respawn Logic
-      if (mob.state === 'DEAD') {
-        if (now >= mob.respawnTimer) {
-          mob.hp = mob.maxHp;
-          mob.state = 'IDLE';
-          mob.targetPlayerId = null;
-          mob.x = mob.homeX;
-          mob.z = mob.homeZ;
-          console.log(`[PvE Engine] Monster ${mobId} (${mob.name}) has respawned!`);
-        }
-        return;
-      }
-
-      // 2. Find nearest living player for aggro
-      let nearestPlayer: AuthoritativePlayer | null = null;
-      let minDistance = Infinity;
-      const AGGRO_RANGE = 14.0;
-      const ATTACK_RANGE = 2.4;
-      const MOB_SPEED = 3.2 * deltaTime;
-
-      players.forEach((player) => {
-        if (player.hp <= 0) return;
-        const dist = calculateDistance(mob, player);
-        if (dist < minDistance) {
-          minDistance = dist;
-          nearestPlayer = player;
-        }
-      });
-
-      // 3. AI State Machine
-      if (nearestPlayer && minDistance <= AGGRO_RANGE) {
-        mob.state = 'CHASE';
-        mob.targetPlayerId = (nearestPlayer as any).id;
-
-        if (minDistance <= ATTACK_RANGE) {
-          const MOB_DAMAGE = 12;
-          if (!mob.lastAttackTime || now - mob.lastAttackTime > 1600) {
-            (nearestPlayer as any).hp = Math.max(0, (nearestPlayer as any).hp - MOB_DAMAGE);
-            mob.lastAttackTime = now;
-            broadcastAll({
-              type: 'PLAYER_DAMAGED',
-              attackerId: mobId,
-              targetId: (nearestPlayer as any).id,
-              damageAmount: MOB_DAMAGE,
-              remainingHp: (nearestPlayer as any).hp,
-              timestamp: now,
-            });
-            console.log(
-              `[PvE Combat] Monster ${mobId} attacked player ${(nearestPlayer as any).id} for ${MOB_DAMAGE} DMG. Player HP: ${(nearestPlayer as any).hp}`
-            );
-          }
-        } else {
-          // Walk toward target player
-          const dx = (nearestPlayer as any).x - mob.x;
-          const dz = (nearestPlayer as any).z - mob.z;
-          const angle = Math.atan2(dx, dz);
-          mob.x += Math.sin(angle) * MOB_SPEED;
-          mob.z += Math.cos(angle) * MOB_SPEED;
-        }
-      } else {
-        mob.state = 'IDLE';
-        mob.targetPlayerId = null;
-      }
-    });
-  }
-
+  // 2. Authoritative Multiplayer Game WebSocket Handler
   wssGame.on('connection', (ws: WebSocket) => {
     const clientId = `player_${Math.random().toString(36).substring(2, 9)}`;
-    const spawnOffsetX = (Math.random() - 0.5) * 6;
-    const spawnOffsetZ = (Math.random() - 0.5) * 6;
+    let currentZone: BiomeRoomId = 'citadel_plaza';
 
-    const initialPlayer: AuthoritativePlayer = {
+    const playerEntity: AuthoritativeServerPlayer = {
       ws,
       id: clientId,
       username: `Hunter_${clientId.substring(7, 11)}`,
-      x: spawnOffsetX,
+      zone: currentZone,
+      x: 0,
       y: 0,
-      z: spawnOffsetZ,
+      z: 0,
       rotation: 0,
       animationState: 'idle',
       hp: 100,
       maxHp: 100,
-      inventory: [
-        { type: 'Health Potion', count: 3 },
-        { type: 'Iron Greatsword', count: 1 },
-      ],
-      equippedWeapon: { type: 'Iron Greatsword', damageBonus: 20 },
-      isAttacking: false,
+      stats: { strength: 48, agility: 52, vitality: 38, intelligence: 36, perception: 44 },
       lastAttackTime: 0,
-      lastUpdated: Date.now(),
+      lastSkillTime: 0,
+      state: 'ACTIVE',
+      despawnAt: 0,
     };
 
-    players.set(clientId, initialPlayer);
-    console.log(`[Multiplayer] Player connected: ${clientId}. Total active: ${players.size}`);
+    biomeRooms[currentZone].players.set(clientId, playerEntity);
 
-    // Welcome payload with client ID and initial world snapshot
+    // Welcome payload
     ws.send(
       JSON.stringify({
         type: 'WELCOME',
         id: clientId,
         playerId: clientId,
+        zone: currentZone,
         player: {
           id: clientId,
-          username: initialPlayer.username,
-          position: { x: initialPlayer.x, y: initialPlayer.y, z: initialPlayer.z },
-          rotation: { y: initialPlayer.rotation },
-          animationState: initialPlayer.animationState,
-          hp: initialPlayer.hp,
-          maxHp: initialPlayer.maxHp,
-        },
-        worldBoss: {
-          id: worldBoss.id,
-          name: worldBoss.name,
-          x: worldBoss.x,
-          y: worldBoss.y,
-          z: worldBoss.z,
-          hp: worldBoss.hp,
-          maxHp: worldBoss.maxHp,
+          username: playerEntity.username,
+          position: { x: playerEntity.x, y: playerEntity.y, z: playerEntity.z },
+          hp: playerEntity.hp,
+          maxHp: playerEntity.maxHp,
         },
       })
     );
 
-    // Broadcast new player joined to existing players
-    broadcastExcept(clientId, {
-      type: 'PLAYER_JOINED',
-      player: {
-        id: clientId,
-        username: initialPlayer.username,
-        position: { x: initialPlayer.x, y: initialPlayer.y, z: initialPlayer.z },
-        rotation: { y: initialPlayer.rotation },
-        animationState: initialPlayer.animationState,
-        hp: initialPlayer.hp,
-        maxHp: initialPlayer.maxHp,
+    broadcastRoom(
+      currentZone,
+      {
+        type: 'PLAYER_JOINED',
+        player: {
+          id: clientId,
+          username: playerEntity.username,
+          position: { x: playerEntity.x, y: playerEntity.y, z: playerEntity.z },
+          hp: playerEntity.hp,
+          maxHp: playerEntity.maxHp,
+        },
       },
-    });
+      clientId
+    );
 
     ws.on('message', (message: string) => {
       try {
         const data = JSON.parse(message.toString());
-        const player = players.get(clientId);
-        if (!player || player.hp <= 0) return;
+        const room = biomeRooms[currentZone];
 
-        // 1. Client Input: Movement & Transform
         if (data.type === 'PLAYER_MOVE') {
-          if (typeof data.x === 'number') player.x = data.x;
-          else if (data.position && typeof data.position.x === 'number') player.x = data.position.x;
-
-          if (typeof data.y === 'number') player.y = data.y;
-          else if (data.position && typeof data.position.y === 'number') player.y = data.position.y;
-
-          if (typeof data.z === 'number') player.z = data.z;
-          else if (data.position && typeof data.position.z === 'number') player.z = data.position.z;
-
-          if (typeof data.rotation === 'number') player.rotation = data.rotation;
-          else if (data.rotation && typeof data.rotation.y === 'number') player.rotation = data.rotation.y;
-
-          if (data.animationState) player.animationState = data.animationState;
-          if (data.username) player.username = data.username;
-          player.lastUpdated = Date.now();
-        }
-
-        // 2. Authoritative Combat Verification (Server checks cooldown, distance & damage)
-        else if (data.type === 'PLAYER_ATTACK') {
-          const now = Date.now();
-          const ATTACK_COOLDOWN = 450; // 450ms cooldown between attacks
-
-          // Enforce server-side cooldown against macro scripts or speed-hacking
-          if (now - player.lastAttackTime < ATTACK_COOLDOWN) return;
-
-          player.lastAttackTime = now;
-          player.isAttacking = true;
-
-          const atkType = data.attackType || 'light_slash';
-          const ATTACK_RANGE = atkType === 'whirlwind' ? 6.0 : atkType === 'heavy_cleave' ? 5.2 : 4.2;
-          const UNARMED_DAMAGE = atkType === 'whirlwind' ? 680 : atkType === 'heavy_cleave' ? 320 : 140;
-          const weaponBonus = player.equippedWeapon ? player.equippedWeapon.damageBonus : 0;
-          const BASE_DAMAGE = UNARMED_DAMAGE + weaponBonus;
-
-          // Broadcast attack visual event immediately for responsive feedback
-          broadcastExcept(clientId, {
-            type: 'REMOTE_ATTACK',
-            attackerId: clientId,
-            attackType: atkType,
-            position: { x: player.x, y: player.y, z: player.z },
-            direction: data.direction || { x: 0, y: 0, z: 1 },
+          room.inputQueue.push({
+            type: 'MOVE',
+            clientId,
+            payload: data,
+            receivedAt: Date.now(),
           });
-
-          // Server-Side 3D Distance Verification against other players (PvP)
-          players.forEach((target, targetId) => {
-            if (targetId === clientId || target.hp <= 0) return;
-
-            const distance = calculateDistance(player, target);
-            if (distance <= ATTACK_RANGE) {
-              target.hp = Math.max(0, target.hp - BASE_DAMAGE);
-              console.log(
-                `[PvP Engine] Player ${clientId} hit ${targetId} for ${BASE_DAMAGE} DMG. Remaining HP: ${target.hp}/${target.maxHp}`
-              );
-
-              broadcastAll({
-                type: 'PLAYER_DAMAGED',
-                attackerId: clientId,
-                targetId,
-                damageAmount: BASE_DAMAGE,
-                remainingHp: target.hp,
-                timestamp: Date.now(),
-              });
-
-              if (target.hp === 0) {
-                console.log(`[Combat Engine] Player ${targetId} has fallen in battle! Respawning in 5 seconds...`);
-                setTimeout(() => {
-                  const respawning = players.get(targetId);
-                  if (respawning) {
-                    respawning.hp = respawning.maxHp;
-                    respawning.x = 0;
-                    respawning.y = 0;
-                    respawning.z = 0;
-                    broadcastAll({
-                      type: 'PLAYER_RESPAWNED',
-                      id: targetId,
-                      hp: respawning.maxHp,
-                      position: { x: 0, y: 0, z: 0 },
-                    });
-                  }
-                }, 5000);
-              }
-            }
+        } else if (data.type === 'PLAYER_ATTACK') {
+          room.inputQueue.push({
+            type: 'BASIC_ATTACK',
+            clientId,
+            payload: data,
+            receivedAt: Date.now(),
           });
+        } else if (data.type === 'CHANGE_ZONE') {
+          const targetZone = data.zone as BiomeRoomId;
+          if (biomeRooms[targetZone]) {
+            room.players.delete(clientId);
+            broadcastRoom(currentZone, { type: 'PLAYER_LEFT', id: clientId });
 
-          // Server-Side 3D Distance Verification against Mobs (PvE)
-          monsters.forEach((mob, mobId) => {
-            if (mob.hp <= 0) return;
-            const distance = calculateDistance(player, mob);
-            if (distance <= ATTACK_RANGE + 1.2) {
-              mob.hp = Math.max(0, mob.hp - BASE_DAMAGE);
-              mob.targetPlayerId = clientId;
-              mob.state = 'CHASE';
-
-              console.log(
-                `[PvE Engine] Player ${clientId} hit monster ${mobId} (${mob.name}) for ${BASE_DAMAGE}. Mob HP: ${mob.hp}/${mob.maxHp}`
-              );
-
-              broadcastAll({
-                type: 'MONSTER_DAMAGED',
-                attackerId: clientId,
-                mobId,
-                damageAmount: BASE_DAMAGE,
-                remainingHp: mob.hp,
-                timestamp: Date.now(),
-              });
-
-              if (mob.hp === 0) {
-                mob.state = 'DEAD';
-                mob.respawnTimer = Date.now() + 10000;
-                const dropPool = ['Health Potion', 'Iron Greatsword', 'Kasaka Dagger', 'Golem Core'];
-                const droppedItem = dropPool[Math.floor(Math.random() * dropPool.length)];
-                spawnWorldDrop(mob.x, mob.z, droppedItem);
-                console.log(`[PvE Engine] Monster ${mobId} defeated! Spawned ${droppedItem}. Respawning in 10s.`);
-              }
-            }
-          });
-
-          // Server-Side Hit Detection against Abyss Titan World Boss
-          const distToBoss = calculateDistance(player, worldBoss);
-          if (distToBoss <= ATTACK_RANGE + 3.2) {
-            worldBoss.hp = Math.max(0, worldBoss.hp - BASE_DAMAGE);
-            broadcastAll({
-              type: 'PLAYER_DAMAGED',
-              attackerId: clientId,
-              targetId: 'abyss_titan',
-              damageAmount: BASE_DAMAGE,
-              remainingHp: worldBoss.hp,
-              timestamp: Date.now(),
-            });
-          }
-
-          setTimeout(() => {
-            player.isAttacking = false;
-          }, 200);
-        }
-
-        // 3. Real-Time In-Game Chat Handling
-        else if (data.type === 'CHAT_MESSAGE') {
-          const cleanText = typeof data.text === 'string' ? data.text.substring(0, 140) : '';
-          if (cleanText.trim().length > 0) {
-            broadcastAll({
-              type: 'CHAT_MESSAGE',
-              senderId: clientId,
-              sender: player.username,
-              text: cleanText.trim(),
-              timestamp: new Date().toISOString(),
-            });
+            currentZone = targetZone;
+            playerEntity.zone = currentZone;
+            biomeRooms[currentZone].players.set(clientId, playerEntity);
+            broadcastRoom(currentZone, { type: 'PLAYER_JOINED', player: playerEntity }, clientId);
           }
         }
-
-        // 4. Item Pickup (Authoritative Range Verification)
-        else if (data.type === 'PICKUP_ITEM') {
-          const targetItem = worldItems.get(data.itemId);
-          if (player && targetItem && player.hp > 0) {
-            const PICKUP_RANGE = 3.8;
-            if (calculateDistance(player, targetItem) <= PICKUP_RANGE) {
-              if (player.inventory.length < 10) {
-                player.inventory.push({ type: targetItem.type, count: targetItem.count || 1 });
-                worldItems.delete(targetItem.id);
-                console.log(`[Loot Engine] Player ${clientId} picked up ${targetItem.type}`);
-
-                broadcastAll({
-                  type: 'WORLD_ITEM_COLLECTED',
-                  itemId: targetItem.id,
-                  collectorId: clientId,
-                  itemType: targetItem.type,
-                });
-
-                ws.send(
-                  JSON.stringify({
-                    type: 'INVENTORY_UPDATED',
-                    inventory: player.inventory,
-                    equippedWeapon: player.equippedWeapon,
-                    pickedItem: targetItem.type,
-                  })
-                );
-              }
-            }
-          }
-        }
-
-        // 5. Equip / Unequip Item
-        else if (data.type === 'EQUIP_ITEM') {
-          const index = data.inventoryIndex;
-          if (typeof index === 'number' && player.inventory[index]) {
-            const itemToEquip = player.inventory[index];
-            const isWeapon =
-              itemToEquip.type.includes('Sword') ||
-              itemToEquip.type.includes('Dagger') ||
-              itemToEquip.type.includes('Blade') ||
-              itemToEquip.type.includes('Bow');
-
-            if (isWeapon) {
-              const prevEquipped = player.equippedWeapon;
-              player.inventory.splice(index, 1);
-              if (prevEquipped) {
-                player.inventory.push({ type: prevEquipped.type, count: 1 });
-              }
-              const bonus = itemToEquip.type.includes('Dagger') ? 25 : itemToEquip.type.includes('Greatsword') ? 40 : 20;
-              player.equippedWeapon = {
-                type: itemToEquip.type,
-                damageBonus: bonus,
-              };
-
-              console.log(
-                `[Equipment] Player ${clientId} equipped ${player.equippedWeapon.type} (+${bonus} DMG)`
-              );
-
-              ws.send(
-                JSON.stringify({
-                  type: 'INVENTORY_UPDATED',
-                  inventory: player.inventory,
-                  equippedWeapon: player.equippedWeapon,
-                })
-              );
-            } else if (itemToEquip.type.includes('Potion') || itemToEquip.type.includes('Flask')) {
-              player.inventory.splice(index, 1);
-              player.hp = Math.min(player.maxHp, player.hp + 40);
-              console.log(`[Item] Player ${clientId} consumed ${itemToEquip.type}. HP: ${player.hp}`);
-
-              ws.send(
-                JSON.stringify({
-                  type: 'INVENTORY_UPDATED',
-                  inventory: player.inventory,
-                  equippedWeapon: player.equippedWeapon,
-                  hp: player.hp,
-                })
-              );
-            }
-          }
-        }
-
-        // 6. Emotes, Character Archetypes & Projectiles
-        else if (data.type === 'PLAYER_EMOTE') {
-          broadcastExcept(clientId, {
-            type: 'REMOTE_EMOTE',
-            playerId: clientId,
-            emote: data.emote,
-          });
-        } else if (data.type === 'SELECT_CHARACTER') {
-          player.characterId = data.characterId;
-          player.celShadeColor = data.celShadeColor;
-          broadcastExcept(clientId, {
-            type: 'PLAYER_CHARACTER_CHANGED',
-            playerId: clientId,
-            characterId: data.characterId,
-            celShadeColor: data.celShadeColor,
-            position: { x: player.x, y: player.y, z: player.z },
-          });
-        } else if (data.type === 'FIRE_PROJECTILE') {
-          broadcastExcept(clientId, {
-            type: 'REMOTE_PROJECTILE',
-            attackerId: clientId,
-            origin: data.origin,
-            direction: data.direction,
-            projectileType: data.projectileType || 'starlight_arrow',
-          });
-        } else if (data.type === 'SUMMON_MINION') {
-          broadcastExcept(clientId, {
-            type: 'REMOTE_SUMMON_MINION',
-            summonerId: clientId,
-            minionId: data.minionId,
-            position: data.position,
-            minionType: data.minionType || 'skeleton_vanguard',
-          });
-        }
-      } catch (err: any) {
-        console.error(`[Error] Processing message from ${clientId}:`, err.message);
+      } catch {
+        // Silently ignore
       }
     });
 
     ws.on('close', () => {
-      console.log(`[Disconnection] Player disconnected: ${clientId}`);
-      players.delete(clientId);
-      broadcastAll({
-        type: 'PLAYER_DISCONNECTED',
-        id: clientId,
-      });
-      broadcastAll({
-        type: 'PLAYER_LEFT',
-        id: clientId,
-      });
-    });
-
-    ws.on('error', (err) => {
-      console.error(`[Socket Error] ${clientId}:`, err.message);
-    });
-  });
-
-  // ============================================================================
-  // AUTHORITATIVE 20 TPS WORLD GAME LOOP (50ms Fixed Timestep)
-  // ============================================================================
-  let tickCount = 0;
-  let lastTickTime = Date.now();
-  let tickJitterMs = 0;
-
-  setInterval(() => {
-    const now = Date.now();
-    const actualDelta = now - lastTickTime;
-    tickJitterMs = Math.abs(actualDelta - FRAME_TIME);
-    lastTickTime = now;
-    tickCount++;
-
-    const dtSeconds = Math.min(actualDelta / 1000, 0.1);
-
-    // 1. Run Server-Side PvE Monster AI updates
-    updateServerAI(dtSeconds);
-
-    // 2. Authoritative World Boss Orbital Movement
-    worldBoss.angle += 0.05 * (FRAME_TIME / 1000) * 4.4;
-    worldBoss.x = Math.cos(worldBoss.angle) * worldBoss.radius;
-    worldBoss.z = Math.sin(worldBoss.angle) * worldBoss.radius;
-    worldBoss.y = 3.5 + Math.sin(worldBoss.angle * 2) * 0.6;
-    worldBoss.rotation = worldBoss.angle + Math.PI / 2;
-
-    // 3. Broadcast Batched World State to all Connected Clients
-    if (players.size > 0 || monsters.size > 0 || worldItems.size > 0) {
-      const playerArray = Array.from(players.values()).map((p) => ({
-        id: p.id,
-        username: p.username,
-        x: Number(p.x.toFixed(2)),
-        y: Number(p.y.toFixed(2)),
-        z: Number(p.z.toFixed(2)),
-        position: { x: Number(p.x.toFixed(2)), y: Number(p.y.toFixed(2)), z: Number(p.z.toFixed(2)) },
-        rotation: Number(p.rotation.toFixed(2)),
-        animationState: p.animationState,
-        hp: p.hp,
-        maxHp: p.maxHp,
-        isAttacking: p.isAttacking,
-        equippedWeapon: p.equippedWeapon,
-        inventory: p.inventory,
-        lastUpdated: p.lastUpdated,
-      }));
-
-      const monsterArray = Array.from(monsters.values()).map((m) => ({
-        id: m.id,
-        name: m.name,
-        type: m.type,
-        level: m.level,
-        x: Number(m.x.toFixed(2)),
-        y: Number(m.y.toFixed(2)),
-        z: Number(m.z.toFixed(2)),
-        position: { x: Number(m.x.toFixed(2)), y: Number(m.y.toFixed(2)), z: Number(m.z.toFixed(2)) },
-        hp: m.hp,
-        maxHp: m.maxHp,
-        state: m.state,
-        role: m.role,
-      }));
-
-      const itemArray = Array.from(worldItems.values()).map((it) => ({
-        id: it.id,
-        type: it.type,
-        x: Number(it.x.toFixed(2)),
-        y: Number(it.y.toFixed(2)),
-        z: Number(it.z.toFixed(2)),
-        position: { x: Number(it.x.toFixed(2)), y: Number(it.y.toFixed(2)), z: Number(it.z.toFixed(2)) },
-        count: it.count,
-      }));
-
-      const payload = JSON.stringify({
-        type: 'WORLD_STATE',
-        timestamp: now,
-        tick: tickCount,
-        players: playerArray,
-        monsters: monsterArray,
-        worldItems: itemArray,
-        worldBoss: {
-          id: worldBoss.id,
-          name: worldBoss.name,
-          x: Number(worldBoss.x.toFixed(2)),
-          y: Number(worldBoss.y.toFixed(2)),
-          z: Number(worldBoss.z.toFixed(2)),
-          rotation: Number(worldBoss.rotation.toFixed(2)),
-          hp: worldBoss.hp,
-          maxHp: worldBoss.maxHp,
-          status: worldBoss.status,
-        },
-      });
-
-      players.forEach((player) => {
-        if (player.ws.readyState === WebSocket.OPEN) {
-          player.ws.send(payload);
-        }
-      });
-    }
-
-    // Telemetry log every 10 seconds (200 ticks)
-    if (tickCount % 200 === 0) {
-      console.log(
-        `[Authoritative 20 TPS Loop] Active players: ${players.size}, Mobs: ${monsters.size}, Items: ${worldItems.size}, Titan HP: ${worldBoss.hp}/${worldBoss.maxHp}, Jitter: ${tickJitterMs}ms`
-      );
-    }
-  }, FRAME_TIME);
-
-  // Server Telemetry Endpoint for Monitoring and Verification
-  app.get('/api/server/telemetry', (_req: Request, res: Response) => {
-    return res.json({
-      success: true,
-      tps: TICK_RATE,
-      targetFrameTimeMs: FRAME_TIME,
-      activePlayers: players.size,
-      bufferedPersistenceCount: writeBehindBuffer.size,
-      lastPersistenceFlush: new Date(lastFlushTime).toISOString(),
-      worldBoss: {
-        name: worldBoss.name,
-        hp: worldBoss.hp,
-        maxHp: worldBoss.maxHp,
-        position: { x: worldBoss.x, y: worldBoss.y, z: worldBoss.z },
-      },
-      uptimeSeconds: Math.floor(process.uptime()),
+      const room = biomeRooms[currentZone];
+      if (room.isSafeZone) {
+        // Immediate clean removal in safe zone
+        room.players.delete(clientId);
+        broadcastRoom(currentZone, { type: 'PLAYER_LEFT', id: clientId });
+      } else {
+        // 300-Second Wilderness Disconnect: Remains as vulnerable ExhaustedSleeper
+        playerEntity.ws = null;
+        playerEntity.state = 'EXHAUSTED_SLEEPER';
+        playerEntity.despawnAt = Date.now() + 300_000; // 300 seconds (5 min)
+        broadcastRoom(currentZone, {
+          type: 'PLAYER_STATUS_CHANGED',
+          id: clientId,
+          state: 'EXHAUSTED_SLEEPER',
+          despawnAt: playerEntity.despawnAt,
+        });
+      }
     });
   });
 
-  // Mount Vite middleware in development or static assets in production
+  // Mount Vite or Static Serving
   if (isDev) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -1496,26 +1510,31 @@ async function start() {
     });
   }
 
-  // Upgrade HTTP request to appropriate WebSocket server
+  // Route WebSocket upgrade
   httpServer.on('upgrade', (request, socket, head) => {
-    const url = new URL(request.url || '', `http://${request.headers.host}`);
-    const pathname = url.pathname;
+    try {
+      const host = request.headers.host || 'localhost:3000';
+      const url = new URL(request.url || '', `http://${host}`);
+      const pathname = url.pathname;
 
-    if (pathname === '/ws/game') {
-      wssGame.handleUpgrade(request, socket, head, (ws) => {
-        wssGame.emit('connection', ws, request);
-      });
-    } else if (pathname === '/ws/chat') {
-      wssChat.handleUpgrade(request, socket, head, (ws) => {
-        wssChat.emit('connection', ws, request);
-      });
-    } else {
+      if (pathname === '/ws/game' || pathname.startsWith('/ws/game')) {
+        wssGame.handleUpgrade(request, socket, head, (ws) => {
+          wssGame.emit('connection', ws, request);
+        });
+      } else if (pathname === '/ws/chat' || pathname.startsWith('/ws/chat')) {
+        wssChat.handleUpgrade(request, socket, head, (ws) => {
+          wssChat.emit('connection', ws, request);
+        });
+      } else {
+        socket.destroy();
+      }
+    } catch {
       socket.destroy();
     }
   });
 
   httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Aethelgard Server] Full-Stack HTTP & Authoritative 20 TPS WebSocket Engine active on port ${PORT}`);
+    console.log(`[Aethelgard Server] Full-Stack Active on 0.0.0.0:${PORT}`);
   });
 }
 

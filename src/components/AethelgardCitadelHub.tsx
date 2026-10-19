@@ -9,23 +9,14 @@ import {
   Sparkles,
   Compass,
   ArrowRight,
-  Flame,
-  Award,
-  Bell,
-  Clock,
-  Zap,
-  Swords,
   ChevronRight,
   Users,
   Castle,
   Bed,
   AlertTriangle,
   Skull,
-  Trees,
-  Mountain,
-  Sun,
-  Eye,
   Gamepad2,
+  Clock,
 } from 'lucide-react';
 
 interface AethelgardCitadelHubProps {
@@ -46,15 +37,15 @@ interface AethelgardCitadelHubProps {
 const TIER1_BIOMES = [
   {
     name: 'Central Citadel Plaza',
-    type: 'Safe-Zone Sanctuary',
-    desc: 'The grand white-stone and brass capital protected by the Arcane Aegis Dome. Zero incoming damage.',
+    type: 'Sanctuary Safe-Zone',
+    desc: 'The grand white-stone capital protected by the Arcane Aegis Dome. Combat damage is completely neutralized.',
     icon: '🏰',
     color: '#06b6d4',
   },
   {
     name: 'Whispering Emerald Forests',
     type: 'Elven Homelands',
-    desc: 'Dense ancient woodlands where Elven aeromancers weave leyline currents through spirit wood.',
+    desc: 'Dense ancient woodlands where Elven aeromancers weave leyline currents through living spirit wood.',
     icon: '🌲',
     color: '#10b981',
   },
@@ -68,21 +59,21 @@ const TIER1_BIOMES = [
   {
     name: 'Luminous Sylph Meadows',
     type: 'Fairy Glades',
-    desc: 'Bioluminescent valleys where insectoid fairies dance along stardust leylines.',
+    desc: 'Bioluminescent valleys where insectoid fairies dance along shimmering stardust leylines.',
     icon: '✨',
     color: '#a855f7',
   },
   {
     name: 'Shattered Badlands',
     type: 'Open Wilderness',
-    desc: 'Arid canyon gorges crawling with goblin raiding swarms and lawless outlaw mercenaries.',
+    desc: 'Arid canyon gorges crawling with goblin raiding swarms and lawless rogue mercenaries.',
     icon: '🏜️',
     color: '#f97316',
   },
   {
     name: 'Sunken Ruins',
     type: 'Subterranean Abyss',
-    desc: 'Flooded catacombs where ancient abominations and mana-drain revenants guard ancient runes.',
+    desc: 'Flooded catacombs where ancient abominations and mana-drain revenants guard celestial runes.',
     icon: '🏛️',
     color: '#6366f1',
   },
@@ -105,7 +96,7 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
   const [fundsCollected, setFundsCollected] = useState<boolean>(false);
   const [exhaustedTimer, setExhaustedTimer] = useState<number>(safeZone.exhaustedSleeperTimer || 0);
 
-  // Exhausted Sleeper Countdown simulation (Feature A)
+  // Exhausted Sleeper Countdown simulation
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (safeZone.isSleepingInWilderness && exhaustedTimer > 0) {
@@ -134,7 +125,7 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
     const nextInSafeZone = !safeZone.bIsInSafeZone;
     const nextLocation = nextInSafeZone
       ? 'Citadel of Oakhaven (Safe-Zone)'
-      : 'Shattered Badlands (Wilderness PvP Active)';
+      : 'Shattered Badlands (Wilderness Active)';
 
     onUpdateSafeZone((prev) => ({
       ...prev,
@@ -181,7 +172,7 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
       wellRestedExpMultiplierActive: false,
     }));
 
-    await wildernessDisconnectSafeZone('Shattered Badlands (Wilderness PvP Active)');
+    await wildernessDisconnectSafeZone('Shattered Badlands (Wilderness Active)');
   };
 
   const handleClaimFunds = () => {
@@ -192,450 +183,367 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
   };
 
   return (
-    <div className="relative w-full max-w-7xl mx-auto space-y-8 select-none font-sans">
-      {/* Hero Welcome Banner */}
-      <div className="relative rounded-3xl overflow-hidden border border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/80 p-6 md:p-8 shadow-2xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
+    <div className="relative w-full max-w-7xl mx-auto space-y-6 select-none font-sans">
+      {/* Sanctuary & Expedition Command Header */}
+      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/80 border border-slate-800 rounded-3xl p-5 md:p-6 shadow-2xl backdrop-blur">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-tech font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                UNREAL ENGINE 5 CEL-SHADED PBR • NON-PROTAGONIST OPEN WORLD
-              </span>
-              <span className="text-[10px] font-tech text-amber-400 font-bold">
-                EDITION v2.0 MASTER
+              <span className="text-[10px] font-tech font-bold uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                THE CONTINENTAL FRONTIER • CITADEL OF OAKHAVEN
               </span>
             </div>
-            <h1 className="text-3xl md:text-5xl font-rpg font-extrabold text-white tracking-wide leading-tight">
-              Aethelgard Online
+            <h1 className="text-2xl md:text-4xl font-rpg font-extrabold text-white tracking-wide leading-tight">
+              Aethelgard Citadel Hub
             </h1>
-            <p className="text-slate-300 text-sm md:text-base font-sans leading-relaxed">
-              Step into a seamless 120 km² continental open world. No chosen-one narrative—forge your destiny as an artisan, dungeon crawler, or guild strategist across Elven canopies, Dwarven calderas, and soaring sky-continents.
+            <p className="text-slate-300 text-xs md:text-sm font-sans leading-relaxed">
+              Command your 6-hero strike team across Elven canopies, Dwarven magma calderas, and soaring sky-continents. Trade at the Artisan Bazaar, socket World Boss runes, or venture into the wild.
             </p>
           </div>
 
-          {/* Safe-Zone State Badge & Action Toggle */}
-          <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
+          {/* Sanctuary Shield Status & Actions */}
+          <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0">
             <div
-              className={`p-4 rounded-2xl border flex items-center justify-between gap-4 transition ${
+              className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition ${
                 safeZone.bIsInSafeZone
                   ? 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300'
-                  : 'bg-rose-950/80 border-rose-500/60 text-rose-300 shadow-lg shadow-rose-950/50'
+                  : 'bg-rose-950/80 border-rose-500/60 text-rose-300 shadow-lg'
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 {safeZone.bIsInSafeZone ? (
-                  <Shield className="w-6 h-6 text-emerald-400 shrink-0" />
+                  <Shield className="w-5 h-5 text-emerald-400 shrink-0" />
                 ) : (
-                  <ShieldAlert className="w-6 h-6 text-rose-400 shrink-0 animate-pulse" />
+                  <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 animate-pulse" />
                 )}
                 <div>
                   <div className="font-rpg font-bold text-xs uppercase tracking-wider">
-                    {safeZone.bIsInSafeZone ? 'Arcane Aegis Dome (Active)' : 'Wilderness PvP Enabled'}
+                    {safeZone.bIsInSafeZone ? 'Arcane Aegis Dome (Active)' : 'Wilderness Zone Active'}
                   </div>
                   <div className="text-[10px] font-tech text-slate-300">
                     {safeZone.bIsInSafeZone
-                      ? 'No-Combat Field: Incoming Dmg Multiplier = 0.0'
-                      : 'Open PvP, Monster Aggro & Bounty Hunters Active'}
+                      ? 'Sanctuary Aegis Active — Immune to Combat Damage'
+                      : 'Open Wilderness: Monster Aggro & Outlaws Active'}
                   </div>
                 </div>
               </div>
 
               <button
                 onClick={handleToggleBoundary}
-                className="px-3 py-1.5 rounded-xl font-tech font-bold text-xs bg-slate-900 border border-slate-700 text-white hover:bg-slate-800 transition"
+                className="px-3 py-1.5 rounded-xl font-tech font-bold text-xs bg-slate-900 border border-slate-700 text-white hover:bg-slate-800 transition cursor-pointer"
               >
-                {safeZone.bIsInSafeZone ? 'Step Beyond City Gates' : 'Enter Safe-Zone Dome'}
+                {safeZone.bIsInSafeZone ? 'Leave Sanctuary Gates' : 'Return to Citadel'}
               </button>
             </div>
 
-            {/* Well-Rested EXP Multiplier Status */}
-            {safeZone.wellRestedExpMultiplierActive && (
-              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2.5 text-amber-300 text-xs font-tech">
-                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>
-                  <strong>Well-Rested Buff Active:</strong> +100% EXP Multiplier from Inn Save!
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleInnLogout}
+                className="flex-1 px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white font-rpg font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Bed className="w-3.5 h-3.5" />
+                <span>Rest at Oakhaven Inn (+100% Well-Rested EXP)</span>
+              </button>
+
+              <button
+                onClick={handleClaimFunds}
+                disabled={fundsCollected}
+                className={`px-3 py-1.5 rounded-xl font-rpg font-bold text-[11px] transition flex items-center gap-1.5 cursor-pointer ${
+                  fundsCollected
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md'
+                }`}
+              >
+                <Coins className="w-3.5 h-3.5" />
+                <span>{fundsCollected ? 'Stipend Claimed' : 'Claim Daily Stipend'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* World Vista: Unreal Engine 5 Concept Art (The Cradle of Aether & Citadel of Oakhaven) */}
-      <div className="relative rounded-3xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl group">
-        <div className="relative aspect-video sm:aspect-[21/9] w-full overflow-hidden">
+      {/* Vulnerable Sleeper Alert (if active in wilderness) */}
+      {safeZone.isSleepingInWilderness && (
+        <div className="p-4 rounded-2xl bg-rose-950/80 border border-rose-500 text-white font-sans space-y-2 animate-pulse">
+          <div className="flex items-center gap-2 font-rpg font-bold text-sm text-rose-300">
+            <AlertTriangle className="w-5 h-5 text-rose-400" />
+            <span>VULNERABLE CAMPER IN THE WILDERNESS</span>
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Leaving the sanctuary leaves your campsite vulnerable in the open world for 300 seconds before safe camp is established. Return to the Aegis Dome or rest at an Inn to prevent ambushes!
+          </p>
+          <div className="flex items-center gap-3 pt-1">
+            <div className="text-xl font-rpg font-black text-rose-400">
+              {Math.floor(exhaustedTimer / 60)}:{(exhaustedTimer % 60).toString().padStart(2, '0')}
+            </div>
+            <span className="text-xs font-tech text-slate-400">Time remaining until secure rest</span>
+          </div>
+        </div>
+      )}
+
+      {/* Main Citadel Split: Hero Spotlight & The Cradle of Aether Vista */}
+      <div className="grid lg:grid-cols-12 gap-6 items-stretch">
+        {/* Left Column: Original Hero Spotlight (Vaelen Thorne • The Umbral Sovereign) - 5 Cols */}
+        <div className="lg:col-span-5 bg-gradient-to-b from-slate-900/90 to-slate-950 border border-cyan-500/40 rounded-3xl p-5 shadow-xl flex flex-col justify-between space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="relative shrink-0 w-28 h-36 rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-lg shadow-cyan-500/20 group">
+              <img
+                src="/src/assets/images/hunter_monarch_1792207007018.jpg"
+                alt="Vaelen Thorne - The Umbral Sovereign"
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-500"
+              />
+              <div className="absolute top-1.5 left-1.5 flex gap-1">
+                <span className="px-1.5 py-0.2 rounded bg-amber-500 text-black text-[9px] font-black">SSR</span>
+              </div>
+            </div>
+
+            <div className="flex-1 space-y-1">
+              <span className="text-[10px] font-tech text-amber-400 font-bold">
+                Combat Power: 4,516 CP
+              </span>
+              <h2 className="text-lg md:text-xl font-rpg font-extrabold text-white leading-snug">
+                Vaelen Thorne
+              </h2>
+              <p className="text-xs font-tech text-cyan-300">
+                The Umbral Sovereign • Void-Touched Blade
+              </p>
+              <div className="pt-1 text-[11px] text-slate-300 font-sans leading-relaxed line-clamp-3">
+                Commands the sovereign authority of the umbral depths to extract the shades of defeated monsters. Armed with Nightshade Viper Fang and Abyssal Grasp.
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stat Matrix */}
+          <div className="grid grid-cols-4 gap-2 text-center text-xs">
+            <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+              <div className="text-[9px] text-slate-400 font-tech">STR</div>
+              <div className="font-bold text-cyan-300 font-tech">48</div>
+            </div>
+            <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+              <div className="text-[9px] text-slate-400 font-tech">AGI</div>
+              <div className="font-bold text-cyan-300 font-tech">52</div>
+            </div>
+            <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+              <div className="text-[9px] text-slate-400 font-tech">INT</div>
+              <div className="font-bold text-purple-400 font-tech">36</div>
+            </div>
+            <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+              <div className="text-[9px] text-slate-400 font-tech">PER</div>
+              <div className="font-bold text-amber-300 font-tech">44</div>
+            </div>
+          </div>
+
+          <div className="flex gap-2.5 pt-1">
+            <button
+              onClick={onOpenPartyScreen}
+              className="flex-1 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-rpg font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Inspect Strike Team</span>
+            </button>
+
+            {onEnter3DPlayableWorld && (
+              <button
+                onClick={onEnter3DPlayableWorld}
+                className="py-2 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-rpg font-bold text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Gamepad2 className="w-3.5 h-3.5" />
+                <span>Play in 3D</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: World Vista Banner & Altar Portal - 7 Cols */}
+        <div className="lg:col-span-7 relative rounded-3xl overflow-hidden border border-slate-800 bg-slate-900 shadow-xl group flex flex-col justify-end min-h-[300px]">
           <img
             src="/src/assets/images/aethelgard_open_world_1792057283044.jpg"
-            alt="Aethelgard Online - The Cradle of Aether, Citadel of Oakhaven Arcane Aegis Dome, Teleportation Array and Floating Continents"
+            alt="The Cradle of Aether & Citadel of Oakhaven"
             referrerPolicy="no-referrer"
-            className="w-full h-full object-cover object-center group-hover:scale-102 transition duration-700"
+            className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-102 transition duration-700"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none" />
 
           {/* Floating World Landmark Callouts */}
           <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-            <span className="px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur border border-cyan-500/40 text-[11px] font-tech font-bold text-cyan-300 flex items-center gap-1.5 shadow-lg">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <span className="px-2.5 py-0.5 rounded-full bg-slate-950/80 backdrop-blur border border-cyan-500/40 text-[10px] font-tech font-bold text-cyan-300 flex items-center gap-1 shadow">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
               <span>ARCANE AEGIS DOME • CITADEL OF OAKHAVEN</span>
             </span>
-            <span className="px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur border border-indigo-500/40 text-[11px] font-tech font-bold text-indigo-300 flex items-center gap-1.5 shadow-lg">
-              <span>⚡ PLANAR TELEPORTATION ARRAY ALTAR</span>
-            </span>
-            <span className="px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur border border-amber-500/40 text-[11px] font-tech font-bold text-amber-300 flex items-center gap-1.5 shadow-lg">
+            <span className="px-2.5 py-0.5 rounded-full bg-slate-950/80 backdrop-blur border border-amber-500/40 text-[10px] font-tech font-bold text-amber-300 flex items-center gap-1 shadow">
               <span>🗿 ROAMING TITAN WORLD BOSS</span>
             </span>
           </div>
 
-          <div className="absolute bottom-4 left-4 right-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-            <div className="space-y-1">
-              <div className="text-[10px] font-tech text-cyan-400 uppercase tracking-wider font-extrabold flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>UNREAL ENGINE 5 CONCEPT ART • THE CRADLE OF AETHER</span>
-              </div>
-              <h3 className="text-xl md:text-2xl font-rpg font-extrabold text-white">
-                Colossal Metropolis & Roaming World Boss
-              </h3>
-              <p className="text-xs text-slate-300 font-sans max-w-2xl line-clamp-2">
-                An Elven ranger and Dwarven vanguard stand on the highland cliffs overlooking the walled Citadel of Oakhaven. Beyond the gates, an ancient Stone Titan roams lush valleys, while the floating continents of Tier 2 hover in the clouds.
-              </p>
-            </div>
+          <div className="relative z-10 p-5 space-y-2">
+            <h3 className="text-xl md:text-2xl font-rpg font-extrabold text-white">
+              The Cradle of Aether & Roaming Titans
+            </h3>
+            <p className="text-xs text-slate-300 font-sans max-w-xl line-clamp-2">
+              Overlook the fortified Citadel of Oakhaven. Beyond the gates, an ancient Stone Titan roams lush valleys, while the floating continents of Tier 2 hover in the clouds.
+            </p>
 
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              {onEnter3DPlayableWorld && (
-                <button
-                  onClick={onEnter3DPlayableWorld}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-rpg font-extrabold text-xs shadow-lg shadow-cyan-500/30 transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Gamepad2 className="w-4 h-4" />
-                  <span>PLAY IN 3D WORLD</span>
-                </button>
-              )}
+            <div className="flex items-center gap-2.5 pt-1">
               <button
                 onClick={onOpenTeleportArray}
-                className="px-4 py-2 rounded-xl bg-cyan-500/90 hover:bg-cyan-400 text-slate-950 font-rpg font-bold text-xs shadow-lg shadow-cyan-500/20 transition flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-rpg font-bold text-xs shadow-lg transition flex items-center gap-1.5 cursor-pointer"
               >
-                <span>Inspect Array Altar</span>
+                <span>Ancient Teleport Array</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Hunter Monarch Character Spotlight (Solo Leveling: Arise Aesthetic) */}
-      <div className="relative rounded-3xl overflow-hidden border-2 border-cyan-500/50 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/90 p-6 md:p-8 shadow-2xl shadow-cyan-500/10">
-        <div className="flex flex-col lg:flex-row items-center gap-8">
-          {/* Character Anime Portrait Card */}
-          <div className="relative shrink-0 w-64 md:w-72 h-96 rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-2xl shadow-cyan-500/30 group">
-            <img
-              src="/src/assets/images/hunter_monarch_1792207007018.jpg"
-              alt="Sung Jinwoo - The Shadow Monarch"
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-500"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute top-3 left-3 flex gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-amber-500 text-black text-[11px] font-black shadow">
-                SSR
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-slate-950/80 border border-cyan-400/50 text-cyan-300 text-[10px] font-tech font-bold uppercase">
-                Shadow Element
-              </span>
-            </div>
-            <div className="absolute bottom-3 left-3 right-3 text-center bg-slate-950/90 p-2.5 rounded-xl border border-white/10 backdrop-blur">
-              <div className="text-xs font-rpg font-bold text-white">Kasaka's Venom Fang</div>
-              <div className="text-[10px] text-cyan-400 font-tech">Equipped Weapon • +Bleed & Paralysis</div>
-            </div>
-          </div>
-
-          {/* Dossier & Actions */}
-          <div className="flex-1 space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-tech font-bold uppercase">
-                SOLO LEVELING: ARISE AESTHETIC • SHADOW MONARCH SYSTEM
-              </span>
-              <span className="text-xs font-tech text-amber-400 font-bold">
-                Combat Power: 4,516 CP
-              </span>
-            </div>
-
-            <div>
-              <h2 className="text-3xl font-rpg font-extrabold text-white">
-                Sung Jinwoo • The Shadow Monarch
-              </h2>
-              <p className="text-sm font-tech text-cyan-300 mt-0.5">
-                Master Hunter Class: Assassin / Necromancer • Awakened Sovereign
-              </p>
-            </div>
-
-            <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-sans bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-              Awakened as the sole Hunter who grows beyond limits. Channels the sovereign authority of the Shadow Monarch to extract the shadows of defeated dungeon beasts, commanding an unstoppable army with Kasaka’s Venom Fang and Dominator’s Touch telekinesis.
-            </p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                <div className="text-[10px] text-slate-400 font-tech">STRENGTH</div>
-                <div className="text-base font-bold text-cyan-300 font-tech">48</div>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                <div className="text-[10px] text-slate-400 font-tech">AGILITY</div>
-                <div className="text-base font-bold text-cyan-300 font-tech">52</div>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                <div className="text-[10px] text-slate-400 font-tech">INTELLIGENCE</div>
-                <div className="text-base font-bold text-purple-400 font-tech">36</div>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                <div className="text-[10px] text-slate-400 font-tech">PERCEPTION</div>
-                <div className="text-base font-bold text-amber-300 font-tech">44</div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3 pt-2">
               <button
-                onClick={onOpenPartyScreen}
-                className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-rpg font-bold text-xs shadow-lg shadow-cyan-500/20 transition flex items-center gap-2 cursor-pointer"
+                onClick={onOpenDungeonGate}
+                className="px-4 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white font-rpg font-bold text-xs shadow-lg transition flex items-center gap-1.5 cursor-pointer"
               >
-                <Users className="w-4 h-4" />
-                <span>Allocate Attributes & Inspect In Roster</span>
+                <Compass className="w-3.5 h-3.5" />
+                <span>Abyss Raids & Bosses</span>
               </button>
-
-              {onEnter3DPlayableWorld && (
-                <button
-                  onClick={onEnter3DPlayableWorld}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-rpg font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
-                >
-                  <Gamepad2 className="w-4 h-4" />
-                  <span>Deploy in 3D Playable Viewport</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Feature A Simulator: The Inn Logout Rule vs Wilderness Exhausted Sleeper */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 backdrop-blur space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-          <div>
-            <div className="flex items-center gap-2 text-cyan-400 font-tech font-bold text-xs uppercase tracking-wider">
-              <Clock className="w-4 h-4" />
-              <span>FEATURE A IMPLEMENTATION BLUEPRINT</span>
-            </div>
-            <h2 className="text-xl font-rpg font-bold text-white">
-              Safe Zones & The "Inn Logout" Persistence System
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-tech text-slate-400">Current Zone:</span>
-            <span className="text-xs font-rpg font-bold text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-xl border border-cyan-500/20">
-              {safeZone.locationName}
-            </span>
-          </div>
-        </div>
-
-        {/* Exhausted Sleeper Alert (If in wilderness disconnect) */}
-        {safeZone.isSleepingInWilderness && (
-          <div className="p-4 rounded-2xl bg-rose-950/80 border border-rose-500 text-white font-sans space-y-2 animate-pulse">
-            <div className="flex items-center gap-2 font-rpg font-bold text-sm text-rose-300">
-              <AlertTriangle className="w-5 h-5 text-rose-400" />
-              <span>VULNERABLE EXHAUSTED SLEEPER ACTIVE IN THE WILDERNESS!</span>
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Disconnecting in the wilderness switches character controller to <code className="text-rose-300 font-tech">ExhaustedSleeper_AI</code> for 300 seconds (5 minutes) playing a grounded sleeping animation. If hunted down by monsters or outlaws during this countdown, items drop!
-            </p>
-            <div className="flex items-center gap-3 pt-1">
-              <div className="text-2xl font-rpg font-black text-rose-400">
-                {Math.floor(exhaustedTimer / 60)}:{(exhaustedTimer % 60).toString().padStart(2, '0')}
-              </div>
-              <span className="text-xs font-tech text-slate-400">Time remaining until despawn and database save</span>
-            </div>
-          </div>
-        )}
-
-        <div className="grid md:grid-cols-2 gap-4 pt-2">
-          {/* Inn Safe Logout Card */}
-          <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between space-y-3">
-            <div>
-              <div className="flex items-center gap-2 font-rpg font-bold text-sm text-emerald-400 mb-1">
-                <Bed className="w-4 h-4" />
-                <span>Rest & Save at Oakhaven Inn</span>
-              </div>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Immediately serialize character inventory, EXP, location, and world state. Grants a <strong>2-hour Well-Rested EXP Multiplier (+100% EXP)</strong> upon return.
-              </p>
-            </div>
-            <button
-              onClick={handleInnLogout}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-rpg font-bold text-xs transition"
-            >
-              Test Safe-Zone Inn Logout (+2h Well-Rested EXP)
-            </button>
-          </div>
-
-          {/* Wilderness Disconnect Card */}
-          <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between space-y-3">
-            <div>
-              <div className="flex items-center gap-2 font-rpg font-bold text-sm text-rose-400 mb-1">
-                <Skull className="w-4 h-4" />
-                <span>Simulate Wilderness Disconnect</span>
-              </div>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Leaving safe zones leaves the avatar as a vulnerable <code className="text-rose-300 font-tech">ExhaustedSleeper</code> in the open world for 300 seconds before saving.
-              </p>
-            </div>
-            <button
-              onClick={handleWildernessDisconnect}
-              className="w-full py-2.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white font-rpg font-bold text-xs transition"
-            >
-              Simulate Wilderness Disconnect (300s Vulnerability)
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Six Continental Biomes of Tier 1 (Cradle of Aether) */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-cyan-400 font-tech font-bold text-xs uppercase tracking-wider">
-              <Compass className="w-4 h-4" />
-              <span>TIER 1 • THE CRADLE OF AETHER (120 KM² SEAMLESS MAP)</span>
-            </div>
-            <h2 className="text-2xl font-rpg font-extrabold text-white">
-              Six Ecological Biomes & 30 World Bosses
-            </h2>
-          </div>
-
-          <button
-            onClick={onOpenDungeonGate}
-            className="flex items-center gap-1.5 text-xs font-rpg font-bold text-cyan-400 hover:text-cyan-300"
-          >
-            <span>VIEW 30 WORLD BOSSES & EXPEDITION BOARD</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {TIER1_BIOMES.map((b) => (
-            <div
-              key={b.name}
-              onClick={onOpenDungeonGate}
-              className="p-5 rounded-3xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 transition cursor-pointer group"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-3xl p-2 rounded-2xl bg-slate-950 border border-slate-800/80">
-                  {b.icon}
-                </span>
-                <span
-                  className="text-[10px] font-tech font-bold uppercase px-2 py-0.5 rounded-md"
-                  style={{ backgroundColor: `${b.color}20`, color: b.color }}
-                >
-                  {b.type}
-                </span>
-              </div>
-              <h3 className="font-rpg font-bold text-sm text-white group-hover:text-cyan-400 transition">
-                {b.name}
-              </h3>
-              <p className="text-xs text-slate-400 font-sans mt-1 leading-relaxed">
-                {b.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Fast Navigation Hub Grid */}
+      {/* Fast Navigation Hub Grid (4 Interactive Stations) */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Dynamic 6-Player Party */}
+        {/* 6-Player Party */}
         <div
           onClick={onOpenPartyScreen}
-          className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-900 transition cursor-pointer group space-y-3"
+          className="p-4 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-900 transition cursor-pointer group space-y-2"
         >
-          <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-            <Users className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+            <Users className="w-4 h-4" />
           </div>
           <div>
-            <div className="font-rpg font-bold text-sm text-white group-hover:text-cyan-300 transition">
+            <div className="font-rpg font-bold text-xs text-white group-hover:text-cyan-300 transition">
               6-Player Strike Team
             </div>
-            <p className="text-xs text-slate-400 font-sans mt-0.5">
-              Attribute Matrix, Agility scaling formulas & cross-racial combo links.
+            <p className="text-[11px] text-slate-400 font-sans mt-0.5 line-clamp-2">
+              Attribute Matrix, Agility scaling, and cross-racial combo links.
             </p>
           </div>
-          <div className="text-[11px] font-tech text-cyan-400 flex items-center gap-1">
+          <div className="text-[10px] font-tech text-cyan-400 flex items-center gap-1">
             <span>INSPECT HEROES</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-3 h-3" />
           </div>
         </div>
 
         {/* Ancient Teleportation Array */}
         <div
           onClick={onOpenTeleportArray}
-          className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900 transition cursor-pointer group space-y-3"
+          className="p-4 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900 transition cursor-pointer group space-y-2"
         >
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-            <Sparkles className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <div className="font-rpg font-bold text-sm text-white group-hover:text-indigo-300 transition">
-              Ancient Teleportation Array
+            <div className="font-rpg font-bold text-xs text-white group-hover:text-indigo-300 transition">
+              Teleportation Array
             </div>
-            <p className="text-xs text-slate-400 font-sans mt-0.5">
-              Socket 4 World Boss runes to stream Tier 2: The Floating Expanse.
+            <p className="text-[11px] text-slate-400 font-sans mt-0.5 line-clamp-2">
+              Socket 4 World Boss runes to bridge Tier 2: The Floating Expanse.
             </p>
           </div>
-          <div className="text-[11px] font-tech text-indigo-400 flex items-center gap-1">
+          <div className="text-[10px] font-tech text-indigo-400 flex items-center gap-1">
             <span>SOCKET RUNES</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-3 h-3" />
           </div>
         </div>
 
-        {/* Grand Artisan Bazaar & Voice NPC */}
+        {/* Artisan Bazaar & Voice NPC */}
         <div
           onClick={onOpenBazaar}
-          className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-900 transition cursor-pointer group space-y-3"
+          className="p-4 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-900 transition cursor-pointer group space-y-2"
         >
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-            <Coins className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+            <Coins className="w-4 h-4" />
           </div>
           <div>
-            <div className="font-rpg font-bold text-sm text-white group-hover:text-amber-300 transition">
-              Artisan Bazaar & Voice NPC
+            <div className="font-rpg font-bold text-xs text-white group-hover:text-amber-300 transition">
+              Artisan Bazaar & NPC
             </div>
-            <p className="text-xs text-slate-400 font-sans mt-0.5">
-              Microphone voice STT & TTS with Broman, Lyra, and Grimm.
+            <p className="text-[11px] text-slate-400 font-sans mt-0.5 line-clamp-2">
+              Voice dialogue & bargaining with Broman, Lyra, and Grimm.
             </p>
           </div>
-          <div className="text-[11px] font-tech text-amber-400 flex items-center gap-1">
-            <span>CONVERSE WITH NPCS</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+          <div className="text-[10px] font-tech text-amber-400 flex items-center gap-1">
+            <span>VISIT STALLS</span>
+            <ChevronRight className="w-3 h-3" />
           </div>
         </div>
 
-        {/* Racial Crafting Workshop */}
+        {/* Forge & Loom */}
         <div
           onClick={onOpenWorkshops}
-          className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/50 hover:bg-slate-900 transition cursor-pointer group space-y-3"
+          className="p-4 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/50 hover:bg-slate-900 transition cursor-pointer group space-y-2"
         >
-          <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
-            <Castle className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+            <Castle className="w-4 h-4" />
           </div>
           <div>
-            <div className="font-rpg font-bold text-sm text-white group-hover:text-purple-300 transition">
+            <div className="font-rpg font-bold text-xs text-white group-hover:text-purple-300 transition">
               Dwarven & Elven Forges
             </div>
-            <p className="text-xs text-slate-400 font-sans mt-0.5">
-              Temper weapons with golem alloys and weave staves with fairy dust.
+            <p className="text-[11px] text-slate-400 font-sans mt-0.5 line-clamp-2">
+              Temper weapons with golem alloy and weave robes with fairy dust.
             </p>
           </div>
-          <div className="text-[11px] font-tech text-purple-400 flex items-center gap-1">
+          <div className="text-[10px] font-tech text-purple-400 flex items-center gap-1">
             <span>FORGE & WEAVE</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-3 h-3" />
           </div>
+        </div>
+      </div>
+
+      {/* Six Continental Biomes of Tier 1 */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1.5 text-cyan-400 font-tech font-bold text-[11px] uppercase tracking-wider">
+              <Compass className="w-3.5 h-3.5" />
+              <span>THE CRADLE OF AETHER • CONTINENTAL BIOMES</span>
+            </div>
+            <h2 className="text-xl font-rpg font-extrabold text-white">
+              Six Ecological Biomes & World Bosses
+            </h2>
+          </div>
+
+          <button
+            onClick={onOpenDungeonGate}
+            className="flex items-center gap-1 text-xs font-rpg font-bold text-cyan-400 hover:text-cyan-300 cursor-pointer"
+          >
+            <span>VIEW WORLD BOSSES</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {TIER1_BIOMES.map((b) => (
+            <div
+              key={b.name}
+              onClick={onOpenDungeonGate}
+              className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 transition cursor-pointer group"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-2xl p-1.5 rounded-xl bg-slate-950 border border-slate-800/80">
+                  {b.icon}
+                </span>
+                <span
+                  className="text-[9px] font-tech font-bold uppercase px-2 py-0.5 rounded-md"
+                  style={{ backgroundColor: `${b.color}20`, color: b.color }}
+                >
+                  {b.type}
+                </span>
+              </div>
+              <h3 className="font-rpg font-bold text-xs text-white group-hover:text-cyan-400 transition">
+                {b.name}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-sans mt-0.5 leading-relaxed line-clamp-2">
+                {b.desc}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

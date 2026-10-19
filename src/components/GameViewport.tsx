@@ -291,8 +291,8 @@ export class SkeletonMinionAI {
   }
 }
 
-// 3. Shadow Monarch System (Sung Jinwoo - Solo Leveling Arise)
-export class ShadowMonarchSystem {
+// 3. Umbral Sovereign System (Vaelen Thorne - Aethelgard Online)
+export class UmbralSovereignSystem {
   player: { characterId: string; name: string };
   shadows: SkeletonMinionAI[];
   scene: THREE.Scene;
@@ -310,14 +310,12 @@ export class ShadowMonarchSystem {
     this.rampTexture = rampTexture;
   }
 
-  // Triggered when an enemy's health drops to 0 near Jinwoo or when Jinwoo unleashes "ARISE"
+  // Triggered when an enemy's health drops to 0 near Vaelen or when Vaelen unleashes "ARISE"
   extractShadow(
     defeatedMonster: { id: string; name: string; position: THREE.Vector3 },
     targetGroup: { id: string; name: string; position: THREE.Vector3; health: number; takeDamage: (amt: number) => void }[]
   ) {
-    console.log(`[Shadow Extraction]: "Arise." Extracting soul of ${defeatedMonster.name}...`);
-
-    // Spawn loyal shadow soldier at enemy position with Solo Leveling aesthetic:
+    // Spawn loyal umbral soldier at enemy position:
     // Dark void/blue-slate armor + glowing electric cyan eyes + shadow blade
     const shadowGroup = new THREE.Group();
     shadowGroup.name = `shadow_${defeatedMonster.id}_${Date.now()}`;
@@ -332,7 +330,7 @@ export class ShadowMonarchSystem {
     sBody.castShadow = true;
     shadowGroup.add(sBody);
 
-    // Glowing electric blue eyes (Sung Jinwoo shadow signature)
+    // Glowing electric blue eyes (Umbral Sovereign signature)
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
     const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), eyeMat);
     eye1.position.set(-0.16, 1.55, 0.35);
@@ -341,7 +339,7 @@ export class ShadowMonarchSystem {
     shadowGroup.add(eye1);
     shadowGroup.add(eye2);
 
-    // Dual Kasaka Shadow Daggers
+    // Dual Nightshade Viper Daggers
     const dMat = new THREE.MeshStandardMaterial({
       color: 0x1e1b4b,
       emissive: 0x38bdf8,
@@ -386,7 +384,9 @@ export class ShadowMonarchSystem {
   }
 }
 
-// Interactive Solo Leveling Hunter Selector Modal
+export const ShadowMonarchSystem = UmbralSovereignSystem;
+
+// Interactive Hunter Selector Modal
 export interface CharacterSelectorModalProps {
   roster: CharacterRosterItem[];
   selectedId: string;
@@ -420,7 +420,7 @@ export const CharacterSelectorModal: React.FC<CharacterSelectorModalProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[65vh] overflow-y-auto pr-1">
           {roster.map((char) => {
-            const isJinwoo = char.id === 'sung_jinwoo';
+            const isSovereign = char.id === 'vaelen_thorne' || char.id === 'sung_jinwoo';
             const isCurrent = char.id === selectedId;
 
             return (
@@ -428,7 +428,7 @@ export const CharacterSelectorModal: React.FC<CharacterSelectorModalProps> = ({
                 key={char.id}
                 onClick={() => onSelect(char)}
                 className={`cursor-pointer p-4 rounded-2xl border transition-all bg-slate-900/90 hover:bg-slate-850 hover:scale-[1.02] flex flex-col justify-between ${
-                  isJinwoo
+                  isSovereign
                     ? 'border-amber-400 shadow-xl shadow-amber-500/20 ring-1 ring-amber-400/50'
                     : isCurrent
                     ? 'border-cyan-400 shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400/40'
@@ -480,12 +480,12 @@ export const CharacterSelectorModal: React.FC<CharacterSelectorModalProps> = ({
                     className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
                       isCurrent
                         ? 'bg-emerald-600 text-white'
-                        : isJinwoo
+                        : isSovereign
                         ? 'bg-amber-500 text-black'
                         : 'bg-cyan-600 text-white'
                     }`}
                   >
-                    {isCurrent ? 'ACTIVE ✓' : isJinwoo ? 'ARISE 👑' : 'DEPLOY'}
+                    {isCurrent ? 'ACTIVE ✓' : isSovereign ? 'DEPLOY SOVEREIGN' : 'DEPLOY'}
                   </span>
                 </div>
               </div>
@@ -527,6 +527,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
   const [oreHarvested, setOreHarvested] = useState<number>(0);
   const [isNearOre, setIsNearOre] = useState<boolean>(false);
   const [isNearLantern, setIsNearLantern] = useState<boolean>(false);
+  const isNearOreRef = useRef<boolean>(false);
+  const isNearLanternRef = useRef<boolean>(false);
   const [connectedCount, setConnectedCount] = useState<number>(1);
 
   // Target Unit Frame State
@@ -2218,11 +2220,19 @@ export const GameViewport: React.FC<GameViewportProps> = ({
 
       // Interactive Ore Proximity check
       const distToOre = playerGroup.position.distanceTo(oreNode.position);
-      setIsNearOre(distToOre < 3.2);
+      const nearOre = distToOre < 3.2;
+      if (nearOre !== isNearOreRef.current) {
+        isNearOreRef.current = nearOre;
+        setIsNearOre(nearOre);
+      }
 
       // Hearth Lantern Proximity check
       const distToLantern = playerGroup.position.distanceTo(lanternGroup.position);
-      setIsNearLantern(distToLantern < 4.5);
+      const nearLantern = distToLantern < 4.5;
+      if (nearLantern !== isNearLanternRef.current) {
+        isNearLanternRef.current = nearLantern;
+        setIsNearLantern(nearLantern);
+      }
 
       // Roaming Abyss Void Titan Patrol
       bossAngle += delta * 0.22;
@@ -2500,7 +2510,7 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       domeGeo.dispose();
       domeMat.dispose();
     };
-  }, [triggerFloatingText, isNearOre]);
+  }, [triggerFloatingText]);
 
   return (
     <div className="relative w-full h-[82vh] min-h-[580px] rounded-3xl overflow-hidden border border-cyan-500/40 bg-slate-950 shadow-2xl select-none font-sans">

@@ -193,8 +193,7 @@ export async function syncPlayerState(data: {
   try {
     const res = await api.post('/player/sync', data);
     return res.data;
-  } catch (err: any) {
-    console.warn('[API] State sync local fallback active:', err.message);
+  } catch {
     return { success: true, localOnly: true, profile: data };
   }
 }
@@ -203,8 +202,7 @@ export async function innLogoutSafeZone(gold?: number, essence?: number) {
   try {
     const res = await api.post('/player/safe-zone/inn-logout', { gold, essence });
     return res.data;
-  } catch (err: any) {
-    console.warn('[API] Inn logout local fallback:', err.message);
+  } catch {
     return {
       success: true,
       safeZone: {
@@ -222,8 +220,7 @@ export async function wildernessDisconnectSafeZone(locationName?: string) {
   try {
     const res = await api.post('/player/safe-zone/wilderness-disconnect', { locationName });
     return res.data;
-  } catch (err: any) {
-    console.warn('[API] Wilderness disconnect local fallback:', err.message);
+  } catch {
     return {
       success: true,
       safeZone: {

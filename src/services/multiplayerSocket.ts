@@ -34,6 +34,7 @@ class MultiplayerSocketService {
   private localPlayerId: string | null = null;
   private isExplicitlyClosed = false;
   private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
   private reconnectTimer: any = null;
   private lastTransformSent = 0;
 
@@ -55,7 +56,6 @@ class MultiplayerSocketService {
       this.socket = new WebSocket(wsUrl);
 
       this.socket.onopen = () => {
-        console.log('[MultiplayerSocket] Connected to 3D Game WebSocket Server at', wsUrl);
         this.reconnectAttempts = 0;
       };
 
@@ -69,33 +69,33 @@ class MultiplayerSocketService {
           this.callbacks.forEach((cb) => {
             try {
               cb(data.type, data);
-            } catch (err) {
-              console.error('[MultiplayerSocket] Error in callback handler:', err);
+            } catch {
+              // Silently ignore callback errors to avoid browser console pollution
             }
           });
-        } catch (err) {
-          console.error('[MultiplayerSocket] Failed to parse message JSON:', err);
+        } catch {
+          // Silently handle invalid payload
         }
       };
 
-      this.socket.onerror = (err) => {
-        console.warn('[MultiplayerSocket] Connection issue:', err);
+      this.socket.onerror = () => {
+        // Silently handle socket transport errors (e.g. during iframe dev proxying)
       };
 
       this.socket.onclose = () => {
         this.socket = null;
-        if (!this.isExplicitlyClosed) {
-          const timeout = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts), 8000);
+        if (!this.isExplicitlyClosed && this.reconnectAttempts < this.maxReconnectAttempts) {
+          const timeout = Math.min(1500 * Math.pow(1.5, this.reconnectAttempts), 10000);
           this.reconnectAttempts++;
           clearTimeout(this.reconnectTimer);
           this.reconnectTimer = setTimeout(() => {
-            console.log(`[MultiplayerSocket] Reconnecting (attempt ${this.reconnectAttempts})...`);
             this.connect();
           }, timeout);
         }
       };
-    } catch (err) {
-      console.error('[MultiplayerSocket] Failed to create WebSocket connection:', err);
+    } catch {
+      // Graceful fallback when WebSockets are unsupported or blocked in host environment
+      this.socket = null;
     }
   }
 
@@ -107,58 +107,78 @@ class MultiplayerSocketService {
     if (now - this.lastTransformSent < 30) return;
     this.lastTransformSent = now;
 
-    this.socket.send(
-      JSON.stringify({
-        type: 'PLAYER_MOVE',
-        ...transform,
-      })
-    );
+    try {
+      this.socket.send(
+        JSON.stringify({
+          type: 'PLAYER_MOVE',
+          ...transform,
+        })
+      );
+    } catch {
+      // Silently catch send errors
+    }
   }
 
   sendAttack(attackData: AttackPayload) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(
-        JSON.stringify({
-          type: 'PLAYER_ATTACK',
-          ...attackData,
-        })
-      );
+      try {
+        this.socket.send(
+          JSON.stringify({
+            type: 'PLAYER_ATTACK',
+            ...attackData,
+          })
+        );
+      } catch {
+        // Silently catch
+      }
     }
   }
 
   dealDamage(targetId: string, damageAmount: number) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(
-        JSON.stringify({
-          type: 'DEAL_DAMAGE',
-          targetId,
-          damageAmount,
-        })
-      );
+      try {
+        this.socket.send(
+          JSON.stringify({
+            type: 'DEAL_DAMAGE',
+            targetId,
+            damageAmount,
+          })
+        );
+      } catch {
+        // Silently catch
+      }
     }
   }
 
   sendEmote(emote: string) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(
-        JSON.stringify({
-          type: 'PLAYER_EMOTE',
-          emote,
-        })
-      );
+      try {
+        this.socket.send(
+          JSON.stringify({
+            type: 'PLAYER_EMOTE',
+            emote,
+          })
+        );
+      } catch {
+        // Silently catch
+      }
     }
   }
 
   selectCharacter(characterId: string, celShadeColor?: number, position?: { x: number; y: number; z: number }) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(
-        JSON.stringify({
-          type: 'SELECT_CHARACTER',
-          characterId,
-          celShadeColor,
-          position: position || { x: 0, y: 0, z: 0 },
-        })
-      );
+      try {
+        this.socket.send(
+          JSON.stringify({
+            type: 'SELECT_CHARACTER',
+            characterId,
+            celShadeColor,
+            position: position || { x: 0, y: 0, z: 0 },
+          })
+        );
+      } catch {
+        // Silently catch
+      }
     }
   }
 
@@ -168,12 +188,16 @@ class MultiplayerSocketService {
     projectileType?: string;
   }) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(
-        JSON.stringify({
-          type: 'FIRE_PROJECTILE',
-          ...projectileData,
-        })
-      );
+      try {
+        this.socket.send(
+          JSON.stringify({
+            type: 'FIRE_PROJECTILE',
+            ...projectileData,
+          })
+        );
+      } catch {
+        // Silently catch
+      }
     }
   }
 
@@ -183,12 +207,16 @@ class MultiplayerSocketService {
     minionType?: string;
   }) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(
-        JSON.stringify({
-          type: 'SUMMON_MINION',
-          ...minionData,
-        })
-      );
+      try {
+        this.socket.send(
+          JSON.stringify({
+            type: 'SUMMON_MINION',
+            ...minionData,
+          })
+        );
+      } catch {
+        // Silently catch
+      }
     }
   }
 
@@ -200,7 +228,11 @@ class MultiplayerSocketService {
     this.isExplicitlyClosed = true;
     clearTimeout(this.reconnectTimer);
     if (this.socket) {
-      this.socket.close();
+      try {
+        this.socket.close();
+      } catch {
+        // Ignore
+      }
       this.socket = null;
     }
   }

@@ -16,7 +16,7 @@ export interface HunterStatAllocationProps {
 }
 
 export function HunterStatsPanel({
-  hunterName = 'Sung Jinwoo',
+  hunterName = 'Vaelen Thorne',
   stats,
   availablePoints,
   onAllocate,
@@ -34,7 +34,7 @@ export function HunterStatsPanel({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-xl font-rpg font-bold text-cyan-400">{hunterName} • Status</h3>
-          <p className="text-xs text-slate-400 font-mono">Shadow Monarch System • Solo Leveling Growth Matrix</p>
+          <p className="text-xs text-slate-400 font-mono">Umbral Sovereign System • Aethelgard Growth Matrix</p>
         </div>
         <div className="text-right">
           <span className="text-[10px] text-slate-400 uppercase font-mono block">Combat Power</span>
@@ -207,7 +207,7 @@ export function HunterWeaponsPanel() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-xl font-rpg font-bold text-cyan-400">Hunter Armory & Artifacts</h3>
-          <p className="text-xs text-slate-400 font-mono">Solo Leveling Weapon Progression (SR / SSR Tiers)</p>
+          <p className="text-xs text-slate-400 font-mono">Runic Weapon Progression (SR / SSR Tiers)</p>
         </div>
       </div>
 
