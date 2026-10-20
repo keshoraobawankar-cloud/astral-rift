@@ -17,7 +17,12 @@ import {
   Skull,
   Gamepad2,
   Clock,
+  Gift,
+  Flame,
+  Box,
 } from 'lucide-react';
+import { growthRetention } from '../services/growthRetentionService';
+import { INITIAL_PET_COMPANIONS } from '../data/petData';
 
 interface AethelgardCitadelHubProps {
   inventory: PlayerInventory;
@@ -32,6 +37,9 @@ interface AethelgardCitadelHubProps {
   onOpenGuildHall: () => void;
   onCollectActivityFunds: () => void;
   onEnter3DPlayableWorld?: () => void;
+  onOpenRetentionModal?: () => void;
+  activePetId?: string;
+  onSelectPet?: (petId: string) => void;
 }
 
 const TIER1_BIOMES = [
@@ -92,9 +100,22 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
   onOpenGuildHall,
   onCollectActivityFunds,
   onEnter3DPlayableWorld,
+  onOpenRetentionModal,
+  activePetId = 'void_hatchling',
+  onSelectPet,
 }) => {
   const [fundsCollected, setFundsCollected] = useState<boolean>(false);
   const [exhaustedTimer, setExhaustedTimer] = useState<number>(safeZone.exhaustedSleeperTimer || 0);
+  const [riftInfo, setRiftInfo] = useState(() => growthRetention.getCurrentRiftState());
+  const [retentionState, setRetentionState] = useState(() => growthRetention.getState());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRiftInfo(growthRetention.getCurrentRiftState());
+      setRetentionState(growthRetention.getState());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Exhausted Sleeper Countdown simulation
   useEffect(() => {
@@ -280,6 +301,98 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
           </div>
         </div>
       )}
+
+      {/* DYNAMIC REALM RIFT (RETENTION LOOP) & PET COMPANION BANNER */}
+      <div className="grid md:grid-cols-12 gap-4">
+        {/* Realm Rift Live Surge Banner (8 cols) */}
+        <div className="md:col-span-8 p-4 rounded-3xl bg-gradient-to-r from-purple-950/70 via-slate-900 to-indigo-950/70 border border-purple-500/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-400/50 flex items-center justify-center text-2xl shadow-lg shadow-purple-500/20 shrink-0 animate-pulse">
+              🌀
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-tech font-bold uppercase px-2 py-0.5 rounded bg-purple-500/30 text-purple-300 border border-purple-400/50">
+                  REALM RIFT ENGINE {riftInfo.isActive ? '• SURGE ACTIVE' : '• COUNTDOWN'}
+                </span>
+                <span className="text-xs font-mono font-bold text-amber-300">
+                  ⏱️ {Math.floor(riftInfo.secondsRemaining / 60)}:{(riftInfo.secondsRemaining % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+              {(() => {
+                const currentRift = riftInfo.activeRift || riftInfo.nextRift;
+                return (
+                  <>
+                    <h3 className="text-sm md:text-base font-rpg font-extrabold text-white mt-0.5">
+                      {currentRift.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-300 font-sans line-clamp-1">
+                      📍 {currentRift.biome} — <span className="text-amber-300 font-bold">{currentRift.bonus}</span>
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenRetentionModal && (
+              <button
+                onClick={() => {
+                  sound.playVictory();
+                  onOpenRetentionModal();
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-rpg font-bold text-xs shadow-lg shadow-purple-500/30 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Gift className="w-3.5 h-3.5 text-amber-300" />
+                <span>INVESTIGATE RIFT ({retentionState.loginStreak}-DAY STREAK)</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Active Pet Companion Quick Widget (4 cols) */}
+        <div className="md:col-span-4 p-4 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl flex items-center justify-between gap-3">
+          {(() => {
+            const pet = INITIAL_PET_COMPANIONS.find((p) => p.id === activePetId) || INITIAL_PET_COMPANIONS[0];
+            return (
+              <>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl shadow-inner shrink-0"
+                    style={{ backgroundColor: `${pet.color}25`, border: `1px solid ${pet.color}50` }}
+                  >
+                    {pet.icon}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-rpg font-bold text-xs text-white truncate max-w-[110px]">{pet.name}</span>
+                      <span className="text-[9px] font-tech font-bold px-1.5 py-0.2 rounded" style={{ backgroundColor: `${pet.color}30`, color: pet.accentColor }}>
+                        {pet.rarity}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-sans line-clamp-1">{pet.passiveBuff}</div>
+                  </div>
+                </div>
+
+                {onSelectPet && (
+                  <button
+                    onClick={() => {
+                      sound.playClick();
+                      const nextPet = activePetId === 'void_hatchling' ? 'solar_phoenix' : 'void_hatchling';
+                      onSelectPet(nextPet);
+                    }}
+                    className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-cyan-300 rounded-xl text-[10px] font-tech font-bold transition cursor-pointer shrink-0"
+                    title="Switch active Pet Companion"
+                  >
+                    SWAP PET
+                  </button>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      </div>
 
       {/* Main Citadel Split: Hero Spotlight & The Cradle of Aether Vista */}
       <div className="grid lg:grid-cols-12 gap-6 items-stretch">

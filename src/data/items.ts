@@ -2,6 +2,17 @@ import { Weapon, Relic } from '../types/game';
 
 export const INITIAL_WEAPONS: Weapon[] = [
   {
+    id: 'aether_prism_blade',
+    name: 'Aether-Forged Prism Blade',
+    type: 'Blade',
+    rarity: 5,
+    baseAtk: 560,
+    subStat: { stat: 'CRIT_DMG', value: 0.42 },
+    level: 1,
+    rank: 1,
+    description: 'An ancient hyper-dimensional crystal greatsword forged in celestial aether rifts. Cycles smoothly through prismatic color wavelengths, emits chromatic particle trails, and delivers zero-clipping animated strikes.',
+  },
+  {
     id: 'wpn_dwarf_hammer',
     name: 'Khaz-Modan Runebreaker',
     type: 'Runic Hammer',
@@ -102,6 +113,15 @@ export interface SoloWeaponItem {
 }
 
 export const weaponDatabase: Record<string, SoloWeaponItem> = {
+  aether_prism_blade: {
+    id: 'aether_prism_blade',
+    name: 'Aether-Forged Prism Blade',
+    rarity: 'SSR',
+    type: 'Prism Greatsword',
+    baseAttack: 560,
+    effect: 'Cycles through prismatic wavelengths, grants +42% Crit DMG, +25% Attack Speed, and emits dynamic chromatic particle trails.',
+    icon: '💎',
+  },
   nightshade_viper_fang: {
     id: 'nightshade_viper_fang',
     name: "Nightshade Viper Fang",

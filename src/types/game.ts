@@ -72,6 +72,7 @@ export interface Character {
   portraitImage?: string;
   celShadeColor?: number;
   skillsList?: string[];
+  skinStyle?: 'standard' | 'minecraft_voxel';
 }
 
 export interface Enemy {
@@ -465,3 +466,55 @@ export interface PlayerInventory {
   weapons: Weapon[];
   relics: Relic[];
 }
+
+export interface PetCompanion {
+  id: 'void_hatchling' | 'solar_phoenix' | string;
+  name: string;
+  type: 'void_hatchling' | 'solar_phoenix';
+  title: string;
+  rarity: 'Mythic' | 'Celestial';
+  passiveBuff: string;
+  bonusStats: {
+    critRate?: number;
+    critDmg?: number;
+    attackPercent?: number;
+    hpRegen?: number;
+    maxHpBonus?: number;
+    reviveAura?: boolean;
+  };
+  element: ElementType;
+  description: string;
+  level: number;
+  affinity: number;
+  active: boolean;
+  color: string;
+  accentColor: string;
+  icon: string;
+}
+
+export interface RealmRiftEvent {
+  id: string;
+  biomeId: string;
+  biomeName: string;
+  riftName: string;
+  element: ElementType;
+  description: string;
+  startsAt: number;
+  endsAt: number;
+  isActive: boolean;
+  essenceMultiplier: number;
+  lootBonusPct: number;
+  riftBossName: string;
+}
+
+export interface PlayerRetentionState {
+  loginStreakDays: number;
+  lastClaimDate: string;
+  sessionStartTime: number;
+  sessionMinutes: number;
+  engagementTier: 'Novice Adventurer' | 'Aethelgard Sentinel' | 'Abyss Sovereign' | 'Grand Champion';
+  focusSurgeMultiplier: number; // 1.0x -> 2.5x
+  claimedDays: number[];
+  totalLogins: number;
+}
+

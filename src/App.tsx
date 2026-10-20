@@ -33,6 +33,7 @@ import { GuildHall } from './components/GuildHall';
 import { GameViewport } from './components/GameViewport';
 import { AuthAndInventory } from './components/AuthAndInventory';
 import LoginScreen from './components/LoginScreen';
+import { RetentionRiftModal } from './components/RetentionRiftModal';
 import { AffinityManager } from './services/affinityManager';
 import { AffinityEventType } from './types/affinity';
 import { syncPlayerStateWithBackend } from './services/api';
@@ -147,6 +148,69 @@ export const App: React.FC = () => {
   const [hunterUsername, setHunterUsername] = useState<string | null>(
     () => localStorage.getItem('aethelgard_username') || localStorage.getItem('username') || 'Hunter Monarch'
   );
+
+  // Player Growth Retention Algorithm & Realm Rifts Modal State
+  const [isRetentionModalOpen, setIsRetentionModalOpen] = useState<boolean>(false);
+
+  // Rare Pet Companion State (Void Hatchling & Solar Phoenix)
+  const [activePetId, setActivePetId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('aethelgard_active_pet') || 'void_hatchling';
+    } catch {
+      return 'void_hatchling';
+    }
+  });
+
+  const handleSelectPet = (petId: string) => {
+    setActivePetId(petId);
+    try {
+      localStorage.setItem('aethelgard_active_pet', petId);
+    } catch {
+      // ignore
+    }
+    sound.playVictory();
+    setSystemToast(
+      petId === 'void_hatchling'
+        ? '🐉 Void Hatchling summoned! (+35% Void Penetration & Shadow Motes)'
+        : '🔥 Solar Phoenix summoned! (+60 HP/s Leyline Regeneration & Sunburn Flare)'
+    );
+    setTimeout(() => setSystemToast(null), 3500);
+  };
+
+  const handleToggleVoxelSkin = (charId: string, isVoxel: boolean) => {
+    setParty((prev) =>
+      prev.map((c) => (c.id === charId ? { ...c, skinStyle: isVoxel ? 'minecraft_voxel' : 'standard' } : c))
+    );
+    sound.playClick();
+    setSystemToast(
+      isVoxel
+        ? `🟩 Minecraft-Style Blocky Skin active for ${charId.toUpperCase()}!`
+        : `⚔️ High-Fantasy Stylized Armor active for ${charId.toUpperCase()}!`
+    );
+    setTimeout(() => setSystemToast(null), 3000);
+  };
+
+  const handleEquipAetherPrismBlade = (charId: string) => {
+    setParty((prev) =>
+      prev.map((c) =>
+        c.id === charId ? { ...c, weaponName: 'Aether-Forged Prism Blade' } : c
+      )
+    );
+    sound.playLevelUp();
+    setSystemToast('💎 Glitch-Free Animated Aether-Forged Prism Blade Equipped! (+560 Atk, +42% Crit DMG)');
+    setTimeout(() => setSystemToast(null), 4000);
+  };
+
+  const handleClaimRetentionReward = (gold: number, essence: number, note: string) => {
+    setInventory((prev) => ({
+      ...prev,
+      stardust: prev.stardust + gold,
+      astralPrisms: prev.astralPrisms + essence,
+    }));
+    sound.playVictory();
+    setSystemToast(`🎁 Claimed ${note}! +${gold.toLocaleString()} Gold & +${essence.toLocaleString()} Essence.`);
+    setTimeout(() => setSystemToast(null), 4500);
+  };
 
   // Dynamic NPC Affinity & Relationship Manager
   const [affinityManager] = useState<AffinityManager>(() => {
@@ -451,6 +515,7 @@ export const App: React.FC = () => {
             return next;
           });
         }}
+        onOpenRetentionModal={() => setIsRetentionModalOpen(true)}
       />
 
       {/* System Toast Banner */}
@@ -507,6 +572,9 @@ export const App: React.FC = () => {
                 onOpenGuildHall={() => setActiveTab('guild')}
                 onCollectActivityFunds={handleCollectActivityFunds}
                 onEnter3DPlayableWorld={() => setIsPlaying3D(true)}
+                onOpenRetentionModal={() => setIsRetentionModalOpen(true)}
+                activePetId={activePetId}
+                onSelectPet={handleSelectPet}
               />
             )}
 
@@ -520,6 +588,10 @@ export const App: React.FC = () => {
             onDeployParty={() => setActiveTab('dungeon')}
             onInspectHero={() => {}}
             onReturnToPlaza={() => setActiveTab('lobby')}
+            onToggleVoxelSkin={handleToggleVoxelSkin}
+            onEquipAetherPrismBlade={handleEquipAetherPrismBlade}
+            activePetId={activePetId}
+            onSelectPet={handleSelectPet}
           />
         )}
 
@@ -559,6 +631,7 @@ export const App: React.FC = () => {
             onVictory={handleCombatVictory}
             onDefeat={handleCombatDefeat}
             onExit={handleExitCombat}
+            activePetId={activePetId}
           />
         )}
 
@@ -663,6 +736,21 @@ export const App: React.FC = () => {
           }}
           onClose={() => setIsLoginModalOpen(false)}
           isModal={true}
+        />
+      )}
+
+      {/* Player Growth Retention & Dynamic Realm Rifts Modal */}
+      {isRetentionModalOpen && (
+        <RetentionRiftModal
+          isOpen={isRetentionModalOpen}
+          onClose={() => setIsRetentionModalOpen(false)}
+          onClaimReward={handleClaimRetentionReward}
+          onInvestigateRift={() => {
+            setIsRetentionModalOpen(false);
+            setActiveTab('dungeon');
+            setSystemToast('🌀 Traversed to active Continental Realm Rift zone!');
+            setTimeout(() => setSystemToast(null), 4000);
+          }}
         />
       )}
     </div>

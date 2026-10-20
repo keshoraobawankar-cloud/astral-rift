@@ -42,6 +42,7 @@ interface CombatCanvasProps {
   onVictory: (rewards: RealmNode['rewards']) => void;
   onDefeat: () => void;
   onExit: () => void;
+  activePetId?: string;
 }
 
 interface LootRollResult {
@@ -69,6 +70,7 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
   onVictory,
   onDefeat,
   onExit,
+  activePetId = 'void_hatchling',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -985,40 +987,159 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
         ctx.fillText(enemy.name, enemy.x, enemy.y - enemy.radius - 18);
       });
 
-      // Render Player Hero
-      ctx.beginPath();
-      ctx.ellipse(player.x, player.y + player.radius * 0.7, player.radius * 0.8, player.radius * 0.4, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fill();
+      // Check if Minecraft Voxel skin is active
+      const isVoxelSkin =
+        activeChar.skinStyle === 'minecraft_voxel' ||
+        (() => {
+          try {
+            const saved = localStorage.getItem('aethelgard_voxel_skins');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              return Boolean(parsed[activeChar.id] ?? true);
+            }
+            return true;
+          } catch {
+            return true;
+          }
+        })();
 
-      // Glowing aura circle around hero (Matching Screenshot 1 & 7)
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, player.radius + 6, 0, Math.PI * 2);
-      ctx.strokeStyle = activeChar.color;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      // Render Player Hero (Standard Stylized Circle vs Minecraft Voxel Avatar)
+      if (isVoxelSkin) {
+        // Minecraft-Style Blocky Humanoid Voxel Rig in 2D
+        const blockSize = player.radius * 1.8;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(player.x - blockSize / 2 + 2, player.y + blockSize / 2 - 4, blockSize, 7);
 
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-      ctx.fillStyle = activeChar.color;
-      ctx.fill();
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = '#ffffff';
-      ctx.stroke();
+        // Voxel Black Border
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(player.x - blockSize / 2 - 2, player.y - blockSize / 2 - 2, blockSize + 4, blockSize + 4);
 
-      // Hero Avatar Icon inside body
-      ctx.font = '15px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(activeChar.avatarIcon, player.x, player.y);
+        // Voxel Base Armor (Steve/Alex Proportions)
+        ctx.fillStyle = activeChar.color;
+        ctx.fillRect(player.x - blockSize / 2, player.y - blockSize / 2, blockSize, blockSize);
 
-      // Facing Direction Line
-      ctx.beginPath();
-      ctx.moveTo(player.x, player.y);
-      ctx.lineTo(player.x + Math.cos(player.facing) * 32, player.y + Math.sin(player.facing) * 32);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+        // Voxel Inner Face & Eyes
+        ctx.fillStyle = '#fbcfe8';
+        ctx.fillRect(player.x - blockSize / 3, player.y - blockSize / 3, (blockSize * 2) / 3, (blockSize * 2) / 3);
+
+        // Voxel Pixel Cyan Eyes
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(player.x - blockSize / 4, player.y - blockSize / 7, 4, 3);
+        ctx.fillRect(player.x + blockSize / 9, player.y - blockSize / 7, 4, 3);
+
+        // Voxel Label
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 8px Rajdhani, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('VOXEL', player.x, player.y + blockSize / 3 + 2);
+      } else {
+        // Standard Stylized Fantasy Circle Rig
+        ctx.beginPath();
+        ctx.ellipse(player.x, player.y + player.radius * 0.7, player.radius * 0.8, player.radius * 0.4, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = activeChar.color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fillStyle = activeChar.color;
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        ctx.font = '15px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(activeChar.avatarIcon, player.x, player.y);
+      }
+
+      // Glitch-Free Animated Aether-Forged Prism Blade & Weapon Direction
+      const isPrismBlade = activeChar.weaponName?.includes('Prism') ?? true;
+      const bladeLength = 36;
+      const tipX = player.x + Math.cos(player.facing) * bladeLength;
+      const tipY = player.y + Math.sin(player.facing) * bladeLength;
+
+      if (isPrismBlade) {
+        // Rainbow Chromatic Color-Cycling Weapon Trail
+        const rainbowHue = ((Date.now() / 1000) * 140) % 360;
+        ctx.save();
+        ctx.strokeStyle = `hsl(${rainbowHue}, 95%, 65%)`;
+        ctx.lineWidth = 4;
+        ctx.shadowColor = `hsl(${rainbowHue}, 100%, 75%)`;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(player.x + Math.cos(player.facing) * 10, player.y + Math.sin(player.facing) * 10);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+
+        // Faceted Prismatic Gem socket
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(player.x + Math.cos(player.facing) * 12, player.y + Math.sin(player.facing) * 12, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        // Standard Facing Direction Line
+        ctx.beginPath();
+        ctx.moveTo(player.x, player.y);
+        ctx.lineTo(tipX, tipY);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Rare Pet Companion (Void Hatchling or Solar Phoenix)
+      const curPetId = activePetId || 'void_hatchling';
+      const petOrbitTime = Date.now() / 1000;
+      const petDist = player.radius + 26;
+      const petX = player.x + Math.cos(petOrbitTime * 2.2) * petDist;
+      const petY = player.y + Math.sin(petOrbitTime * 2.2) * (petDist * 0.7);
+
+      ctx.save();
+      if (curPetId === 'void_hatchling') {
+        // Void Hatchling: Dark violet aura, mini shadow motes, void pen buff
+        ctx.beginPath();
+        ctx.arc(petX, petY, 13, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(76, 29, 149, 0.45)';
+        ctx.fill();
+        ctx.strokeStyle = '#a855f7';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🐉', petX, petY);
+
+        ctx.font = 'bold 8px Rajdhani, monospace';
+        ctx.fillStyle = '#c084fc';
+        ctx.fillText('VOID +35%', petX, petY - 14);
+      } else {
+        // Solar Phoenix: Fiery amber aura, golden flame motes, regen leylines
+        ctx.beginPath();
+        ctx.arc(petX, petY, 13, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(217, 119, 6, 0.45)';
+        ctx.fill();
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🔥', petX, petY);
+
+        ctx.font = 'bold 8px Rajdhani, monospace';
+        ctx.fillStyle = '#fde047';
+        ctx.fillText('SOLAR +60HP', petX, petY - 14);
+      }
+      ctx.restore();
 
       // Render Floating Numbers & Alerts
       floatingTextsRef.current = floatingTextsRef.current.filter((ft) => {

@@ -18,8 +18,12 @@ import {
   CheckCircle2,
   Lock,
   Sliders,
+  Box,
+  Heart,
 } from 'lucide-react';
 import AttributeAllocator, { AttributeStats } from './AttributeAllocator';
+import { INITIAL_PET_COMPANIONS } from '../data/petData';
+import { PetCompanion } from '../types/game';
 
 interface PartyRosterProps {
   party: Character[];
@@ -29,6 +33,10 @@ interface PartyRosterProps {
   onDeployParty: () => void;
   onInspectHero: (charId: string) => void;
   onReturnToPlaza: () => void;
+  onToggleVoxelSkin?: (charId: string, isVoxel: boolean) => void;
+  onEquipAetherPrismBlade?: (charId: string) => void;
+  activePetId?: string;
+  onSelectPet?: (petId: string) => void;
 }
 
 export const PartyRoster: React.FC<PartyRosterProps> = ({
@@ -39,10 +47,23 @@ export const PartyRoster: React.FC<PartyRosterProps> = ({
   onDeployParty,
   onInspectHero,
   onReturnToPlaza,
+  onToggleVoxelSkin,
+  onEquipAetherPrismBlade,
+  activePetId = 'void_hatchling',
+  onSelectPet,
 }) => {
   const [selectedCharId, setSelectedCharId] = useState<string>(party[0]?.id || 'elurien');
   const [lootMode, setLootMode] = useState<LootMode>('roll_need_greed');
   const [matrixView, setMatrixView] = useState<'matrix' | 'allocator'>('allocator');
+  const [voxelSkins, setVoxelSkins] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('aethelgard_voxel_skins');
+      return saved ? JSON.parse(saved) : { elurien: true, thorgar: true, faelin: true, kaelen: true, astraea: true, valen: true };
+    } catch {
+      return { elurien: true, thorgar: true, faelin: true, kaelen: true, astraea: true, valen: true };
+    }
+  });
+  const [selectedPet, setSelectedPet] = useState<string>(activePetId);
   const [availableAttrPoints, setAvailableAttrPoints] = useState<{ [charId: string]: number }>({
     elurien: 4,
     thorgar: 5,
@@ -53,6 +74,42 @@ export const PartyRoster: React.FC<PartyRosterProps> = ({
   });
 
   const activeChar = party.find((c) => c.id === selectedCharId) || party[0];
+  const isVoxelActive = !!voxelSkins[activeChar.id];
+  const isPrismBladeEquipped = activeChar.weaponName.includes('Prism Blade');
+
+  const handleToggleVoxel = (val?: boolean) => {
+    sound.playClick();
+    const nextVal = typeof val === 'boolean' ? val : !isVoxelActive;
+    setVoxelSkins((prev) => {
+      const updated = { ...prev, [activeChar.id]: nextVal };
+      try {
+        localStorage.setItem('aethelgard_voxel_skins', JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+    if (onToggleVoxelSkin) {
+      onToggleVoxelSkin(activeChar.id, nextVal);
+    }
+  };
+
+  const handleToggleAllVoxel = () => {
+    sound.playVictory();
+    const allActive = party.every((c) => voxelSkins[c.id]);
+    const nextVal = !allActive;
+    const updated: Record<string, boolean> = {};
+    party.forEach((c) => {
+      updated[c.id] = nextVal;
+      if (onToggleVoxelSkin) onToggleVoxelSkin(c.id, nextVal);
+    });
+    setVoxelSkins(updated);
+    try {
+      localStorage.setItem('aethelgard_voxel_skins', JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+  };
 
   // Agility scaling calculation based on Section 3 of GDD:
   // Dodge I-Frames (ms) = 200 + (Agility * 1.5)
@@ -220,13 +277,139 @@ export const PartyRoster: React.FC<PartyRosterProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                 <div className="bg-slate-950/70 border border-slate-800 px-4 py-2 rounded-2xl text-right">
                   <div className="text-[10px] font-tech text-slate-400">EQUIPPED WEAPON</div>
-                  <div className="text-xs font-rpg font-bold text-amber-300 truncate max-w-[150px]">
+                  <div className={`text-xs font-rpg font-bold truncate max-w-[170px] ${isPrismBladeEquipped ? 'text-cyan-300 animate-pulse' : 'text-amber-300'}`}>
                     {activeChar.weaponName}
                   </div>
                 </div>
+
+                <button
+                  onClick={() => {
+                    sound.playVictory();
+                    if (onEquipAetherPrismBlade) {
+                      onEquipAetherPrismBlade(activeChar.id);
+                    }
+                  }}
+                  className={`px-3 py-2 rounded-2xl font-rpg font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md ${
+                    isPrismBladeEquipped
+                      ? 'bg-gradient-to-r from-cyan-600 via-fuchsia-600 to-amber-500 text-white shadow-cyan-500/30 ring-1 ring-white/50'
+                      : 'bg-slate-850 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 hover:text-white'
+                  }`}
+                  title="Equip Glitch-Free Animated Aether-Forged Prism Blade"
+                >
+                  <span>💎</span>
+                  <span className="hidden sm:inline">{isPrismBladeEquipped ? 'PRISM BLADE EQUIPPED' : 'EQUIP PRISM BLADE'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* MINECRAFT-STYLE BLOCKY SKIN TOGGLE BAR */}
+            <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-950 to-slate-900 border border-emerald-500/40 shadow-inner flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-xl shadow-md shadow-emerald-500/20">
+                  🟩
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-rpg font-bold text-xs text-white">
+                      Minecraft-Style Blocky Skin Customizer
+                    </span>
+                    <span className={`text-[9px] font-tech font-bold uppercase px-2 py-0.5 rounded ${
+                      isVoxelActive ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50' : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      {isVoxelActive ? 'VOXEL RIG ACTIVE' : 'STANDARD RIG'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-sans mt-0.5">
+                    {isVoxelActive
+                      ? 'Rendering cubic Steve/Alex proportions (cube head, voxel torso, swinging block limbs) in the 3D world!'
+                      : 'Rendering high-fantasy stylized humanoid armor mesh. Toggle on for retro voxel block aesthetics.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleToggleVoxel()}
+                  className={`px-4 py-2 rounded-xl font-rpg font-extrabold text-xs flex items-center gap-2 transition cursor-pointer shadow-md ${
+                    isVoxelActive
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/30'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                  }`}
+                >
+                  <Box className="w-3.5 h-3.5" />
+                  <span>{isVoxelActive ? 'VOXEL: ON ✓' : 'VOXEL: OFF'}</span>
+                </button>
+
+                <button
+                  onClick={handleToggleAllVoxel}
+                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-emerald-500/30 text-emerald-300 text-[11px] font-tech font-bold transition cursor-pointer"
+                  title="Toggle Minecraft Voxel Skin for all 6 Strike Team members"
+                >
+                  ALL 6 HEROES
+                </button>
+              </div>
+            </div>
+
+            {/* RARE PET COMPANIONS SELECTOR (Void Hatchling & Solar Phoenix) */}
+            <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-purple-950/40 via-slate-950 to-amber-950/40 border border-purple-500/40 shadow-inner">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🐉</span>
+                  <span className="font-rpg font-bold text-xs text-white">
+                    Rare Pet Companion System (Strike Team Passive Buffs)
+                  </span>
+                </div>
+                <span className="text-[10px] font-tech text-purple-300 uppercase tracking-wider">
+                  MYTHIC / CELESTIAL
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {INITIAL_PET_COMPANIONS.map((pet) => {
+                  const isSelected = selectedPet === pet.id;
+                  return (
+                    <div
+                      key={pet.id}
+                      onClick={() => {
+                        sound.playClick();
+                        setSelectedPet(pet.id);
+                        if (onSelectPet) onSelectPet(pet.id);
+                      }}
+                      className={`p-3 rounded-2xl border transition cursor-pointer flex items-start gap-3 ${
+                        isSelected
+                          ? 'bg-slate-850/90 border-cyan-400/80 shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400'
+                          : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl shrink-0"
+                        style={{ backgroundColor: `${pet.color}25`, border: `1px solid ${pet.color}50` }}>
+                        {pet.icon}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-rpg font-bold text-xs text-white truncate">{pet.name}</h4>
+                          <span className="text-[9px] font-tech font-bold px-1.5 py-0.5 rounded"
+                            style={{ backgroundColor: `${pet.color}30`, color: pet.accentColor }}>
+                            {pet.rarity}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-300 font-sans mt-0.5 line-clamp-1">
+                          {pet.passiveBuff}
+                        </p>
+                        <div className="mt-1.5 flex items-center justify-between text-[10px] font-tech">
+                          <span className="text-emerald-400">Lv.{pet.level} • {pet.affinity}% Affinity</span>
+                          <span className={`font-bold ${isSelected ? 'text-cyan-300' : 'text-slate-500'}`}>
+                            {isSelected ? 'ACTIVE COMPANION ✓' : 'TAP TO SUMMON'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

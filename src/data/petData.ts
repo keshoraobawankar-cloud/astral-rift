@@ -1,0 +1,47 @@
+import { PetCompanion } from '../types/game';
+
+export const INITIAL_PET_COMPANIONS: PetCompanion[] = [
+  {
+    id: 'void_hatchling',
+    name: 'Void Hatchling',
+    type: 'void_hatchling',
+    title: 'Scion of the Umbral Depths',
+    rarity: 'Mythic',
+    element: 'void',
+    passiveBuff: 'Void Resonance: +18% Critical Rate, +30% Shadow Void Burst damage & periodic shadow pulses',
+    bonusStats: {
+      critRate: 0.18,
+      critDmg: 0.30,
+      attackPercent: 0.15,
+    },
+    description: 'An ultra-rare abyssal dragonet born from the deep planetary leylines of the Calamity Trench. Swirls with dark matter and sharpens your critical strikes with void precision.',
+    level: 1,
+    affinity: 85,
+    active: true,
+    color: '#7c3aed',
+    accentColor: '#c084fc',
+    icon: '🐉',
+  },
+  {
+    id: 'solar_phoenix',
+    name: 'Solar Phoenix',
+    type: 'solar_phoenix',
+    title: 'Eternal Flame of Aethelgard',
+    rarity: 'Celestial',
+    element: 'solar',
+    passiveBuff: 'Solar Rebirth: +350 Max HP, +60 HP/sec Health Regeneration & Rebirth Aura shield',
+    bonusStats: {
+      hpRegen: 60,
+      maxHpBonus: 350,
+      reviveAura: true,
+      attackPercent: 0.10,
+    },
+    description: 'A radiant avian sovereign hatched from a concentrated solar shard in the Ironpeak Calderas. Bathes the strike team in celestial restorative flames and grants passive regeneration.',
+    level: 1,
+    affinity: 90,
+    active: false,
+    color: '#f59e0b',
+    accentColor: '#fef08a',
+    icon: '🔥',
+  },
+];

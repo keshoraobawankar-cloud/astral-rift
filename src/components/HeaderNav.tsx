@@ -18,6 +18,8 @@ import {
   Gamepad2,
   Shield,
   ShieldAlert,
+  Gift,
+  Flame,
 } from 'lucide-react';
 import { DungeonSynthWidget } from './DungeonSynthWidget';
 import { sound } from '../services/soundService';
@@ -48,6 +50,7 @@ interface HeaderNavProps {
   onOpenCloudVault?: () => void;
   isPlaying3D?: boolean;
   onToggle3DPlayable?: () => void;
+  onOpenRetentionModal?: () => void;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -64,6 +67,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenCloudVault,
   isPlaying3D,
   onToggle3DPlayable,
+  onOpenRetentionModal,
 }) => {
   return (
     <header className="w-full bg-slate-950/95 border-b border-slate-800/80 backdrop-blur-md sticky top-0 z-40 select-none shadow-xl">
@@ -139,6 +143,22 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 <Gamepad2 className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">{isPlaying3D ? '3D VIEWPORT ACTIVE' : 'ENTER 3D WORLD'}</span>
                 <span className="sm:hidden font-mono">3D</span>
+              </button>
+            )}
+
+            {/* Realm Rifts & Player Retention Button */}
+            {onOpenRetentionModal && (
+              <button
+                onClick={() => {
+                  sound.playClick();
+                  onOpenRetentionModal();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-tech font-bold bg-gradient-to-r from-purple-950/90 via-slate-900 to-amber-950/90 border border-purple-500/60 hover:border-amber-400 text-purple-200 hover:text-white transition shadow-md shadow-purple-500/20 cursor-pointer animate-pulse"
+                title="Player Growth Retention: Active Continental Realm Rifts & 7-Day Login Streaks"
+              >
+                <Gift className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">REALM RIFTS & STREAKS</span>
+                <span className="sm:hidden font-mono text-[10px]">RIFTS</span>
               </button>
             )}
 

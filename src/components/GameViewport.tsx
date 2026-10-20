@@ -20,6 +20,9 @@ import {
   ChevronDown,
   Skull,
   Zap,
+  Box,
+  Gift,
+  Radio,
 } from 'lucide-react';
 import { sound } from '../services/soundService';
 import { syncPlayerState } from '../services/api';
@@ -33,6 +36,9 @@ import { TargetUnitFrame } from './TargetUnitFrame';
 import { Minimap, MinimapEntity } from './Minimap';
 import { extendedCharacterRoster, CharacterRosterItem, characterRoster } from '../data/characters';
 import { DungeonSynthWidget } from './DungeonSynthWidget';
+import { RetentionRiftModal } from './RetentionRiftModal';
+import { growthRetention } from '../services/growthRetentionService';
+import { INITIAL_PET_COMPANIONS } from '../data/petData';
 
 interface GameViewportProps {
   onReturnToDashboard?: () => void;
@@ -574,6 +580,39 @@ export const GameViewport: React.FC<GameViewportProps> = ({
   const [isRosterModalOpen, setIsRosterModalOpen] = useState<boolean>(false);
   const [minionCount, setMinionCount] = useState<number>(0);
 
+  // Feature: Minecraft-Style Blocky Voxel Skin Toggle
+  const [isMinecraftSkin, setIsMinecraftSkin] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('aethelgard_voxel_skins');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Boolean(parsed[characterName.toLowerCase()] ?? true);
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  });
+
+  // Feature: Glitch-Free Animated Aether-Forged Prism Blade
+  const [isPrismBladeEquipped, setIsPrismBladeEquipped] = useState<boolean>(true);
+
+  // Feature: Rare Pet Companions (Void Hatchling & Solar Phoenix)
+  const [activePet, setActivePet] = useState<'void_hatchling' | 'solar_phoenix' | 'none'>('void_hatchling');
+
+  // Feature: Player Growth Retention & Realm Rift Engine
+  const [isRetentionModalOpen, setIsRetentionModalOpen] = useState<boolean>(false);
+  const [riftInfo, setRiftInfo] = useState(() => growthRetention.getCurrentRiftState());
+  const [retentionState, setRetentionState] = useState(() => growthRetention.getState());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRiftInfo(growthRetention.getCurrentRiftState());
+      setRetentionState(growthRetention.getState());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Action Trigger References for Animation Loop
   const actionTriggerRef = useRef<{
     attackRequested: boolean;
@@ -589,6 +628,9 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     cycleTimeRequested: TimeOfDay | null;
     weatherRequested: 'clear' | 'rain' | 'aurora' | null;
     auraRequested: AuraColor | null;
+    skinToggledRequested: boolean | null;
+    prismBladeToggledRequested: boolean | null;
+    petToggledRequested: 'void_hatchling' | 'solar_phoenix' | 'none' | null;
   }>({
     attackRequested: false,
     heavyAttackRequested: false,
@@ -603,6 +645,9 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     cycleTimeRequested: null,
     weatherRequested: null,
     auraRequested: null,
+    skinToggledRequested: null,
+    prismBladeToggledRequested: null,
+    petToggledRequested: null,
   });
 
   // Remote Players Registry
@@ -1182,10 +1227,14 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     };
 
     // ============================================================================
-    // 4. HUMAN-LIKE PROCEDURAL LOCAL HERO CHARACTER (Cel-Shaded PBR)
+    // ============================================================================
+    // 4. DUAL AVATAR ENGINE: STANDARD CEL-SHADED HERO & MINECRAFT-STYLE BLOCKY VOXEL RIG
     // ============================================================================
     const playerGroup = new THREE.Group();
     const isJinwooActive = selectedArchetype.id === 'sung_jinwoo';
+
+    // 4A. STANDARD REALISTIC CEL-SHADED RIG
+    const standardModelGroup = new THREE.Group();
 
     // Torso / Plate Armor (MeshToonMaterial with rampTexture)
     const bodyGeo = new THREE.CapsuleGeometry(0.65, 1.1, 8, 16);
@@ -1196,22 +1245,22 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     const playerBody = new THREE.Mesh(bodyGeo, armorMat);
     playerBody.position.y = 1.2;
     playerBody.castShadow = true;
-    playerGroup.add(playerBody);
+    standardModelGroup.add(playerBody);
 
-    // Helmet & Visor (Electric Blue for Jinwoo, Dark Obsidian)
+    // Helmet & Visor
     const helmGeo = new THREE.SphereGeometry(0.55, 12, 12);
     const helm = new THREE.Mesh(
       helmGeo,
       new THREE.MeshStandardMaterial({ color: isJinwooActive ? 0x0f172a : 0x0f172a, metalness: 0.9 })
     );
     helm.position.set(0, 1.85, 0);
-    playerGroup.add(helm);
+    standardModelGroup.add(helm);
 
     const visorGeo = new THREE.BoxGeometry(0.58, 0.22, 0.4);
     const visorMat = new THREE.MeshBasicMaterial({ color: isJinwooActive ? 0x38bdf8 : 0x38bdf8 });
     const visor = new THREE.Mesh(visorGeo, visorMat);
     visor.position.set(0, 1.85, 0.35);
-    playerGroup.add(visor);
+    standardModelGroup.add(visor);
 
     // Pauldrons (Shoulder Armor)
     const pauldronGeo = new THREE.SphereGeometry(0.35, 8, 8);
@@ -1224,10 +1273,10 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     leftPauldron.position.set(-0.75, 1.6, 0);
     const rightPauldron = new THREE.Mesh(pauldronGeo, pauldronMat);
     rightPauldron.position.set(0.75, 1.6, 0);
-    playerGroup.add(leftPauldron);
-    playerGroup.add(rightPauldron);
+    standardModelGroup.add(leftPauldron);
+    standardModelGroup.add(rightPauldron);
 
-    // Flowing Cape (Shadow Monarch Cloak for Jinwoo)
+    // Flowing Cape
     const capeGroup = new THREE.Group();
     const capeGeo = new THREE.PlaneGeometry(0.9, 1.6, 4, 6);
     const capeMat = new THREE.MeshStandardMaterial({
@@ -1240,72 +1289,350 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     cape.castShadow = true;
     capeGroup.position.set(0, 1.6, 0);
     capeGroup.add(cape);
-    playerGroup.add(capeGroup);
+    standardModelGroup.add(capeGroup);
 
-    // Weapon Rig: Dual Kasaka's Venom Fang Daggers for Sung Jinwoo, or Greatsword
+    playerGroup.add(standardModelGroup);
+
+    // 4B. MINECRAFT-STYLE BLOCKY VOXEL RIG (Steve/Alex proportions, pixel-art styling, swinging block limbs)
+    const voxelModelGroup = new THREE.Group();
+
+    // Voxel Palette Materials
+    const voxelSkinMat = new THREE.MeshToonMaterial({
+      color: 0xfbcfe8, // Soft peach skin
+      gradientMap: rampTexture,
+    });
+    const voxelArmorMat = new THREE.MeshToonMaterial({
+      color: selectedArchetype.celShadeColor || (isJinwooActive ? 0x1e1b4b : 0x059669),
+      gradientMap: rampTexture,
+    });
+    const voxelTrimMat = new THREE.MeshStandardMaterial({
+      color: isJinwooActive ? 0x38bdf8 : 0xf59e0b,
+      metalness: 0.8,
+      roughness: 0.2,
+    });
+    const voxelDarkMat = new THREE.MeshToonMaterial({
+      color: 0x0f172a,
+      gradientMap: rampTexture,
+    });
+
+    // 1. Voxel Head (0.72 x 0.72 x 0.72 Cube)
+    const voxelHeadGroup = new THREE.Group();
+    voxelHeadGroup.position.set(0, 1.95, 0);
+
+    const voxelHead = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.72, 0.72), voxelArmorMat);
+    voxelHead.castShadow = true;
+    voxelHeadGroup.add(voxelHead);
+
+    // Voxel Helmet Overlap (Outer 8x8 hat layer)
+    const voxelHelmLayer = new THREE.Mesh(
+      new THREE.BoxGeometry(0.78, 0.78, 0.78),
+      new THREE.MeshStandardMaterial({
+        color: isJinwooActive ? 0x0f172a : 0x10b981,
+        transparent: true,
+        opacity: 0.35,
+        wireframe: true,
+      })
+    );
+    voxelHeadGroup.add(voxelHelmLayer);
+
+    // Voxel Eyes (Pixel cyan blocks)
+    const eyeCubeMat = new THREE.MeshBasicMaterial({ color: isJinwooActive ? 0x38bdf8 : 0x67e8f9 });
+    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.04), eyeCubeMat);
+    eyeL.position.set(-0.16, 0.04, 0.37);
+    const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.04), eyeCubeMat);
+    eyeR.position.set(0.16, 0.04, 0.37);
+    voxelHeadGroup.add(eyeL);
+    voxelHeadGroup.add(eyeR);
+
+    // Voxel Visor Brow
+    const browCube = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.08, 0.06), voxelTrimMat);
+    browCube.position.set(0, 0.16, 0.38);
+    voxelHeadGroup.add(browCube);
+
+    voxelModelGroup.add(voxelHeadGroup);
+
+    // 2. Voxel Torso (0.72 x 1.05 x 0.38 Rectangular Prism)
+    const voxelTorso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.05, 0.38), voxelArmorMat);
+    voxelTorso.position.set(0, 1.2, 0);
+    voxelTorso.castShadow = true;
+    voxelModelGroup.add(voxelTorso);
+
+    // Voxel Gold / Cyan Belt
+    const voxelBelt = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.14, 0.42), voxelTrimMat);
+    voxelBelt.position.set(0, 0.74, 0);
+    voxelModelGroup.add(voxelBelt);
+
+    // 3. Voxel Limbs with Pivots at Shoulders & Hips for smooth swinging animations!
+    // Left Arm (pivot at left shoulder)
+    const voxelLeftArmGroup = new THREE.Group();
+    voxelLeftArmGroup.position.set(-0.54, 1.55, 0);
+    const voxelLeftArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.05, 0.32), voxelArmorMat);
+    voxelLeftArm.position.set(0, -0.52, 0);
+    voxelLeftArm.castShadow = true;
+    voxelLeftArmGroup.add(voxelLeftArm);
+    voxelModelGroup.add(voxelLeftArmGroup);
+
+    // Right Arm (pivot at right shoulder - weapon hand!)
+    const voxelRightArmGroup = new THREE.Group();
+    voxelRightArmGroup.position.set(0.54, 1.55, 0);
+    const voxelRightArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.05, 0.32), voxelArmorMat);
+    voxelRightArm.position.set(0, -0.52, 0);
+    voxelRightArm.castShadow = true;
+    voxelRightArmGroup.add(voxelRightArm);
+    voxelModelGroup.add(voxelRightArmGroup);
+
+    // Left Leg (pivot at left hip)
+    const voxelLeftLegGroup = new THREE.Group();
+    voxelLeftLegGroup.position.set(-0.19, 0.68, 0);
+    const voxelLeftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.05, 0.34), voxelDarkMat);
+    voxelLeftLeg.position.set(0, -0.52, 0);
+    voxelLeftLeg.castShadow = true;
+    voxelLeftLegGroup.add(voxelLeftLeg);
+    voxelModelGroup.add(voxelLeftLegGroup);
+
+    // Right Leg (pivot at right hip)
+    const voxelRightLegGroup = new THREE.Group();
+    voxelRightLegGroup.position.set(0.19, 0.68, 0);
+    const voxelRightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.05, 0.34), voxelDarkMat);
+    voxelRightLeg.position.set(0, -0.52, 0);
+    voxelRightLeg.castShadow = true;
+    voxelRightLegGroup.add(voxelRightLeg);
+    voxelModelGroup.add(voxelRightLegGroup);
+
+    playerGroup.add(voxelModelGroup);
+
+    // Initial Rig Visibility based on Minecraft skin state
+    standardModelGroup.visible = !isMinecraftSkin;
+    voxelModelGroup.visible = isMinecraftSkin;
+
+    // ============================================================================
+    // 4C. WEAPON RIGS: AETHER-FORGED PRISM BLADE (GLITCH-FREE ANIMATED) & DUAL DAGGERS
+    // ============================================================================
     const swordGroup = new THREE.Group();
 
-    const bladeMat = new THREE.MeshStandardMaterial(
-      isJinwooActive
-        ? {
-            color: 0x0f172a,
-            emissive: 0x38bdf8,
-            emissiveIntensity: 0.9,
-            metalness: 0.95,
-            roughness: 0.1,
-          }
-        : {
-            color: 0xe0f2fe,
-            emissive: 0x0284c7,
-            emissiveIntensity: 0.7,
-            metalness: 0.95,
-            roughness: 0.1,
-          }
+    // Glitch-Free Animated Aether-Forged Prism Blade
+    const prismBladeGroup = new THREE.Group();
+    prismBladeGroup.name = 'aether_prism_blade';
+
+    // Prismatic Color-Cycling Material
+    const prismBladeMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0x38bdf8,
+      emissiveIntensity: 0.95,
+      metalness: 0.95,
+      roughness: 0.08,
+    });
+
+    // 1. Faceted Crystal Blade Core
+    const prismBladeCore = new THREE.Mesh(new THREE.BoxGeometry(0.13, 2.1, 0.04), prismBladeMat);
+    prismBladeCore.position.y = 1.05;
+    prismBladeCore.castShadow = true;
+    prismBladeGroup.add(prismBladeCore);
+
+    // 2. Tapered Prismatic Diamond Tip
+    const prismBladeTip = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.55, 4), prismBladeMat);
+    prismBladeTip.position.y = 2.3;
+    prismBladeTip.rotation.y = Math.PI / 4;
+    prismBladeTip.castShadow = true;
+    prismBladeGroup.add(prismBladeTip);
+
+    // 3. Ornate Golden Crossguard & Prismatic Gem Socket
+    const goldGuardMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      metalness: 0.95,
+      roughness: 0.15,
+    });
+    const prismGuard = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.1, 0.14), goldGuardMat);
+    prismGuard.position.y = 0.05;
+    prismBladeGroup.add(prismGuard);
+
+    const prismCoreGem = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.14),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
     );
+    prismCoreGem.position.set(0, 0.05, 0.08);
+    prismBladeGroup.add(prismCoreGem);
+
+    // 4. Grip & Pommel
+    const prismHilt = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.06, 0.45, 8),
+      new THREE.MeshStandardMaterial({ color: 0x1e1b4b, metalness: 0.8 })
+    );
+    prismHilt.position.y = -0.22;
+    prismBladeGroup.add(prismHilt);
+
+    const prismPommel = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1), goldGuardMat);
+    prismPommel.position.y = -0.48;
+    prismBladeGroup.add(prismPommel);
+
+    // Standard Weapon Mesh Group
+    const standardSwordMesh = new THREE.Group();
+    const bladeMat = new THREE.MeshStandardMaterial({
+      color: isJinwooActive ? 0x0f172a : 0xe0f2fe,
+      emissive: isJinwooActive ? 0x38bdf8 : 0x0284c7,
+      emissiveIntensity: 0.7,
+      metalness: 0.95,
+      roughness: 0.1,
+    });
 
     if (isJinwooActive) {
-      // Kasaka's Venom Fang - Dual Daggers with toxic cyan & void purple glow
-      // Right Hand Kasaka Dagger
       const rDagger = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.95, 0.03), bladeMat);
       rDagger.position.set(0.65, 0.9, 0.35);
       rDagger.rotation.x = Math.PI / 4;
       rDagger.rotation.z = -Math.PI / 8;
       rDagger.castShadow = true;
-      swordGroup.add(rDagger);
-
-      // Left Hand Kasaka Dagger
-      const lDagger = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.95, 0.03), bladeMat);
-      lDagger.position.set(-0.65, 0.9, 0.35);
-      lDagger.rotation.x = Math.PI / 4;
-      lDagger.rotation.z = Math.PI / 8;
-      lDagger.castShadow = true;
-      swordGroup.add(lDagger);
+      standardSwordMesh.add(rDagger);
     } else {
-      const bladeGeo = new THREE.BoxGeometry(0.12, 1.8, 0.04);
-      const blade = new THREE.Mesh(bladeGeo, bladeMat);
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.8, 0.04), bladeMat);
       blade.position.y = 0.9;
       blade.castShadow = true;
-      swordGroup.add(blade);
-
-      const hilt = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.06, 0.4),
-        new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8 })
-      );
+      standardSwordMesh.add(blade);
+      const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.4), goldGuardMat);
       hilt.position.y = -0.15;
-      swordGroup.add(hilt);
-
-      const crossguard = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.08, 0.1),
-        new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85 })
-      );
+      standardSwordMesh.add(hilt);
+      const crossguard = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.1), goldGuardMat);
       crossguard.position.y = 0.05;
-      swordGroup.add(crossguard);
-
-      swordGroup.position.set(0.75, 1.1, 0.35);
-      swordGroup.rotation.x = Math.PI / 6;
-      swordGroup.rotation.z = -Math.PI / 12;
+      standardSwordMesh.add(crossguard);
     }
+
+    swordGroup.add(prismBladeGroup);
+    swordGroup.add(standardSwordMesh);
+
+    // Initial Weapon Visibility based on Prism Blade toggle
+    prismBladeGroup.visible = isPrismBladeEquipped;
+    standardSwordMesh.visible = !isPrismBladeEquipped;
+
+    swordGroup.position.set(0.75, 1.1, 0.35);
+    swordGroup.rotation.x = Math.PI / 6;
+    swordGroup.rotation.z = -Math.PI / 12;
     playerGroup.add(swordGroup);
+
+    // Dynamic Chromatic Spark Particle Trail Pool for Aether-Forged Prism Blade
+    const prismTrailSparks: { mesh: THREE.Mesh; life: number; maxLife: number }[] = [];
+    const sparkGeo = new THREE.OctahedronGeometry(0.09);
+    for (let i = 0; i < 24; i++) {
+      const sMesh = new THREE.Mesh(
+        sparkGeo,
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0 })
+      );
+      sMesh.visible = false;
+      scene.add(sMesh);
+      prismTrailSparks.push({ mesh: sMesh, life: 0, maxLife: 0.35 });
+    }
+
+    // ============================================================================
+    // 4D. RARE PET COMPANION SYSTEM (3D VOID HATCHLING & SOLAR PHOENIX)
+    // ============================================================================
+    // 1. Void Hatchling (Scion of the Umbral Depths)
+    const voidHatchlingGroup = new THREE.Group();
+    voidHatchlingGroup.name = 'pet_void_hatchling';
+
+    const voidPetMat = new THREE.MeshToonMaterial({
+      color: 0x1e1b4b,
+      gradientMap: rampTexture,
+    });
+    const voidHornMat = new THREE.MeshBasicMaterial({ color: 0xa855f7 });
+    const voidEyeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+    // Dragon Torso & Belly
+    const voidTorso = new THREE.Mesh(new THREE.DodecahedronGeometry(0.38), voidPetMat);
+    voidTorso.castShadow = true;
+    voidHatchlingGroup.add(voidTorso);
+
+    // Dragon Head & Horns
+    const voidHead = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.45, 5), voidPetMat);
+    voidHead.position.set(0, 0.28, 0.25);
+    voidHead.rotation.x = Math.PI / 3;
+    voidHatchlingGroup.add(voidHead);
+
+    const voidHornL = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.35, 4), voidHornMat);
+    voidHornL.position.set(-0.14, 0.48, 0.1);
+    voidHornL.rotation.z = Math.PI / 6;
+    const voidHornR = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.35, 4), voidHornMat);
+    voidHornR.position.set(0.14, 0.48, 0.1);
+    voidHornR.rotation.z = -Math.PI / 6;
+    voidHatchlingGroup.add(voidHornL);
+    voidHatchlingGroup.add(voidHornR);
+
+    // Glowing Eyes
+    const vEyeL = new THREE.Mesh(new THREE.SphereGeometry(0.05), voidEyeMat);
+    vEyeL.position.set(-0.12, 0.34, 0.4);
+    const vEyeR = new THREE.Mesh(new THREE.SphereGeometry(0.05), voidEyeMat);
+    vEyeR.position.set(0.12, 0.34, 0.4);
+    voidHatchlingGroup.add(vEyeL);
+    voidHatchlingGroup.add(vEyeR);
+
+    // Flapping Void Wings
+    const voidWingMat = new THREE.MeshStandardMaterial({
+      color: 0x4c1d95,
+      emissive: 0x7c3aed,
+      emissiveIntensity: 0.6,
+      side: THREE.DoubleSide,
+    });
+    const voidWingL = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.45), voidWingMat);
+    voidWingL.position.set(-0.35, 0.15, 0);
+    const voidWingR = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.45), voidWingMat);
+    voidWingR.position.set(0.35, 0.15, 0);
+    voidHatchlingGroup.add(voidWingL);
+    voidHatchlingGroup.add(voidWingR);
+
+    // Barbed Tail
+    const voidTail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 4), voidPetMat);
+    voidTail.position.set(0, -0.15, -0.4);
+    voidTail.rotation.x = -Math.PI / 3;
+    voidHatchlingGroup.add(voidTail);
+
+    scene.add(voidHatchlingGroup);
+
+    // 2. Solar Phoenix (Eternal Flame of Aethelgard)
+    const solarPhoenixGroup = new THREE.Group();
+    solarPhoenixGroup.name = 'pet_solar_phoenix';
+
+    const solarFeatherMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      emissive: 0xd97706,
+      emissiveIntensity: 0.85,
+    });
+    const solarCrestMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+
+    // Phoenix Body
+    const solarBody = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.55, 6), solarFeatherMat);
+    solarBody.rotation.x = Math.PI / 4;
+    solarBody.castShadow = true;
+    solarPhoenixGroup.add(solarBody);
+
+    // Phoenix Head & Solar Crest
+    const solarHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), solarFeatherMat);
+    solarHead.position.set(0, 0.35, 0.25);
+    solarPhoenixGroup.add(solarHead);
+
+    const solarCrest = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.42, 4), solarCrestMat);
+    solarCrest.position.set(0, 0.6, 0.2);
+    solarCrest.rotation.x = -Math.PI / 6;
+    solarPhoenixGroup.add(solarCrest);
+
+    // Flapping Flame Wings
+    const solarWingL = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.55), solarFeatherMat);
+    solarWingL.position.set(-0.4, 0.2, 0);
+    solarWingL.side = THREE.DoubleSide;
+    const solarWingR = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.55), solarFeatherMat);
+    solarWingR.position.set(0.4, 0.2, 0);
+    solarWingR.side = THREE.DoubleSide;
+    solarPhoenixGroup.add(solarWingL);
+    solarPhoenixGroup.add(solarWingR);
+
+    // Flowing Golden Tail Feathers
+    const solarTail = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.8), solarCrestMat);
+    solarTail.position.set(0, -0.4, -0.45);
+    solarTail.rotation.x = -Math.PI / 4;
+    solarTail.side = THREE.DoubleSide;
+    solarPhoenixGroup.add(solarTail);
+
+    scene.add(solarPhoenixGroup);
+
+    // Set initial pet visibility
+    voidHatchlingGroup.visible = activePet === 'void_hatchling';
+    solarPhoenixGroup.visible = activePet === 'solar_phoenix';
 
     // Ground Contact Shadow
     const shadowGeo = new THREE.CircleGeometry(0.85, 16);
@@ -1805,6 +2132,91 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         }
       }
 
+      // Check for Minecraft Voxel Skin toggle
+      if (actionTriggerRef.current.skinToggledRequested !== null) {
+        const isVoxel = actionTriggerRef.current.skinToggledRequested;
+        actionTriggerRef.current.skinToggledRequested = null;
+        standardModelGroup.visible = !isVoxel;
+        voxelModelGroup.visible = isVoxel;
+      }
+
+      // Check for Prism Blade Weapon toggle
+      if (actionTriggerRef.current.prismBladeToggledRequested !== null) {
+        const isPrism = actionTriggerRef.current.prismBladeToggledRequested;
+        actionTriggerRef.current.prismBladeToggledRequested = null;
+        prismBladeGroup.visible = isPrism;
+        standardSwordMesh.visible = !isPrism;
+      }
+
+      // Check for Pet Companion toggle
+      if (actionTriggerRef.current.petToggledRequested !== null) {
+        const p = actionTriggerRef.current.petToggledRequested;
+        actionTriggerRef.current.petToggledRequested = null;
+        voidHatchlingGroup.visible = p === 'void_hatchling';
+        solarPhoenixGroup.visible = p === 'solar_phoenix';
+      }
+
+      // 1. Aether-Forged Prism Blade: Smooth Glitch-Free Chromatic Color-Cycling & Trails
+      if (prismBladeGroup.visible) {
+        const prismHue = (elapsed * 0.32) % 1.0;
+        prismBladeMat.color.setHSL(prismHue, 0.95, 0.7);
+        prismBladeMat.emissive.setHSL(prismHue, 0.95, 0.55);
+        prismCoreGem.rotation.y = elapsed * 2.5;
+
+        // Dynamic Chromatic Spark Particle Trail emitted from blade tip in 3D world space
+        if (isAttacking || (keys.w || keys.s || keys.a || keys.d)) {
+          const tipWorldPos = new THREE.Vector3();
+          prismBladeTip.getWorldPosition(tipWorldPos);
+          const availableSpark = prismTrailSparks.find((s) => s.life <= 0);
+          if (availableSpark) {
+            availableSpark.mesh.position.copy(tipWorldPos);
+            (availableSpark.mesh.material as THREE.MeshBasicMaterial).color.setHSL(prismHue, 1.0, 0.6);
+            (availableSpark.mesh.material as THREE.MeshBasicMaterial).opacity = 0.9;
+            availableSpark.mesh.visible = true;
+            availableSpark.life = availableSpark.maxLife;
+          }
+        }
+      }
+
+      // Update active chromatic trail sparks
+      prismTrailSparks.forEach((s) => {
+        if (s.life > 0) {
+          s.life -= delta;
+          const pct = Math.max(0, s.life / s.maxLife);
+          (s.mesh.material as THREE.MeshBasicMaterial).opacity = pct * 0.9;
+          s.mesh.scale.setScalar(pct * 1.2);
+          if (s.life <= 0) s.mesh.visible = false;
+        }
+      });
+
+      // 2. Rare Pet Companions (Void Hatchling & Solar Phoenix) Kinematics & Flapping
+      if (voidHatchlingGroup.visible) {
+        const hoverY = 1.8 + Math.sin(elapsed * 3.0) * 0.15;
+        const targetPetPos = playerGroup.position.clone().add(
+          new THREE.Vector3(-1.4, hoverY, -0.6).applyAxisAngle(new THREE.Vector3(0, 1, 0), playerGroup.rotation.y)
+        );
+        voidHatchlingGroup.position.lerp(targetPetPos, 0.1);
+        voidHatchlingGroup.rotation.y = THREE.MathUtils.damp(voidHatchlingGroup.rotation.y, playerGroup.rotation.y, 8, delta);
+        voidWingL.rotation.z = Math.PI / 6 + Math.sin(elapsed * 9.0) * 0.45;
+        voidWingR.rotation.z = -Math.PI / 6 - Math.sin(elapsed * 9.0) * 0.45;
+      }
+
+      if (solarPhoenixGroup.visible) {
+        const hoverY = 2.0 + Math.sin(elapsed * 3.4 + 1.2) * 0.18;
+        const targetPetPos = playerGroup.position.clone().add(
+          new THREE.Vector3(1.4, hoverY, -0.6).applyAxisAngle(new THREE.Vector3(0, 1, 0), playerGroup.rotation.y)
+        );
+        solarPhoenixGroup.position.lerp(targetPetPos, 0.1);
+        solarPhoenixGroup.rotation.y = THREE.MathUtils.damp(solarPhoenixGroup.rotation.y, playerGroup.rotation.y, 8, delta);
+        solarWingL.rotation.z = Math.PI / 6 + Math.sin(elapsed * 10.0) * 0.5;
+        solarWingR.rotation.z = -Math.PI / 6 - Math.sin(elapsed * 10.0) * 0.5;
+
+        // Passive Health Regeneration from Solar Phoenix (+60 HP/s rate)
+        if (curHp < 100) {
+          curHp = Math.min(100, curHp + 2.5 * delta);
+        }
+      }
+
       // Check for time of day change
       if (actionTriggerRef.current.cycleTimeRequested) {
         const tod = actionTriggerRef.current.cycleTimeRequested;
@@ -2037,10 +2449,18 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         if (attackTimer > 0) {
           swordGroup.rotation.x = Math.PI / 2 + Math.sin((0.32 - attackTimer) * 18) * 1.5;
           swordGroup.rotation.z = Math.sin((0.32 - attackTimer) * 20) * 1.8;
+          if (voxelModelGroup.visible) {
+            voxelRightArmGroup.rotation.x = -Math.PI / 2 + Math.sin((0.32 - attackTimer) * 18) * 1.5;
+            voxelRightArmGroup.rotation.z = -Math.sin((0.32 - attackTimer) * 18) * 0.6;
+          }
         } else {
           isAttacking = false;
           swordGroup.rotation.x = Math.PI / 6;
           swordGroup.rotation.z = -Math.PI / 12;
+          if (voxelModelGroup.visible) {
+            voxelRightArmGroup.rotation.x = 0;
+            voxelRightArmGroup.rotation.z = 0;
+          }
         }
       }
 
@@ -2061,10 +2481,14 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           playerGroup.position.z += dodgeDirection.z * 16 * delta;
           playerBody.rotation.x += 16 * delta;
           playerBody.position.y = 0.8;
+          voxelModelGroup.rotation.x += 16 * delta;
+          voxelModelGroup.position.y = -0.4;
         } else {
           isDodging = false;
           playerBody.rotation.x = 0;
           playerBody.position.y = 1.2;
+          voxelModelGroup.rotation.x = 0;
+          voxelModelGroup.position.y = 0;
         }
       }
 
@@ -2107,10 +2531,24 @@ export const GameViewport: React.FC<GameViewportProps> = ({
 
         const turnDelta = playerGroup.rotation.y - targetAngle;
         playerBody.rotation.z = THREE.MathUtils.damp(playerBody.rotation.z, turnDelta * 0.4, 8, delta);
+        voxelTorso.rotation.z = THREE.MathUtils.damp(voxelTorso.rotation.z, turnDelta * 0.3, 8, delta);
 
         const strideSpeed = wantsSprint ? 18 : 12;
         playerBody.position.y = 1.2 + Math.sin(elapsed * strideSpeed) * (wantsSprint ? 0.12 : 0.07);
         cape.rotation.x = THREE.MathUtils.damp(cape.rotation.x, Math.PI / 4 + Math.sin(elapsed * 16) * 0.15, 10, delta);
+
+        // Minecraft Blocky Limbs Walking Cycle
+        if (voxelModelGroup.visible) {
+          const swingAngle = Math.sin(elapsed * strideSpeed) * 0.65;
+          voxelLeftLegGroup.rotation.x = swingAngle;
+          voxelRightLegGroup.rotation.x = -swingAngle;
+          voxelLeftArmGroup.rotation.x = -swingAngle;
+          if (!isAttacking) {
+            voxelRightArmGroup.rotation.x = swingAngle;
+            voxelRightArmGroup.rotation.z = 0;
+          }
+          voxelTorso.position.y = 1.2 + Math.sin(elapsed * strideSpeed) * (wantsSprint ? 0.08 : 0.04);
+        }
 
         footstepAccumulator += delta * (wantsSprint ? 4 : 2.5);
         if (footstepAccumulator >= 1) {
@@ -2129,6 +2567,18 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         );
         playerBody.rotation.z = THREE.MathUtils.damp(playerBody.rotation.z, 0, 8, delta);
         cape.rotation.x = THREE.MathUtils.damp(cape.rotation.x, Math.sin(elapsed * 2) * 0.05, 5, delta);
+
+        // Minecraft Voxel Idle
+        if (voxelModelGroup.visible) {
+          voxelLeftLegGroup.rotation.x = THREE.MathUtils.damp(voxelLeftLegGroup.rotation.x, 0, 8, delta);
+          voxelRightLegGroup.rotation.x = THREE.MathUtils.damp(voxelRightLegGroup.rotation.x, 0, 8, delta);
+          voxelLeftArmGroup.rotation.x = THREE.MathUtils.damp(voxelLeftArmGroup.rotation.x, 0, 8, delta);
+          if (!isAttacking) {
+            voxelRightArmGroup.rotation.x = THREE.MathUtils.damp(voxelRightArmGroup.rotation.x, 0, 8, delta);
+            voxelRightArmGroup.rotation.z = THREE.MathUtils.damp(voxelRightArmGroup.rotation.z, 0, 8, delta);
+          }
+          voxelTorso.position.y = 1.2;
+        }
       }
 
       // Jump & Gravity physics
