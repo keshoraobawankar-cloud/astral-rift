@@ -23,6 +23,7 @@ interface RetentionRiftModalProps {
   onClose: () => void;
   onClaimReward: (gold: number, essence: number, note: string) => void;
   onTeleportToRift?: (biomeId: string) => void;
+  onInvestigateRift?: () => void;
 }
 
 export const RetentionRiftModal: React.FC<RetentionRiftModalProps> = ({
@@ -30,6 +31,7 @@ export const RetentionRiftModal: React.FC<RetentionRiftModalProps> = ({
   onClose,
   onClaimReward,
   onTeleportToRift,
+  onInvestigateRift,
 }) => {
   const [retentionState, setRetentionState] = useState<PlayerRetentionState>(() =>
     growthRetention.getState()
@@ -65,6 +67,9 @@ export const RetentionRiftModal: React.FC<RetentionRiftModalProps> = ({
     sound.playClick();
     if (riftInfo.activeRift && onTeleportToRift) {
       onTeleportToRift(riftInfo.activeRift.biomeId);
+      onClose();
+    } else if (onInvestigateRift) {
+      onInvestigateRift();
       onClose();
     }
   };

@@ -1592,8 +1592,9 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       color: 0xf59e0b,
       emissive: 0xd97706,
       emissiveIntensity: 0.85,
+      side: THREE.DoubleSide,
     });
-    const solarCrestMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+    const solarCrestMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, side: THREE.DoubleSide });
 
     // Phoenix Body
     const solarBody = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.55, 6), solarFeatherMat);
@@ -1614,10 +1615,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     // Flapping Flame Wings
     const solarWingL = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.55), solarFeatherMat);
     solarWingL.position.set(-0.4, 0.2, 0);
-    solarWingL.side = THREE.DoubleSide;
     const solarWingR = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.55), solarFeatherMat);
     solarWingR.position.set(0.4, 0.2, 0);
-    solarWingR.side = THREE.DoubleSide;
     solarPhoenixGroup.add(solarWingL);
     solarPhoenixGroup.add(solarWingR);
 
@@ -1625,7 +1624,6 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     const solarTail = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.8), solarCrestMat);
     solarTail.position.set(0, -0.4, -0.45);
     solarTail.rotation.x = -Math.PI / 4;
-    solarTail.side = THREE.DoubleSide;
     solarPhoenixGroup.add(solarTail);
 
     scene.add(solarPhoenixGroup);

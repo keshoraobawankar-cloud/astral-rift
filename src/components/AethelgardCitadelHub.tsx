@@ -321,13 +321,16 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
               </div>
               {(() => {
                 const currentRift = riftInfo.activeRift || riftInfo.nextRift;
+                const riftTitle = currentRift.riftName || currentRift.name || 'Continental Void Rift';
+                const biomeTitle = currentRift.biomeName || currentRift.biome || 'Continental Realm';
+                const bonusText = currentRift.bonus || `${currentRift.essenceMultiplier}x Essence Loot (+${currentRift.lootBonusPct}% Drop Rate)`;
                 return (
                   <>
                     <h3 className="text-sm md:text-base font-rpg font-extrabold text-white mt-0.5">
-                      {currentRift.name}
+                      {riftTitle}
                     </h3>
                     <p className="text-[11px] text-slate-300 font-sans line-clamp-1">
-                      📍 {currentRift.biome} — <span className="text-amber-300 font-bold">{currentRift.bonus}</span>
+                      📍 {biomeTitle} — <span className="text-amber-300 font-bold">{bonusText}</span>
                     </p>
                   </>
                 );
@@ -345,7 +348,7 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
                 className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-rpg font-bold text-xs shadow-lg shadow-purple-500/30 transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Gift className="w-3.5 h-3.5 text-amber-300" />
-                <span>INVESTIGATE RIFT ({retentionState.loginStreak}-DAY STREAK)</span>
+                <span>INVESTIGATE RIFT ({retentionState.loginStreakDays ?? retentionState.loginStreak ?? 1}-DAY STREAK)</span>
               </button>
             )}
           </div>

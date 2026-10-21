@@ -496,7 +496,9 @@ export interface RealmRiftEvent {
   id: string;
   biomeId: string;
   biomeName: string;
+  biome?: string;
   riftName: string;
+  name?: string;
   element: ElementType;
   description: string;
   startsAt: number;
@@ -504,11 +506,13 @@ export interface RealmRiftEvent {
   isActive: boolean;
   essenceMultiplier: number;
   lootBonusPct: number;
+  bonus?: string;
   riftBossName: string;
 }
 
 export interface PlayerRetentionState {
   loginStreakDays: number;
+  loginStreak?: number;
   lastClaimDate: string;
   sessionStartTime: number;
   sessionMinutes: number;
