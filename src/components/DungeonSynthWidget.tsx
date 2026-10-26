@@ -9,12 +9,15 @@ interface DungeonSynthWidgetProps {
 const SELECTABLE_MOODS: DungeonSynthMood[] = ['oakhaven_breeze', 'sylph_voyage', 'radiant_vanguard'];
 
 export const DungeonSynthWidget: React.FC<DungeonSynthWidgetProps> = ({ compact = false }) => {
-  const [isPlaying, setIsPlaying] = useState<boolean>(dungeonSynth.getIsPlaying());
-  const [currentMood, setCurrentMood] = useState<DungeonSynthMood>(dungeonSynth.getCurrentMood());
-  const [volume, setVolume] = useState<number>(dungeonSynth.getVolume());
+  const [isPlaying, setIsPlaying] = useState<boolean>(() => dungeonSynth.getIsPlaying());
+  const [currentMood, setCurrentMood] = useState<DungeonSynthMood>(() => dungeonSynth.getCurrentMood());
+  const [volume, setVolume] = useState<number>(() => dungeonSynth.getVolume());
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   useEffect(() => {
+    setIsPlaying(dungeonSynth.getIsPlaying());
+    setCurrentMood(dungeonSynth.getCurrentMood());
+
     const unsubscribe = dungeonSynth.subscribe((playing, mood) => {
       setIsPlaying(playing);
       setCurrentMood(mood);

@@ -1,0 +1,122 @@
+[
+  {
+    "npc_id": "npc_fia_sterling",
+    "identity": {
+      "name": "Fia Sterling",
+      "title": "Head Receptionist & Guild Registrar",
+      "sub_faction": "Central Adventurers Guild",
+      "speaking_quirk": "Rapid-fire, over-caffeinated speech punctuated by nervous sighs, polite light-novel honorifics ('-san', '-sama'), and comical grumblings about guild guildmaster bureaucracy."
+    },
+    "questline": {
+      "title": "Registration Calamity: Clear the Warren Scouting Run",
+      "recommended_player_level": 5,
+      "objective_type": "extermination",
+      "target_coordinates": [
+        { "x": 22.85, "y": 0.0, "z": 55.4 },
+        { "x": 38.45, "y": 0.0, "z": 74.2 }
+      ]
+    },
+    "dynamic_dialogue": {
+      "first_greeting": "Ah, welcome! Welcome to the Oakhaven Adventurers Guild branch! Haah... please forgive the mountain of parchment behind me; the Guildmaster vanished again claiming he needed to 'commune with the wind spirits,' leaving me with two hundred unprocessed expedition permits! But never mind my impending nervous breakdown—you have that sharp, unmistakable glint in your eyes! You're here to register as a registered Vanguard, aren't you, Hunter-san?!",
+      "quest_offered": "Listen, Hunter-san, I have an urgent requisition that just bypassed the standard bulletin board! A marauding scout squad of Forest Goblins has compromised our eastern trade leylines near the outskirts. If wagons stop rolling in, our potion supplies freeze, and the Guildmaster will have to face angry merchants—which means *I* will have to face angry merchants! If you could venture to coordinates (22.8, 55.4) and cull those scouts, I will personally expedite your Bronze Rank accreditation and slip you an emergency copper voucher from my desk drawer! What do you say?!",
+      "quest_in_progress": "H-Hold on, don't tell me you're back already?! Oh... you're still preparing your gear! Phew, my heart skipped a beat! Those goblin scouts move in pack formations and love burying serrated tripwires in the underbrush, so please keep your shield raised and watch your flanks! I'm holding your official rank stamp right here in my hand, so don't you dare get yourself hurt out there, okay?!",
+      "quest_completed_reward_claim": "Y-You did it! You actually cleared the entire scouting squad without a single scratch on your breastplate?! Look at this—the merchant caravan sent an emergency courier confirming the eastern perimeter is completely secure! Ahh, blessed heavens, I don't have to fill out casualty indemnity forms today! Here is your official registration stamp, your bounty coin purse, and three high-grade guild healing draughts! You're an absolute lifesaver, Hunter-san—welcome officially to Aethelgard's vanguard ranks!"
+    }
+  },
+  {
+    "npc_id": "npc_garrick_stonebreaker",
+    "identity": {
+      "name": "Garrick Stonebreaker",
+      "title": "Grand Artisan of the Caldera Anvil",
+      "sub_faction": "Ironpeak Forge Syndicate",
+      "speaking_quirk": "Boisterous, gruff tsundere dwarven dialect; constantly compares weapons and armor to living, breathing maidens that must be treated with fierce reverence and tender care."
+    },
+    "questline": {
+      "title": "A Blade's Thirst: Slag Alloy Harvesting",
+      "recommended_player_level": 12,
+      "objective_type": "fetch",
+      "target_coordinates": [
+        { "x": -35.0, "y": 1.4, "z": -25.0 },
+        { "x": -48.2, "y": 2.0, "z": -38.5 }
+      ]
+    },
+    "dynamic_dialogue": {
+      "first_greeting": "Bwahaha! Mind yer footing, lad, unless ye fancy having yer boots welded to my hearthstones! Look at that twig ye got strapped to yer hip—ha! It looks like an elven butter knife that'd snap in two if a goblin so much as sneezed in its general direction! In Garrick's forge, we don't swing toys; we forge instruments of absolute thunder! So state yer business before my coals go cold!",
+      "quest_offered": "Hmph! Ye say ye want a blade worthy of slaying Abyss horrors? Then prove yer steel ain't just for show! Deep in the volcanic crevices of Ironpeak, ancient caldera golems are shedding raw slag alloy plates. That metal is hotter than a dragon's throat and tougher than dragon bone, but my tongs are itching to shape it into a proper prism edge. March up to the caldera perimeter, smash those stone sentinels, and bring me back six pristine alloy slabs! Do that, and I'll temper ye a weapon that'll make the skies tremble!",
+      "quest_in_progress": "Still wandering about with empty hands, are ye?! Bah! Slag golems don't just melt themselves and stroll into my bucket, kid! Watch their overhead hammer swings—if ye stand flat-footed like an ungreased anvil, they'll pound ye straight into bedrock! Aim for the glowing joints where the magma vents, and hurry back before my crucible loses its heat!",
+      "quest_completed_reward_claim": "By the molten beard of the First Ancestor! Look at the density on these alloy slabs! The runic sheen is still singing with caldera heat! Ye didn't just crack 'em off—ye cleanly sheared the leyline conduits! Fine, fine, I admit it... ye've got guts, lad! Stand back and cover yer ears while I quench this steel! Here—take this Aether-Forged Bastion Edge, freshly quenched and honed! Don't ye dare let rust touch her, or I'll drag ye back here by yer collar and make ye polish my anvils for a month!"
+    }
+  },
+  {
+    "npc_id": "npc_lady_selene_lunaris",
+    "identity": {
+      "name": "Lady Selene Lunaris",
+      "title": "Seventh Celestial Stargazer & Arcane Weaver",
+      "sub_faction": "Silverleaf Mages Brigade",
+      "speaking_quirk": "Elegantly poetic, slightly theatrical chuunibyou prodigy; refers to mundane everyday occurrences as cosmic fate, celestial resonance, or planetary omens with sweeping hand gestures."
+    },
+    "questline": {
+      "title": "Echoes of the Starlit Well: Leyline Resonance",
+      "recommended_player_level": 18,
+      "objective_type": "fetch",
+      "target_coordinates": [
+        { "x": -85.0, "y": -6.0, "z": 85.0 },
+        { "x": -92.4, "y": -4.5, "z": 96.2 }
+      ]
+    },
+    "dynamic_dialogue": {
+      "first_greeting": "Halt, wanderer of the mortal coil... can you not feel it? The celestial meridians above Oakhaven tremble like plucked lyre strings upon the nocturnal wind. Yes... the planetary alignment whispers that our destinies were woven across the starlight long before you crossed this threshold. I am Selene Lunaris, humble conduit of the cosmic weave. Tell me—does your soul seek enlightenment, or merely the dazzling brilliance of arcane flame?",
+      "quest_offered": "An abyssal fissure has fractured the subterranean leylines beneath the Sunken Caverns. The azure crystals that steady this city's barrier are weeping corrupted tears, distorting the song of the cosmos into discordant screams! I require a champion whose spirit burns untainted by void miasma. Descend into the threshold of the deep crystal caverns and retrieve three Pure Resonant Ley-Pearls from the luminous flora. Do this, and the stars themselves shall bestow their celestial warding upon your journey.",
+      "quest_in_progress": "The constellation of the Silver Owl is ascending toward its zenith, wanderer... yet the resonant harmonics of the earth remain muffled and choked with void shadows. Can you hear the crying of the leylines? Do not linger in the subterranean gloom too long, for the darkness hungers to swallow all who dare admire its crystalline luminescence without pure intent. Tread lightly, and let the starlight guide your stride.",
+      "quest_completed_reward_claim": "Ah... magnificent! Just holding these pearls, I can feel the discordant howling of the void subside into a serene celestial lullaby! Look how the azure luminescence dances along my fingertips—it is as though a fragment of the starry heavens has descended into our mortal hands! As promised by the cosmic covenant, take this enchanted Celestial Weave Robe and this flask of Condensed Starlight Elixir. May the infinite heavens forever illuminate your path through the darkest abyss, my fated champion."
+    }
+  },
+  {
+    "npc_id": "npc_seraphina_dawnseeker",
+    "identity": {
+      "name": "High Paladin Seraphina Dawnseeker",
+      "title": "Shield of the Radiant Sun & Inquisitor",
+      "sub_faction": "Church of Light",
+      "speaking_quirk": "Fiercely earnest, chivalrous and formal knightly cadence; struggles hilariously to maintain her solemn holy composure whenever her secret passion for pastries or cute creatures is mentioned."
+    },
+    "questline": {
+      "title": "Sanctify the Desecrated Relic Ground",
+      "recommended_player_level": 25,
+      "objective_type": "extermination",
+      "target_coordinates": [
+        { "x": 45.0, "y": 0.0, "z": -45.0 },
+        { "x": 52.0, "y": 1.2, "z": -58.0 }
+      ]
+    },
+    "dynamic_dialogue": {
+      "first_greeting": "Stand tall, adventurer. Under the radiant gaze of the Dawn Goddess, I bid you honor and safety. I am High Paladin Seraphina, sworn blade of the Church of Light. We stand sentinel against the creeping rot of the Abyss so that the innocent citizens within these walls may sleep beneath warm hearths. If your heart is steadfast and your sword is pledged to justice, you will always find a steadfast sister-in-arms in me.",
+      "quest_offered": "A sacred pilgrimage shrine in the southern badlands has been defiled by Mana-Drain Revenants and roaming void beasts. The holy consecrated flames that have burned for three centuries have been snuffed out by unholy shadows! The Holy Inquest cannot dispatch a full battalion without inciting panic in the capital, so I must request an auxiliary champion of verified valor. Slay the desecrating revenants, rekindle the altar's Dawnfire Brazier, and reclaim the sanctuary for the Light! Will you take up this crusade with me?",
+      "quest_in_progress": "The desecration of holy ground weighs heavily upon my spirit, traveler. Every hour those spectral fiends haunt the pilgrimage road, travelers are forced into dangerous detours. Remember: spectral revenants feed upon your inner doubt and fear. Channel your unwavering resolve into every strike, invoke holy radiance if your weapons allow, and purge the darkness without hesitation!",
+      "quest_completed_reward_claim": "The beacon fire! From the cathedral ramparts, I saw the golden column of Dawnfire pierce the midnight sky! You truly reclaimed the consecrated grounds and put those tortured phantoms to rest! Words cannot express the debt the Church owes you... a-and frankly, between you and me, I was so worried sick I couldn't even finish my afternoon strawberry tart! *Ahem*... please disregard that last comment! In the name of the Goddess of Radiance, accept this consecrated Sunburst Talisman and twenty gold sovereigns! Walk forever in the sun's warm embrace!"
+    }
+  },
+  {
+    "npc_id": "npc_ren_shadow_crow",
+    "identity": {
+      "name": "Ren the Whispering Crow",
+      "title": "Master of Whispers & Black Market Procurer",
+      "sub_faction": "Eclipse Merchant Syndicate",
+      "speaking_quirk": "Silky, playful, teasing tone; speaks in transactional metaphors, sly smirks, and conspiratorial whispers while constantly tossing and catching an unmarked silver coin."
+    },
+    "questline": {
+      "title": "Shadows in the Vault: Retrieve the Smuggler's Ledger",
+      "recommended_player_level": 30,
+      "objective_type": "escort",
+      "target_coordinates": [
+        { "x": 50.0, "y": 0.0, "z": 50.0 },
+        { "x": 67.11, "y": 0.0, "z": 91.22 }
+      ]
+    },
+    "dynamic_dialogue": {
+      "first_greeting": "Well, well... what do the alley shadows drag into my parlor today? Easy there, friend, lower your hand from your pommel—nobody gets stabbed in this cellar unless they fail to pay their tab. I'm Ren. Some call me an information broker; others call me an opportunistic scavenger. Personally, I prefer 'unlicensed distributor of convenient truths.' And right now, you look like someone who could use a very profitable truth.",
+      "quest_offered": "You see that plump, corrupt merchant guildmaster dining upstairs with the city inspectors? Let's just say he 'misplaced' a ciphered black ledger containing certain... delicate arrangements with our subterranean friends. It was dropped near the badlands border during an ambush by mutant slimes and an orc warband. If the city guards find it, a lot of innocent pockets get turned inside out. If *you* escort my courier scout to coordinates (50.0, 50.0) and retrieve that leather-bound book intact, I'll pay you triple what the guild pays for a whole week of goblin hunting. Sound like good business, partner?",
+      "quest_in_progress": "Still breathing, are we? Good. Don't go soft on me now, friend—the mutant slimes in those ruins digest bone and steel in under ten seconds, and an orc warrior's greataxe doesn't care about your polite diplomacy. Keep my scout shielded, snatch the ciphered ledger from the rusted iron chest, and slip out through the drainage tunnels before the sentries catch the scent.",
+      "quest_completed_reward_claim": "Heh... smooth, silent, and without a speck of blood on the ledger's binding. You're an artist, friend! With these numbers in my hands, three noble houses will be dancing like marionettes on my fingertips by tomorrow morning! Here is your cut—five thousand pristine gold sovereigns, unminted and untraceable, plus this Cloak of the Shadow Stalker. Keep this between us, and the next time you need rare abyssal relics that 'don't exist,' my door will always be unlocked for you."
+    }
+  }
+]

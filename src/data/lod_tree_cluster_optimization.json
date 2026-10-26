@@ -1,0 +1,1211 @@
+{
+  "map_dimensions": {
+    "width": 100,
+    "depth": 100,
+    "coordinate_space": "world_centered"
+  },
+  "total_instances": 100,
+  "lod_policy": "Distance_Culled_Hierarchical_Instancing",
+  "instances": [
+    {
+      "instance_id": "tree_001",
+      "type": "SpeedTree_Oak",
+      "world_x": -3.5,
+      "world_z": 3.2,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_002",
+      "type": "SpeedTree_Oak",
+      "world_x": 0.6,
+      "world_z": -6.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_003",
+      "type": "SpeedTree_Oak",
+      "world_x": 5.1,
+      "world_z": 6.6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_004",
+      "type": "SpeedTree_Oak",
+      "world_x": -9.5,
+      "world_z": -1.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_005",
+      "type": "SpeedTree_Oak",
+      "world_x": 9.1,
+      "world_z": -5.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_006",
+      "type": "SpeedTree_Oak",
+      "world_x": -3,
+      "world_z": 11.4,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_007",
+      "type": "SpeedTree_Oak",
+      "world_x": -5.9,
+      "world_z": -11.3,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_008",
+      "type": "SpeedTree_Oak",
+      "world_x": 12.8,
+      "world_z": 4.6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_009",
+      "type": "SpeedTree_Oak",
+      "world_x": -13.3,
+      "world_z": 5.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_010",
+      "type": "SpeedTree_Oak",
+      "world_x": 6.4,
+      "world_z": -13.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_011",
+      "type": "SpeedTree_Oak",
+      "world_x": 4.8,
+      "world_z": 15.2,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_012",
+      "type": "SpeedTree_Oak",
+      "world_x": -14.4,
+      "world_z": -8.3,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_013",
+      "type": "SpeedTree_Oak",
+      "world_x": 16.9,
+      "world_z": -3.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_014",
+      "type": "SpeedTree_Oak",
+      "world_x": -10.3,
+      "world_z": 14.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_015",
+      "type": "SpeedTree_Oak",
+      "world_x": -2.4,
+      "world_z": -18.4,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_016",
+      "type": "SpeedTree_Oak",
+      "world_x": 14.7,
+      "world_z": 12.3,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_017",
+      "type": "SpeedTree_Oak",
+      "world_x": -19.8,
+      "world_z": 0.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_018",
+      "type": "SpeedTree_Oak",
+      "world_x": 14.4,
+      "world_z": -14.4,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_019",
+      "type": "SpeedTree_Oak",
+      "world_x": -0.9,
+      "world_z": 20.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_020",
+      "type": "SpeedTree_Oak",
+      "world_x": -13.8,
+      "world_z": -16.4,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_021",
+      "type": "SpeedTree_Oak",
+      "world_x": 21.8,
+      "world_z": 2.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_022",
+      "type": "SpeedTree_Oak",
+      "world_x": -18.4,
+      "world_z": 12.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_023",
+      "type": "SpeedTree_Oak",
+      "world_x": 5,
+      "world_z": -22.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_024",
+      "type": "SpeedTree_Oak",
+      "world_x": 11.8,
+      "world_z": 20.4,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_025",
+      "type": "SpeedTree_Oak",
+      "world_x": -22.9,
+      "world_z": -7.2,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_026",
+      "type": "SpeedTree_Oak",
+      "world_x": 22.2,
+      "world_z": -10.3,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_027",
+      "type": "SpeedTree_Oak",
+      "world_x": -9.5,
+      "world_z": 23,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_028",
+      "type": "SpeedTree_Oak",
+      "world_x": -8.7,
+      "world_z": -23.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_029",
+      "type": "SpeedTree_Oak",
+      "world_x": 22.9,
+      "world_z": 11.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_030",
+      "type": "SpeedTree_Oak",
+      "world_x": -25.4,
+      "world_z": 6.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_031",
+      "type": "SpeedTree_Oak",
+      "world_x": 14.4,
+      "world_z": -22.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_032",
+      "type": "SpeedTree_Oak",
+      "world_x": 4.7,
+      "world_z": 26.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_033",
+      "type": "SpeedTree_Oak",
+      "world_x": -21.9,
+      "world_z": -16.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_034",
+      "type": "SpeedTree_Oak",
+      "world_x": 27.9,
+      "world_z": -2.4,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_035",
+      "type": "SpeedTree_Oak",
+      "world_x": -19.2,
+      "world_z": 20.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_036",
+      "type": "SpeedTree_Oak",
+      "world_x": 0,
+      "world_z": -28.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_037",
+      "type": "SpeedTree_Oak",
+      "world_x": 19.7,
+      "world_z": 21.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_038",
+      "type": "SpeedTree_Oak",
+      "world_x": -29.5,
+      "world_z": -2.6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_039",
+      "type": "SpeedTree_Oak",
+      "world_x": 23.8,
+      "world_z": -18.2,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_040",
+      "type": "SpeedTree_Oak",
+      "world_x": -5.3,
+      "world_z": 29.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_041",
+      "type": "SpeedTree_Oak",
+      "world_x": -16.5,
+      "world_z": -25.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_042",
+      "type": "SpeedTree_Oak",
+      "world_x": 30,
+      "world_z": 8.1,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_043",
+      "type": "SpeedTree_Oak",
+      "world_x": -27.9,
+      "world_z": 14.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_044",
+      "type": "SpeedTree_Oak",
+      "world_x": 10.9,
+      "world_z": -29.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_045",
+      "type": "SpeedTree_Oak",
+      "world_x": 12.3,
+      "world_z": 29.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_046",
+      "type": "SpeedTree_Oak",
+      "world_x": -29.5,
+      "world_z": -13.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_047",
+      "type": "SpeedTree_Oak",
+      "world_x": 31.4,
+      "world_z": -9.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_048",
+      "type": "SpeedTree_Oak",
+      "world_x": -16.6,
+      "world_z": 28.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_049",
+      "type": "SpeedTree_Oak",
+      "world_x": -7.3,
+      "world_z": -32.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_050",
+      "type": "SpeedTree_Oak",
+      "world_x": 27.8,
+      "world_z": 19.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_051",
+      "type": "SpeedTree_Oak",
+      "world_x": -34,
+      "world_z": 4.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_052",
+      "type": "SpeedTree_Oak",
+      "world_x": 22.2,
+      "world_z": -26.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_053",
+      "type": "SpeedTree_Oak",
+      "world_x": 1.5,
+      "world_z": 34.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_054",
+      "type": "SpeedTree_Oak",
+      "world_x": -24.9,
+      "world_z": -24.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_055",
+      "type": "SpeedTree_Oak",
+      "world_x": 35.6,
+      "world_z": 1.6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_056",
+      "type": "SpeedTree_Oak",
+      "world_x": -27.5,
+      "world_z": 23.1,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_057",
+      "type": "SpeedTree_Oak",
+      "world_x": 4.7,
+      "world_z": -35.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_058",
+      "type": "SpeedTree_Oak",
+      "world_x": 21,
+      "world_z": 29.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_059",
+      "type": "SpeedTree_Oak",
+      "world_x": -36,
+      "world_z": -8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_060",
+      "type": "SpeedTree_Oak",
+      "world_x": 32.2,
+      "world_z": -18.6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_061",
+      "type": "SpeedTree_Oak",
+      "world_x": -11.3,
+      "world_z": 35.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_062",
+      "type": "SpeedTree_Oak",
+      "world_x": -16,
+      "world_z": -34.3,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_063",
+      "type": "SpeedTree_Oak",
+      "world_x": 35.2,
+      "world_z": 14.6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_064",
+      "type": "SpeedTree_Oak",
+      "world_x": -36.1,
+      "world_z": 13.1,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_065",
+      "type": "SpeedTree_Oak",
+      "world_x": 17.9,
+      "world_z": -34.3,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_066",
+      "type": "SpeedTree_Oak",
+      "world_x": 10.1,
+      "world_z": 37.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_067",
+      "type": "SpeedTree_Oak",
+      "world_x": -33.1,
+      "world_z": -21.1,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_068",
+      "type": "SpeedTree_Oak",
+      "world_x": 39,
+      "world_z": -6.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_069",
+      "type": "SpeedTree_Oak",
+      "world_x": -24.3,
+      "world_z": 31.6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": true
+    },
+    {
+      "instance_id": "tree_070",
+      "type": "SpeedTree_Oak",
+      "world_x": -3.5,
+      "world_z": -40,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_071",
+      "type": "SpeedTree_Oak",
+      "world_x": 29.8,
+      "world_z": 27.3,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_072",
+      "type": "SpeedTree_Oak",
+      "world_x": -40.7,
+      "world_z": 0,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_073",
+      "type": "SpeedTree_Oak",
+      "world_x": 30.2,
+      "world_z": -27.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_074",
+      "type": "SpeedTree_Oak",
+      "world_x": -3.6,
+      "world_z": 41.1,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_075",
+      "type": "SpeedTree_Oak",
+      "world_x": -25.3,
+      "world_z": -33,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_076",
+      "type": "SpeedTree_Oak",
+      "world_x": 41.2,
+      "world_z": 7.3,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_077",
+      "type": "SpeedTree_Oak",
+      "world_x": -35.5,
+      "world_z": 22.6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_078",
+      "type": "SpeedTree_Oak",
+      "world_x": 11,
+      "world_z": -40.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_079",
+      "type": "SpeedTree_Oak",
+      "world_x": 19.7,
+      "world_z": 37.8,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_080",
+      "type": "SpeedTree_Oak",
+      "world_x": -40.3,
+      "world_z": -14.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_081",
+      "type": "SpeedTree_Oak",
+      "world_x": 39.9,
+      "world_z": -16.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_082",
+      "type": "SpeedTree_Oak",
+      "world_x": -18.4,
+      "world_z": 39.4,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_083",
+      "type": "SpeedTree_Oak",
+      "world_x": -13.1,
+      "world_z": -41.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_084",
+      "type": "SpeedTree_Oak",
+      "world_x": 38.1,
+      "world_z": 22,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_085",
+      "type": "SpeedTree_Oak",
+      "world_x": -43.2,
+      "world_z": 9.6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_086",
+      "type": "SpeedTree_Oak",
+      "world_x": 25.5,
+      "world_z": -36.5,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_087",
+      "type": "SpeedTree_Oak",
+      "world_x": 5.8,
+      "world_z": 44.4,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_088",
+      "type": "SpeedTree_Oak",
+      "world_x": -34.5,
+      "world_z": -28.9,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_089",
+      "type": "SpeedTree_Oak",
+      "world_x": 45.2,
+      "world_z": -2,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_090",
+      "type": "SpeedTree_Oak",
+      "world_x": -32.2,
+      "world_z": 32.2,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_091",
+      "type": "SpeedTree_Oak",
+      "world_x": 2,
+      "world_z": -45.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_092",
+      "type": "SpeedTree_Oak",
+      "world_x": 29.6,
+      "world_z": 35.3,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_093",
+      "type": "SpeedTree_Oak",
+      "world_x": -45.9,
+      "world_z": -6,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_094",
+      "type": "SpeedTree_Oak",
+      "world_x": 38.1,
+      "world_z": -26.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_095",
+      "type": "SpeedTree_Oak",
+      "world_x": -10.1,
+      "world_z": 45.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_096",
+      "type": "SpeedTree_Oak",
+      "world_x": -23.5,
+      "world_z": -40.7,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_097",
+      "type": "SpeedTree_Oak",
+      "world_x": 45.1,
+      "world_z": 14.2,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_098",
+      "type": "SpeedTree_Oak",
+      "world_x": -43.1,
+      "world_z": 20.1,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_099",
+      "type": "SpeedTree_Oak",
+      "world_x": 18.3,
+      "world_z": -44.1,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    },
+    {
+      "instance_id": "tree_100",
+      "type": "SpeedTree_Oak",
+      "world_x": 16.4,
+      "world_z": 45.1,
+      "LOD_Thresholds": {
+        "lod_0_dist": 15,
+        "lod_1_dist": 40,
+        "billboard_fallback_dist": 75
+      },
+      "cast_shadows": false
+    }
+  ]
+}

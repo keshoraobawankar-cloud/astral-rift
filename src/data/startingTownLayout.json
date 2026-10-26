@@ -1,0 +1,294 @@
+{
+  "town_metadata": {
+    "town_name": "Oakhaven Crossroads (Adventurer's Starting Town)",
+    "area_bounds": {
+      "width": 200.0,
+      "depth": 200.0,
+      "x_min": -100.0,
+      "x_max": 100.0,
+      "z_min": -100.0,
+      "z_max": 100.0
+    },
+    "architectural_style": "medieval_anime",
+    "total_structures": 20
+  },
+  "structures": [
+    {
+      "structure_id": "bld_plaza_fountain",
+      "name": "Celestial Goddess Plaza Fountain",
+      "structure_type": "landmark_fountain",
+      "bounding_box_size": { "width": 14.0, "depth": 14.0 },
+      "anchor_coordinate": { "x": 0.0, "z": 0.0 },
+      "door_facing_vector": { "x": 0.0, "z": 1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "stone_sitting_bench", "relative_offset": { "x": -8.0, "z": 0.0 } },
+        { "prop_type": "stone_sitting_bench", "relative_offset": { "x": 8.0, "z": 0.0 } },
+        { "prop_type": "ornate_street_lamp", "relative_offset": { "x": -6.0, "z": -6.0 } },
+        { "prop_type": "ornate_street_lamp", "relative_offset": { "x": 6.0, "z": -6.0 } },
+        { "prop_type": "ornate_street_lamp", "relative_offset": { "x": -6.0, "z": 6.0 } },
+        { "prop_type": "ornate_street_lamp", "relative_offset": { "x": 6.0, "z": 6.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_guild_hall",
+      "name": "Grand Adventurer's Guild Hall",
+      "structure_type": "adventurers_guild",
+      "bounding_box_size": { "width": 28.0, "depth": 20.0 },
+      "anchor_coordinate": { "x": 0.0, "z": -32.0 },
+      "door_facing_vector": { "x": 0.0, "z": 1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "guild_crest_banner", "relative_offset": { "x": -4.0, "z": 10.5 } },
+        { "prop_type": "guild_crest_banner", "relative_offset": { "x": 4.0, "z": 10.5 } },
+        { "prop_type": "bounty_quest_board", "relative_offset": { "x": 8.5, "z": 11.0 } },
+        { "prop_type": "wooden_ale_barrels", "relative_offset": { "x": -11.0, "z": 9.5 } },
+        { "prop_type": "brass_hanging_lantern", "relative_offset": { "x": 0.0, "z": 10.2 } },
+        { "prop_type": "stone_hitching_post", "relative_offset": { "x": 12.0, "z": 12.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_blacksmith_armory",
+      "name": "Ironpeak Caldera Blacksmith & Armory",
+      "structure_type": "blacksmith_armory",
+      "bounding_box_size": { "width": 16.0, "depth": 14.0 },
+      "anchor_coordinate": { "x": -35.0, "z": -8.0 },
+      "door_facing_vector": { "x": 1.0, "z": 0.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "blacksmith_anvil_plinth", "relative_offset": { "x": 9.0, "z": 2.0 } },
+        { "prop_type": "cooling_water_trough", "relative_offset": { "x": 9.0, "z": -3.5 } },
+        { "prop_type": "weapon_display_rack", "relative_offset": { "x": 8.5, "z": 5.0 } },
+        { "prop_type": "hanging_hammer_signboard", "relative_offset": { "x": 8.2, "z": 0.0 } },
+        { "prop_type": "coal_slag_pile", "relative_offset": { "x": -7.0, "z": -5.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_potion_alchemy",
+      "name": "Silverleaf Potion & Curative Apothecary",
+      "structure_type": "potion_alchemy_shop",
+      "bounding_box_size": { "width": 14.0, "depth": 12.0 },
+      "anchor_coordinate": { "x": 35.0, "z": -8.0 },
+      "door_facing_vector": { "x": -1.0, "z": 0.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "bubbling_mortar_signboard", "relative_offset": { "x": -7.2, "z": 0.0 } },
+        { "prop_type": "botanical_herb_drying_rack", "relative_offset": { "x": -8.0, "z": 3.5 } },
+        { "prop_type": "alchemical_glass_carboys", "relative_offset": { "x": -7.5, "z": -3.0 } },
+        { "prop_type": "flowering_planter_box", "relative_offset": { "x": -6.0, "z": 6.2 } },
+        { "prop_type": "hanging_faerie_lantern", "relative_offset": { "x": -7.2, "z": 1.5 } }
+      ]
+    },
+    {
+      "structure_id": "bld_magic_academy_tower",
+      "name": "High Arcane Academy Spire",
+      "structure_type": "magic_academy_tower",
+      "bounding_box_size": { "width": 12.0, "depth": 12.0 },
+      "anchor_coordinate": { "x": 38.0, "z": -40.0 },
+      "door_facing_vector": { "x": -0.707, "z": 0.707 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "floating_rune_monolith", "relative_offset": { "x": -6.5, "z": 6.5 } },
+        { "prop_type": "astrolabe_pedestal", "relative_offset": { "x": -5.0, "z": 8.0 } },
+        { "prop_type": "arcane_crystal_beacon", "relative_offset": { "x": 7.0, "z": -5.0 } },
+        { "prop_type": "engraved_leyline_pillar", "relative_offset": { "x": -7.0, "z": -5.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_01",
+      "name": "Town Elder's Manor",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 12.0, "depth": 10.0 },
+      "anchor_coordinate": { "x": -36.0, "z": -40.0 },
+      "door_facing_vector": { "x": 0.707, "z": 0.707 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "wooden_flower_cart", "relative_offset": { "x": 5.5, "z": 6.0 } },
+        { "prop_type": "vintage_lamp_post", "relative_offset": { "x": 7.0, "z": 4.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_02",
+      "name": "Baker's Hearth Cottage",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 10.0, "depth": 8.0 },
+      "anchor_coordinate": { "x": -58.0, "z": -25.0 },
+      "door_facing_vector": { "x": 1.0, "z": 0.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "stacked_firewood_pile", "relative_offset": { "x": 4.0, "z": -4.8 } },
+        { "prop_type": "grain_sack_crate", "relative_offset": { "x": 5.2, "z": 2.5 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_03",
+      "name": "Weaver's Loom Cottage",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 10.0, "depth": 8.0 },
+      "anchor_coordinate": { "x": -58.0, "z": -8.0 },
+      "door_facing_vector": { "x": 1.0, "z": 0.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "spinning_wheel_sign", "relative_offset": { "x": 5.2, "z": 0.0 } },
+        { "prop_type": "wash_basin_tub", "relative_offset": { "x": 4.5, "z": 3.5 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_04",
+      "name": "Leatherworker's Tanner Lodge",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 11.0, "depth": 9.0 },
+      "anchor_coordinate": { "x": -58.0, "z": 10.0 },
+      "door_facing_vector": { "x": 1.0, "z": 0.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "hide_stretching_frame", "relative_offset": { "x": 6.0, "z": -3.0 } },
+        { "prop_type": "tanning_oil_cask", "relative_offset": { "x": 5.8, "z": 3.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_05",
+      "name": "Greenhouse Herbalist Villa",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 11.0, "depth": 9.0 },
+      "anchor_coordinate": { "x": 58.0, "z": -25.0 },
+      "door_facing_vector": { "x": -1.0, "z": 0.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "botanical_trellis_bench", "relative_offset": { "x": -6.0, "z": 2.5 } },
+        { "prop_type": "glazed_flower_pots", "relative_offset": { "x": -5.8, "z": -3.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_06",
+      "name": "Novice Mage's Quarters",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 10.0, "depth": 8.0 },
+      "anchor_coordinate": { "x": 58.0, "z": -8.0 },
+      "door_facing_vector": { "x": -1.0, "z": 0.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "telescope_tripod", "relative_offset": { "x": -5.5, "z": 3.0 } },
+        { "prop_type": "enchanted_glowing_lantern", "relative_offset": { "x": -5.2, "z": 0.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_07",
+      "name": "Cartographer's Workshop",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 10.0, "depth": 8.0 },
+      "anchor_coordinate": { "x": 58.0, "z": 10.0 },
+      "door_facing_vector": { "x": -1.0, "z": 0.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "compass_weather_vane", "relative_offset": { "x": -5.2, "z": 0.0 } },
+        { "prop_type": "rolled_parchment_crate", "relative_offset": { "x": -5.5, "z": -2.8 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_08",
+      "name": "Timber-Framed Citizen Home",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 10.0, "depth": 8.0 },
+      "anchor_coordinate": { "x": -35.0, "z": 28.0 },
+      "door_facing_vector": { "x": 0.0, "z": -1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "picket_garden_fence", "relative_offset": { "x": -4.0, "z": -5.0 } },
+        { "prop_type": "wooden_bench", "relative_offset": { "x": 3.5, "z": -4.8 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_09",
+      "name": "Stone Mason's Dwelling",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 10.0, "depth": 8.0 },
+      "anchor_coordinate": { "x": -18.0, "z": 32.0 },
+      "door_facing_vector": { "x": 0.0, "z": -1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "chiseled_granite_block", "relative_offset": { "x": -4.5, "z": -4.8 } },
+        { "prop_type": "masonry_tool_chest", "relative_offset": { "x": 4.0, "z": -4.5 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_10",
+      "name": "Cozy Thatched Innkeeper Home",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 11.0, "depth": 9.0 },
+      "anchor_coordinate": { "x": 0.0, "z": 36.0 },
+      "door_facing_vector": { "x": 0.0, "z": -1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "warm_hearth_chimney_pot", "relative_offset": { "x": 0.0, "z": 0.0 } },
+        { "prop_type": "flower_window_box", "relative_offset": { "x": -3.5, "z": -5.0 } },
+        { "prop_type": "flower_window_box", "relative_offset": { "x": 3.5, "z": -5.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_11",
+      "name": "Hunter's Game Lodge",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 10.0, "depth": 8.0 },
+      "anchor_coordinate": { "x": 18.0, "z": 32.0 },
+      "door_facing_vector": { "x": 0.0, "z": -1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "antler_wall_mount", "relative_offset": { "x": 0.0, "z": -4.2 } },
+        { "prop_type": "archery_target_dummy", "relative_offset": { "x": 5.0, "z": -6.5 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_12",
+      "name": "Fisherman's Tackle Abode",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 10.0, "depth": 8.0 },
+      "anchor_coordinate": { "x": 35.0, "z": 28.0 },
+      "door_facing_vector": { "x": 0.0, "z": -1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "drying_fish_rack", "relative_offset": { "x": -4.2, "z": -4.8 } },
+        { "prop_type": "coiled_nautical_rope", "relative_offset": { "x": 4.5, "z": -4.5 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_13",
+      "name": "Southern Sentry Barracks",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 12.0, "depth": 9.0 },
+      "anchor_coordinate": { "x": -25.0, "z": 58.0 },
+      "door_facing_vector": { "x": 0.0, "z": -1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "training_sword_rack", "relative_offset": { "x": 6.5, "z": -5.0 } },
+        { "prop_type": "iron_brazier", "relative_offset": { "x": -6.5, "z": -5.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_14",
+      "name": "Coppersmith's Foundry Home",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 11.0, "depth": 9.0 },
+      "anchor_coordinate": { "x": 0.0, "z": 62.0 },
+      "door_facing_vector": { "x": 0.0, "z": -1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "copper_kettle_display", "relative_offset": { "x": -4.5, "z": -5.0 } },
+        { "prop_type": "brass_water_well", "relative_offset": { "x": 7.0, "z": -6.0 } }
+      ]
+    },
+    {
+      "structure_id": "bld_house_15",
+      "name": "Astronomer's Skylight Home",
+      "structure_type": "civilian_residence",
+      "bounding_box_size": { "width": 12.0, "depth": 9.0 },
+      "anchor_coordinate": { "x": 25.0, "z": 58.0 },
+      "door_facing_vector": { "x": 0.0, "z": -1.0 },
+      "architectural_style": "medieval_anime",
+      "exterior_props": [
+        { "prop_type": "celestial_star_globe", "relative_offset": { "x": -6.5, "z": -5.0 } },
+        { "prop_type": "brass_lantern_pole", "relative_offset": { "x": 6.5, "z": -5.0 } }
+      ]
+    }
+  ]
+}

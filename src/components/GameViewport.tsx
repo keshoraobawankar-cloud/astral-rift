@@ -38,6 +38,7 @@ import {
 } from '../services/multiplayerSocket';
 import { TargetUnitFrame } from './TargetUnitFrame';
 import { Minimap, MinimapEntity } from './Minimap';
+import { PlayerStatusBar } from './PlayerStatusBar';
 import { extendedCharacterRoster, CharacterRosterItem, characterRoster } from '../data/characters';
 import { DungeonSynthWidget } from './DungeonSynthWidget';
 import { RetentionRiftModal } from './RetentionRiftModal';
@@ -48,7 +49,23 @@ import {
   createLandscapeTerrainTexture,
   createVegetationClusters,
 } from '../game/environment';
+import { createEnterableCitadel, resolveCitadelWallCollision, CITADEL_BUILDING_CONFIGS } from '../game/enterableCitadel';
+import { createSafeZoneNet } from '../game/safeZoneNet';
+import {
+  AnimalMonster,
+  initializeAnimalMonsterPacks,
+  updateAnimalMonsterPacks,
+} from '../game/monsterPackSystem';
 import { setupPostProcessing } from '../game/renderer';
+import {
+  CGAxisAssetBrowser,
+  CGAxisAsset,
+  PlacedSceneObject,
+  CGAXIS_CATALOG,
+} from './CGAxisAssetBrowser';
+import proceduralMapData from '../data/proceduralTerrainMap.json';
+import labyrinthData from '../data/demonKingLabyrinth.json';
+import startingTownData from '../data/startingTownLayout.json';
 
 export interface QuestObjective {
   id: string;
@@ -159,7 +176,7 @@ export class ArcaneRangerSystem {
   }
 
   // Spawn Starlight Volley or Astral Snipe projectile
-  fireProjectile(origin: THREE.Vector3, targetDirection: THREE.Vector3, speed = 45, isPiercing = false, projectileType = 'starlight_arrow') {
+  fireProjectile(origin: THREE.Vector3, targetDirection: THREE.Vector3, speed = 48, isPiercing = false, projectileType = 'starlight_arrow') {
     const mat = isPiercing
       ? new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
       : this.arrowMaterial;
@@ -178,17 +195,58 @@ export class ArcaneRangerSystem {
       mesh: arrowMesh,
       velocity: targetDirection.clone().normalize().multiplyScalar(speed),
       distanceTraveled: 0,
-      maxDistance: isPiercing ? 55 : 40,
+      maxDistance: isPiercing ? 120 : 80,
       isPiercing: isPiercing,
       hitEntities: new Set(),
       projectileType,
     });
   }
 
+  // Spawn Blazing Long-Range Fireball projectile (130m long-range attack)
+  fireFireball(origin: THREE.Vector3, targetDirection: THREE.Vector3, speed = 52) {
+    const fbGroup = new THREE.Group();
+    fbGroup.name = 'fireball_projectile';
+
+    // Blazing Core
+    const coreGeo = new THREE.SphereGeometry(0.55, 14, 14);
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xff3b00 });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    fbGroup.add(core);
+
+    // Orbiting Plasma Corona
+    const coronaGeo = new THREE.SphereGeometry(0.85, 10, 10);
+    const coronaMat = new THREE.MeshBasicMaterial({
+      color: 0xfacc15,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.8,
+    });
+    const corona = new THREE.Mesh(coronaGeo, coronaMat);
+    fbGroup.add(corona);
+
+    // Dynamic Fiery PointLight illuminating the world as it flies
+    const fbLight = new THREE.PointLight(0xf97316, 3.2, 18);
+    fbGroup.add(fbLight);
+
+    fbGroup.position.copy(origin);
+    this.scene.add(fbGroup);
+
+    this.projectiles.push({
+      mesh: fbGroup as any,
+      velocity: targetDirection.clone().normalize().multiplyScalar(speed),
+      distanceTraveled: 0,
+      maxDistance: 130, // 130m long-range attack!
+      isPiercing: false,
+      hitEntities: new Set(),
+      projectileType: 'fireball',
+    });
+  }
+
   // Update projectiles each frame (~60 FPS game loop)
   update(
     delta: number,
-    monsterColliders: { id: string; name: string; position: THREE.Vector3; takeDamage: (amt: number) => void }[]
+    monsterColliders: { id: string; name: string; position: THREE.Vector3; takeDamage: (amt: number) => void }[],
+    onExplosion?: (pos: THREE.Vector3) => void
   ) {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const proj = this.projectiles[i];
@@ -196,11 +254,30 @@ export class ArcaneRangerSystem {
       proj.mesh.position.add(step);
       proj.distanceTraveled += step.length();
 
+      if (proj.projectileType === 'fireball') {
+        proj.mesh.rotation.x += delta * 8;
+        proj.mesh.rotation.y += delta * 12;
+      }
+
       // Check collision against monsters in open world
+      let hitOccurred = false;
       for (const monster of monsterColliders) {
-        if (!proj.hitEntities.has(monster.id) && proj.mesh.position.distanceTo(monster.position) < 2.5) {
-          monster.takeDamage(proj.isPiercing ? 360 : 135);
+        if (!proj.hitEntities.has(monster.id) && proj.mesh.position.distanceTo(monster.position) < 2.8) {
+          hitOccurred = true;
           proj.hitEntities.add(monster.id);
+
+          if (proj.projectileType === 'fireball') {
+            // FIREBALL AOE IMPACT: Damage direct target and splash all nearby monsters within 7m!
+            monster.takeDamage(280);
+            for (const splashTarget of monsterColliders) {
+              if (splashTarget.id !== monster.id && proj.mesh.position.distanceTo(splashTarget.position) < 7.0) {
+                splashTarget.takeDamage(190);
+              }
+            }
+            if (onExplosion) onExplosion(proj.mesh.position.clone());
+          } else {
+            monster.takeDamage(proj.isPiercing ? 360 : 160);
+          }
 
           if (!proj.isPiercing) {
             this.scene.remove(proj.mesh);
@@ -210,8 +287,13 @@ export class ArcaneRangerSystem {
         }
       }
 
+      if (hitOccurred && !proj.isPiercing) continue;
+
       // Remove projectile if max range exceeded
       if (proj.distanceTraveled >= proj.maxDistance) {
+        if (proj.projectileType === 'fireball' && onExplosion) {
+          onExplosion(proj.mesh.position.clone());
+        }
         this.scene.remove(proj.mesh);
         this.projectiles.splice(i, 1);
       }
@@ -692,7 +774,518 @@ export const GameViewport: React.FC<GameViewportProps> = ({
   const [isNearDestructible, setIsNearDestructible] = useState<boolean>(false);
   const isNearDestructibleRef = useRef<boolean>(false);
 
+  // Free Fire Auto-Sprint Toggle State
+  const [isFreeFireSprint, setIsFreeFireSprint] = useState<boolean>(false);
+  const isFreeFireSprintRef = useRef<boolean>(false);
+  useEffect(() => {
+    isFreeFireSprintRef.current = isFreeFireSprint;
+  }, [isFreeFireSprint]);
+
+  // Long-Range Attack System (Fireball & Arcane Bow)
+  const [rangedAttackType, setRangedAttackType] = useState<'fireball' | 'bow'>('fireball');
+  const rangedAttackTypeRef = useRef<'fireball' | 'bow'>('fireball');
+  useEffect(() => {
+    rangedAttackTypeRef.current = rangedAttackType;
+  }, [rangedAttackType]);
+
+  const [rangedCooldown, setRangedCooldown] = useState<number>(0);
+  const rangedCooldownRef = useRef<number>(0);
+
+  // Compact Collapsible Quest Tracker
+  const [isQuestExpanded, setIsQuestExpanded] = useState<boolean>(false);
+
   const [showFoliageModal, setShowFoliageModal] = useState<boolean>(false);
+  const [showCGAxisBrowser, setShowCGAxisBrowser] = useState<boolean>(false);
+  const [placedCGAxisObjects, setPlacedCGAxisObjects] = useState<PlacedSceneObject[]>([]);
+  const placedCGAxisMeshesRef = useRef<Map<string, THREE.Object3D>>(new Map());
+
+  const handleSpawnCGAxisAsset = (
+    asset: CGAxisAsset,
+    customProps?: {
+      x: number;
+      y: number;
+      z: number;
+      rotationY: number;
+      scale: number;
+      roughness: number;
+      metalness: number;
+      color: string;
+      emissive: string;
+      emissiveIntensity: number;
+    }
+  ) => {
+    if (!sceneRef.current) return;
+    const scene = sceneRef.current;
+
+    const x = customProps?.x ?? stats.posX;
+    const y = customProps?.y ?? 0;
+    const z = customProps?.z ?? stats.posZ;
+    const rotY = (customProps?.rotationY ?? 0) * (Math.PI / 180);
+    const scale = customProps?.scale ?? 1.0;
+
+    const objId = `cgaxis_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+    group.rotation.y = rotY;
+    group.scale.setScalar(scale);
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(customProps?.color ?? asset.color),
+      roughness: customProps?.roughness ?? asset.defaultRoughness,
+      metalness: customProps?.metalness ?? asset.defaultMetalness,
+      emissive: new THREE.Color(customProps?.emissive ?? asset.defaultEmissive ?? '#000000'),
+      emissiveIntensity: customProps?.emissiveIntensity ?? asset.defaultEmissiveIntensity ?? 0,
+    });
+
+    if (asset.id === 'cgaxis_citadel_tower') {
+      // 1. Spire Citadel Fortress Tower
+      const baseGeo = new THREE.CylinderGeometry(2.2, 2.6, 9.0, 10);
+      const baseMesh = new THREE.Mesh(baseGeo, mat);
+      baseMesh.position.y = 4.5;
+      baseMesh.castShadow = true;
+      group.add(baseMesh);
+
+      const parapetGeo = new THREE.CylinderGeometry(2.7, 2.7, 1.4, 10);
+      const parapetMesh = new THREE.Mesh(parapetGeo, mat);
+      parapetMesh.position.y = 9.7;
+      group.add(parapetMesh);
+
+      // Crenelated merlons
+      for (let i = 0; i < 6; i++) {
+        const merlon = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.35), mat);
+        const a = (i / 6) * Math.PI * 2;
+        merlon.position.set(Math.cos(a) * 2.5, 10.7, Math.sin(a) * 2.5);
+        merlon.rotation.y = -a;
+        group.add(merlon);
+      }
+
+      // Conical slate roof
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 4.2, 10), roofMat);
+      roof.position.y = 12.5;
+      roof.castShadow = true;
+      group.add(roof);
+
+      // Arcane Spire Crystal
+      const spireMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const spire = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), spireMat);
+      spire.position.y = 15.0;
+      group.add(spire);
+
+      const spireLight = new THREE.PointLight(0x38bdf8, 2.0, 18);
+      spireLight.position.y = 15.0;
+      group.add(spireLight);
+    } else if (asset.id === 'cgaxis_medieval_tavern') {
+      // 2. Timber-Framed Medieval Tavern House
+      const groundFloor = new THREE.Mesh(new THREE.BoxGeometry(6.2, 2.8, 4.6), mat);
+      groundFloor.position.y = 1.4;
+      groundFloor.castShadow = true;
+      group.add(groundFloor);
+
+      const timberFloor = new THREE.Mesh(
+        new THREE.BoxGeometry(6.6, 2.5, 5.0),
+        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.85 })
+      );
+      timberFloor.position.y = 4.0;
+      timberFloor.castShadow = true;
+      group.add(timberFloor);
+
+      // Peaked A-frame roof
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.7 });
+      const roof1 = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.35, 3.2), roofMat);
+      roof1.position.set(0, 6.2, 1.2);
+      roof1.rotation.x = Math.PI / 4.5;
+      roof1.castShadow = true;
+      group.add(roof1);
+
+      const roof2 = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.35, 3.2), roofMat);
+      roof2.position.set(0, 6.2, -1.2);
+      roof2.rotation.x = -Math.PI / 4.5;
+      roof2.castShadow = true;
+      group.add(roof2);
+
+      // Stone chimney
+      const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.85, 6.8, 0.85), mat);
+      chimney.position.set(2.6, 4.0, 1.5);
+      chimney.castShadow = true;
+      group.add(chimney);
+
+      // Amber glowing windows
+      const winMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+      const win1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.1), winMat);
+      win1.position.set(-1.6, 3.8, 2.55);
+      group.add(win1);
+      const win2 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.1), winMat);
+      win2.position.set(1.6, 3.8, 2.55);
+      group.add(win2);
+    } else if (asset.id === 'cgaxis_blacksmith_forge') {
+      // 3. Dwarven Caldera Forge Workshop
+      const stoneBase = new THREE.Mesh(new THREE.BoxGeometry(6.0, 1.2, 4.5), mat);
+      stoneBase.position.y = 0.6;
+      group.add(stoneBase);
+
+      // Hearth oven
+      const ovenMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+      const oven = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.6, 2.6, 8, 1, false, 0, Math.PI), ovenMat);
+      oven.position.set(0, 2.5, -1.0);
+      group.add(oven);
+
+      // Blazing Magma Core in Hearth
+      const lava = new THREE.Mesh(new THREE.SphereGeometry(0.85, 12, 12), new THREE.MeshBasicMaterial({ color: 0xf97316 }));
+      lava.position.set(0, 1.8, -0.8);
+      group.add(lava);
+
+      const lavaLight = new THREE.PointLight(0xf97316, 2.5, 12);
+      lavaLight.position.set(0, 2.0, -0.6);
+      group.add(lavaLight);
+
+      // Chimney stack
+      const forgeChimney = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.85, 4.2, 8), ovenMat);
+      forgeChimney.position.set(0, 4.5, -1.0);
+      group.add(forgeChimney);
+
+      // Anvil pedestal & steel anvil
+      const logPedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.5, 0.8, 8), new THREE.MeshStandardMaterial({ color: 0x3e2723 }));
+      logPedestal.position.set(0, 1.0, 1.0);
+      group.add(logPedestal);
+
+      const anvil = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 0.4), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.95 }));
+      anvil.position.set(0, 1.55, 1.0);
+      group.add(anvil);
+    } else if (asset.id === 'cgaxis_guild_manor') {
+      // 4. Grand Guild Estate Manor
+      const mainBuilding = new THREE.Mesh(new THREE.BoxGeometry(8.5, 4.6, 6.0), mat);
+      mainBuilding.position.y = 2.3;
+      mainBuilding.castShadow = true;
+      group.add(mainBuilding);
+
+      // Portico columns
+      const colMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.4 });
+      for (let i = -2; i <= 2; i += 1.3) {
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 3.8, 8), colMat);
+        col.position.set(i, 1.9, 3.4);
+        group.add(col);
+      }
+
+      // Portico roof
+      const porticoRoof = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.4, 1.6), mat);
+      porticoRoof.position.set(0, 3.9, 3.4);
+      group.add(porticoRoof);
+
+      // Main Manor Hipped Roof
+      const manorRoof = new THREE.Mesh(
+        new THREE.ConeGeometry(5.8, 3.0, 4),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 })
+      );
+      manorRoof.position.y = 6.0;
+      manorRoof.rotation.y = Math.PI / 4;
+      manorRoof.scale.set(1.4, 1.0, 1.0);
+      manorRoof.castShadow = true;
+      group.add(manorRoof);
+    } else if (asset.id === 'cgaxis_stone_watchtower') {
+      // 5. Fortified Rampart Watchtower
+      const towerBase = new THREE.Mesh(new THREE.BoxGeometry(3.6, 8.5, 3.6), mat);
+      towerBase.position.y = 4.25;
+      towerBase.castShadow = true;
+      group.add(towerBase);
+
+      // Cantilevered wooden outlook deck
+      const deckMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.85 });
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.4, 4.6), deckMat);
+      deck.position.y = 8.6;
+      group.add(deck);
+
+      // Guard parapet walls
+      const parapet = new THREE.Mesh(new THREE.BoxGeometry(4.6, 1.1, 4.6), deckMat);
+      parapet.position.y = 9.3;
+      group.add(parapet);
+
+      // Lookout brazier
+      const bLight = new THREE.PointLight(0xf59e0b, 1.8, 15);
+      bLight.position.set(0, 10.5, 0);
+      group.add(bLight);
+    } else if (asset.id === 'cgaxis_city_wall_gate') {
+      // 6. Bastion Gatehouse & Portcullis
+      const leftBastion = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 7.5, 8), mat);
+      leftBastion.position.set(-4.5, 3.75, 0);
+      leftBastion.castShadow = true;
+      group.add(leftBastion);
+
+      const rightBastion = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 7.5, 8), mat);
+      rightBastion.position.set(4.5, 3.75, 0);
+      rightBastion.castShadow = true;
+      group.add(rightBastion);
+
+      // Center arched curtain wall
+      const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(6.0, 5.5, 2.2), mat);
+      wallMesh.position.set(0, 4.0, 0);
+      wallMesh.castShadow = true;
+      group.add(wallMesh);
+
+      // Portcullis gate grating
+      const gateMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.95, roughness: 0.3 });
+      const portcullis = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.5, 0.2), gateMat);
+      portcullis.position.set(0, 1.8, 0);
+      group.add(portcullis);
+    } else if (asset.id === 'cgaxis_crypt_entrance') {
+      // 7. Abyssal Crypt Portal
+      const cryptMound = new THREE.Mesh(new THREE.DodecahedronGeometry(3.5, 1), mat);
+      cryptMound.position.set(0, 1.8, -1.5);
+      cryptMound.scale.set(1.4, 0.9, 1.2);
+      group.add(cryptMound);
+
+      const doorArch = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.4, 8, 16, Math.PI), mat);
+      doorArch.position.set(0, 1.8, 1.0);
+      group.add(doorArch);
+
+      const ironDoor = new THREE.Mesh(
+        new THREE.BoxGeometry(2.4, 2.8, 0.3),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.85 })
+      );
+      ironDoor.position.set(0, 1.4, 0.9);
+      group.add(ironDoor);
+
+      const purpleRune = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.2, 16), new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide }));
+      purpleRune.rotation.x = -Math.PI / 2;
+      purpleRune.position.set(0, 0.05, 2.2);
+      group.add(purpleRune);
+
+      const cryptLight = new THREE.PointLight(0xa855f7, 2.2, 12);
+      cryptLight.position.set(0, 1.5, 2.0);
+      group.add(cryptLight);
+    } else if (asset.id.includes('tree') || asset.id.includes('sakura')) {
+      const trunkGeo = new THREE.CylinderGeometry(0.3, 0.45, 2.5, 8);
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+      trunk.position.y = 1.25;
+      trunk.castShadow = true;
+      group.add(trunk);
+
+      const leafGeo = new THREE.ConeGeometry(1.8, 3.5, 8);
+      const foliage = new THREE.Mesh(leafGeo, mat);
+      foliage.position.y = 3.6;
+      foliage.castShadow = true;
+      group.add(foliage);
+    } else if (asset.id.includes('boulder') || asset.id.includes('granite')) {
+      const rockGeo = new THREE.DodecahedronGeometry(1.2, 1);
+      const rock = new THREE.Mesh(rockGeo, mat);
+      rock.position.y = 0.9;
+      rock.castShadow = true;
+      group.add(rock);
+    } else if (asset.id.includes('crystal') || asset.id.includes('shrub')) {
+      for (let i = 0; i < 4; i++) {
+        const cGeo = new THREE.OctahedronGeometry(0.4 + i * 0.15, 0);
+        const cMesh = new THREE.Mesh(cGeo, mat);
+        cMesh.position.set(Math.sin(i * 1.5) * 0.5, 0.6 + i * 0.3, Math.cos(i * 1.5) * 0.5);
+        cMesh.scale.set(0.6, 2.0, 0.6);
+        group.add(cMesh);
+      }
+    } else if (asset.id.includes('arch') || asset.id.includes('shrine')) {
+      const archGeo = new THREE.TorusGeometry(2.0, 0.4, 8, 16, Math.PI);
+      const arch = new THREE.Mesh(archGeo, mat);
+      arch.position.y = 2.0;
+      arch.castShadow = true;
+      group.add(arch);
+    } else if (asset.id.includes('obelisk')) {
+      const obGeo = new THREE.CylinderGeometry(0.2, 0.7, 5.0, 4);
+      const ob = new THREE.Mesh(obGeo, mat);
+      ob.position.y = 2.5;
+      ob.castShadow = true;
+      group.add(ob);
+    } else if (asset.id.includes('chest') || asset.id.includes('station')) {
+      const boxGeo = new THREE.BoxGeometry(1.4, 0.9, 1.0);
+      const box = new THREE.Mesh(boxGeo, mat);
+      box.position.y = 0.45;
+      box.castShadow = true;
+      group.add(box);
+    } else if (asset.id.includes('brazier')) {
+      const baseGeo = new THREE.CylinderGeometry(0.6, 0.3, 1.4, 8);
+      const baseMesh = new THREE.Mesh(baseGeo, mat);
+      baseMesh.position.y = 0.7;
+      group.add(baseMesh);
+
+      const flameGeo = new THREE.SphereGeometry(0.35, 12, 12);
+      const flameMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const flame = new THREE.Mesh(flameGeo, flameMat);
+      flame.position.y = 1.6;
+      group.add(flame);
+    } else {
+      const dGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+      const dMesh = new THREE.Mesh(dGeo, mat);
+      dMesh.position.y = 0.6;
+      dMesh.castShadow = true;
+      group.add(dMesh);
+    }
+
+    scene.add(group);
+    placedCGAxisMeshesRef.current.set(objId, group);
+
+    const newObj: PlacedSceneObject = {
+      id: objId,
+      assetId: asset.id,
+      name: asset.name,
+      category: asset.category,
+      x,
+      y,
+      z,
+      rotationY: customProps?.rotationY ?? 0,
+      scale,
+      meshRef: group,
+      materialProps: {
+        color: customProps?.color ?? asset.color,
+        roughness: customProps?.roughness ?? asset.defaultRoughness,
+        metalness: customProps?.metalness ?? asset.defaultMetalness,
+        emissive: customProps?.emissive,
+        emissiveIntensity: customProps?.emissiveIntensity,
+      },
+    };
+
+    setPlacedCGAxisObjects((prev) => [...prev, newObj]);
+    sound.playVictory();
+    triggerFloatingText(`✦ SPAWNED: ${asset.name.toUpperCase()}`, 'loot');
+    setCharacterThought(`CGAxis: Placed ${asset.name} at [${x}, ${z}]`);
+  };
+
+  const handleRemoveCGAxisObject = (id: string) => {
+    const mesh = placedCGAxisMeshesRef.current.get(id);
+    if (mesh && sceneRef.current) {
+      sceneRef.current.remove(mesh);
+      placedCGAxisMeshesRef.current.delete(id);
+    }
+    setPlacedCGAxisObjects((prev) => prev.filter((o) => o.id !== id));
+    sound.playHit(false);
+  };
+
+  const handleClearAllCGAxisObjects = () => {
+    if (sceneRef.current) {
+      placedCGAxisMeshesRef.current.forEach((mesh) => {
+        sceneRef.current?.remove(mesh);
+      });
+      placedCGAxisMeshesRef.current.clear();
+    }
+    setPlacedCGAxisObjects([]);
+    sound.playVictory();
+  };
+
+  const handleLoadPresetMap = (presetKey: 'procedural' | 'labyrinth' | 'town') => {
+    handleClearAllCGAxisObjects();
+    if (presetKey === 'procedural') {
+      const items = proceduralMapData.placed_objects || [];
+      items.forEach((item) => {
+        let assetKey = 'cgaxis_oak_tree';
+        if (item.type === 'rock') assetKey = 'cgaxis_mossy_boulder';
+        else if (item.type === 'enemy_goblin_scout') assetKey = 'cgaxis_goblin_scout';
+        else if (item.type === 'slime_mutant') assetKey = 'cgaxis_slime_mutant';
+        else if (item.type === 'orc_warrior') assetKey = 'cgaxis_orc_warrior';
+
+        const asset = CGAXIS_CATALOG.find((a) => a.id === assetKey) || CGAXIS_CATALOG[0];
+        handleSpawnCGAxisAsset(asset, {
+          x: item.x - 50,
+          y: 0,
+          z: item.z - 50,
+          rotationY: item.rotation_y,
+          scale: item.scale,
+          color: asset.color,
+          roughness: asset.defaultRoughness,
+          metalness: asset.defaultMetalness,
+          emissive: asset.defaultEmissive || '#000000',
+          emissiveIntensity: asset.defaultEmissiveIntensity || 0,
+        });
+      });
+      triggerFloatingText('✦ LOADED 65 MAP OBJECTS (proceduralTerrainMap.json)', 'crit');
+    } else if (presetKey === 'labyrinth') {
+      const rooms = labyrinthData.rooms || [];
+      rooms.forEach((room) => {
+        const objs = room.placed_objects || [];
+        objs.forEach((po: any) => {
+          let assetKey = 'cgaxis_gothic_arch';
+          if (po.object_type.includes('brazier')) assetKey = 'cgaxis_mana_brazier';
+          else if (po.object_type.includes('pillar') || po.object_type.includes('circle')) assetKey = 'cgaxis_runic_obelisk';
+          else if (po.object_type.includes('crystal')) assetKey = 'cgaxis_crystal_shrub';
+          else if (po.object_type.includes('chest')) assetKey = 'cgaxis_treasure_chest';
+
+          const asset = CGAXIS_CATALOG.find((a) => a.id === assetKey) || CGAXIS_CATALOG[5];
+          const wx = room.world_coordinates.x + (po.local_coordinates?.x || 0);
+          const wz = room.world_coordinates.z + (po.local_coordinates?.z || 0);
+
+          handleSpawnCGAxisAsset(asset, {
+            x: wx,
+            y: 0,
+            z: wz,
+            rotationY: po.rotation_y || 0,
+            scale: po.scale || 1.0,
+            color: asset.color,
+            roughness: asset.defaultRoughness,
+            metalness: asset.defaultMetalness,
+            emissive: asset.defaultEmissive || '#000000',
+            emissiveIntensity: asset.defaultEmissiveIntensity || 0,
+          });
+        });
+      });
+      triggerFloatingText('✦ LOADED S-RANK LABYRINTH (demonKingLabyrinth.json)', 'crit');
+    } else {
+      const structures = (startingTownData as any).structures || [];
+      structures.forEach((st: any) => {
+        const asset = CGAXIS_CATALOG.find((a) => a.id === 'cgaxis_stone_shrine') || CGAXIS_CATALOG[8];
+        handleSpawnCGAxisAsset(asset, {
+          x: (st.coordinates?.x || 0) - 100,
+          y: 0,
+          z: (st.coordinates?.z || 0) - 100,
+          rotationY: 0,
+          scale: 1.4,
+          color: asset.color,
+          roughness: asset.defaultRoughness,
+          metalness: asset.defaultMetalness,
+          emissive: asset.defaultEmissive || '#000000',
+          emissiveIntensity: asset.defaultEmissiveIntensity || 0,
+        });
+      });
+      triggerFloatingText('✦ LOADED CITADEL TOWN SETTLEMENT (startingTownLayout.json)', 'crit');
+    }
+  };
+
+  const handleBuildCompound = (type: 'medieval_town' | 'castle_fortress') => {
+    handleClearAllCGAxisObjects();
+    const cx = stats.posX;
+    const cz = stats.posZ;
+
+    if (type === 'castle_fortress') {
+      const tower = CGAXIS_CATALOG.find((a) => a.id === 'cgaxis_citadel_tower') || CGAXIS_CATALOG[0];
+      handleSpawnCGAxisAsset(tower, { x: cx, y: 0, z: cz - 12, rotationY: 0, scale: 1.2, color: '#64748b', roughness: 0.7, metalness: 0.1, emissive: '#38bdf8', emissiveIntensity: 1.5 });
+
+      const gate = CGAXIS_CATALOG.find((a) => a.id === 'cgaxis_city_wall_gate') || CGAXIS_CATALOG[5];
+      handleSpawnCGAxisAsset(gate, { x: cx, y: 0, z: cz + 10, rotationY: 0, scale: 1.1, color: '#475569', roughness: 0.75, metalness: 0.2, emissive: '#000000', emissiveIntensity: 0 });
+
+      const watchtower = CGAXIS_CATALOG.find((a) => a.id === 'cgaxis_stone_watchtower') || CGAXIS_CATALOG[4];
+      handleSpawnCGAxisAsset(watchtower, { x: cx - 18, y: 0, z: cz - 18, rotationY: 45, scale: 1.0, color: '#64748b', roughness: 0.8, metalness: 0.1, emissive: '#f59e0b', emissiveIntensity: 1.0 });
+      handleSpawnCGAxisAsset(watchtower, { x: cx + 18, y: 0, z: cz - 18, rotationY: 315, scale: 1.0, color: '#64748b', roughness: 0.8, metalness: 0.1, emissive: '#f59e0b', emissiveIntensity: 1.0 });
+      handleSpawnCGAxisAsset(watchtower, { x: cx - 18, y: 0, z: cz + 8, rotationY: 135, scale: 1.0, color: '#64748b', roughness: 0.8, metalness: 0.1, emissive: '#f59e0b', emissiveIntensity: 1.0 });
+      handleSpawnCGAxisAsset(watchtower, { x: cx + 18, y: 0, z: cz + 8, rotationY: 225, scale: 1.0, color: '#64748b', roughness: 0.8, metalness: 0.1, emissive: '#f59e0b', emissiveIntensity: 1.0 });
+
+      triggerFloatingText('🏰 BUILT CASTLE FORTRESS COMPOUND (5 Fortifications)', 'crit');
+      setCharacterThought('CGAxis: Assembled Bastion Fortress & Watchtowers.');
+    } else {
+      const tavern = CGAXIS_CATALOG.find((a) => a.id === 'cgaxis_medieval_tavern') || CGAXIS_CATALOG[1];
+      handleSpawnCGAxisAsset(tavern, { x: cx - 12, y: 0, z: cz - 6, rotationY: 15, scale: 1.1, color: '#78350f', roughness: 0.85, metalness: 0.05, emissive: '#f59e0b', emissiveIntensity: 1.2 });
+
+      const forge = CGAXIS_CATALOG.find((a) => a.id === 'cgaxis_blacksmith_forge') || CGAXIS_CATALOG[2];
+      handleSpawnCGAxisAsset(forge, { x: cx + 12, y: 0, z: cz - 6, rotationY: 345, scale: 1.1, color: '#334155', roughness: 0.65, metalness: 0.35, emissive: '#ea580c', emissiveIntensity: 1.8 });
+
+      const manor = CGAXIS_CATALOG.find((a) => a.id === 'cgaxis_guild_manor') || CGAXIS_CATALOG[3];
+      handleSpawnCGAxisAsset(manor, { x: cx, y: 0, z: cz - 22, rotationY: 0, scale: 1.15, color: '#475569', roughness: 0.68, metalness: 0.15, emissive: '#000000', emissiveIntensity: 0 });
+
+      const shrine = CGAXIS_CATALOG.find((a) => a.id === 'cgaxis_stone_shrine') || CGAXIS_CATALOG[8];
+      handleSpawnCGAxisAsset(shrine, { x: cx, y: 0, z: cz + 6, rotationY: 0, scale: 1.2, color: '#e2e8f0', roughness: 0.3, metalness: 0.2, emissive: '#38bdf8', emissiveIntensity: 0.8 });
+
+      const oak = CGAXIS_CATALOG.find((a) => a.id === 'cgaxis_oak_tree') || CGAXIS_CATALOG[0];
+      handleSpawnCGAxisAsset(oak, { x: cx - 18, y: 0, z: cz - 16, rotationY: 40, scale: 1.2, color: '#22c55e', roughness: 0.85, metalness: 0.05, emissive: '#000000', emissiveIntensity: 0 });
+      handleSpawnCGAxisAsset(oak, { x: cx + 18, y: 0, z: cz - 16, rotationY: 220, scale: 1.2, color: '#22c55e', roughness: 0.85, metalness: 0.05, emissive: '#000000', emissiveIntensity: 0 });
+
+      triggerFloatingText('🏡 BUILT COMPLETE MEDIEVAL TOWN SETTLEMENT', 'crit');
+      setCharacterThought('CGAxis: Assembled Town Plaza with Tavern, Forge & Manor.');
+    }
+  };
 
   // Action Trigger References for Animation Loop
   const actionTriggerRef = useRef<{
@@ -714,6 +1307,10 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     petToggledRequested: 'void_hatchling' | 'solar_phoenix' | 'none' | null;
     inspectLoreRequested: boolean;
     strikeDestructibleRequested: boolean;
+    fireballRequested: boolean;
+    bowAttackRequested: boolean;
+    toggleRangedRequested: boolean;
+    toggleSprintRequested: boolean;
   }>({
     attackRequested: false,
     heavyAttackRequested: false,
@@ -733,6 +1330,10 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     petToggledRequested: null,
     inspectLoreRequested: false,
     strikeDestructibleRequested: false,
+    fireballRequested: false,
+    bowAttackRequested: false,
+    toggleRangedRequested: false,
+    toggleSprintRequested: false,
   });
 
   // Remote Players Registry
@@ -844,10 +1445,11 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     scene.add(hemiLight);
 
     // ============================================================================
-    // 3. EXPANDED PROCEDURAL 1KM TERRAIN & SANCTUARY ENVIRONMENT
+    // 3. EXPANDED PROCEDURAL 2.2KM TERRAIN & ENLARGED BLACK CITADEL COURTYARD
     // ============================================================================
-    // 1. Massive 1000x1000 terrain plane with painted landscape grass brush texture
-    const terrainSize = 1000;
+    // 1. Massive 2200x2200 terrain plane with painted landscape grass brush texture
+    // Green area is massively expanded so it is not decreased when the black courtyard expands!
+    const terrainSize = 2200;
     const landscapeTexture = createLandscapeTerrainTexture(terrainSize);
 
     const groundGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 64, 64);
@@ -863,10 +1465,11 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
-    // Inner Sanctuary Stone Courtyard (Cel-Shaded Toon Ramp)
-    const courtyardGeo = new THREE.CylinderGeometry(24, 26, 0.4, 32);
+    // Enormous Sanctuary Dark Stone Courtyard (Radius 130m, accommodates 20+ enterable buildings)
+    const courtyardRadius = 130;
+    const courtyardGeo = new THREE.CylinderGeometry(courtyardRadius, courtyardRadius + 4, 0.4, 64);
     const courtyardMat = new THREE.MeshToonMaterial({
-      color: 0x334155,
+      color: 0x0f172a, // Deep slate-black stone courtyard
       gradientMap: rampTexture,
     });
     const courtyard = new THREE.Mesh(courtyardGeo, courtyardMat);
@@ -874,17 +1477,31 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     courtyard.receiveShadow = true;
     scene.add(courtyard);
 
-    // Arcane Aegis Dome (Semi-transparent glowing hemisphere with wireframe)
-    const domeGeo = new THREE.SphereGeometry(32, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    // Outer decorative stone border ring
+    const courtyardRimGeo = new THREE.TorusGeometry(courtyardRadius + 2, 0.8, 12, 64);
+    const courtyardRimMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
+    const courtyardRim = new THREE.Mesh(courtyardRimGeo, courtyardRimMat);
+    courtyardRim.rotation.x = Math.PI / 2;
+    courtyardRim.position.y = 0.4;
+    scene.add(courtyardRim);
+
+    // Arcane Aegis Dome (Expanded to radius 142m to protect the grand citadel)
+    const domeGeo = new THREE.SphereGeometry(142, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.5);
     const domeMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.12,
       wireframe: true,
     });
     const aegisDome = new THREE.Mesh(domeGeo, domeMat);
     aegisDome.position.y = 0;
     scene.add(aegisDome);
+
+    // Instantiate 24 Walk-in Enterable 3D Buildings & Grand Central Plaza inside the black courtyard!
+    const enterableCitadelTown = createEnterableCitadel(scene, rampTexture);
+
+    // Free Fire Style Battle Royale Cylindrical Electric Safe Zone Net Barrier (r = 130m, height = 28m)
+    const safeZoneNet = createSafeZoneNet(scene, 130, 28);
 
     // Warm Sanctuary Hearth Lantern
     const lanternGroup = new THREE.Group();
@@ -909,8 +1526,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     lanternGroup.position.set(0, 0, -4);
     scene.add(lanternGroup);
 
-    // Surrounding Ancient Monoliths / Runic Pillars
-    const pillarGeo = new THREE.CylinderGeometry(0.8, 1.2, 7, 8);
+    // Surrounding Ancient Monoliths / Runic Pillars around the 130m perimeter
+    const pillarGeo = new THREE.CylinderGeometry(1.2, 1.8, 9, 8);
     const pillarMat = new THREE.MeshStandardMaterial({
       color: 0x1e293b,
       roughness: 0.7,
@@ -918,20 +1535,20 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     });
     const runeGlowMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
 
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const radius = 26;
+    for (let i = 0; i < 16; i++) {
+      const angle = (i / 16) * Math.PI * 2;
+      const radius = 133;
       const px = Math.cos(angle) * radius;
       const pz = Math.sin(angle) * radius;
 
       const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-      pillar.position.set(px, 3.5, pz);
+      pillar.position.set(px, 4.5, pz);
       pillar.castShadow = true;
       pillar.receiveShadow = true;
       scene.add(pillar);
 
-      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.7), runeGlowMat);
-      crystal.position.set(px, 8, pz);
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.9), runeGlowMat);
+      crystal.position.set(px, 10, pz);
       scene.add(crystal);
     }
 
@@ -1392,89 +2009,10 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     };
 
     // ============================================================================
-    // 3.6 ROAMING OPEN-WORLD & CAVERN DUNGEON MONSTERS (Patrol, Aggro, Attack, Stagger)
+    // 3.6 ANIMAL SHAPED MONSTERS IN GROUP/PACKS (Pack AI, Gallop Animation, Paw Claw Attacks)
     // ============================================================================
-    const monsters: MonsterEntity[] = [];
-
-    const monsterConfigs = [
-      { id: 'shadow_stalker_1', name: 'Void Shadow Stalker', level: 28, hp: 2200, color: 0x4c0519, x: 36, z: 18, role: 'Wild Predator • Abyss Swarm' },
-      { id: 'golem_scout_1', name: 'Ironpeak Golem Scout', level: 32, hp: 3000, color: 0x78350f, x: -38, z: -25, role: 'Dwarven Caldera Construct' },
-      { id: 'bloodfang_beast_1', name: 'Bloodfang Abyss Beast', level: 30, hp: 2600, color: 0x3f3f46, x: 22, z: -40, role: 'Badlands Carnivore' },
-      // Subterranean Cavern Dungeon Monsters
-      { id: 'cavern_lurker_1', name: 'Cavern Lurker', level: 15, hp: 1350, color: 0x6366f1, x: caveCenter.x + 8, z: caveCenter.z - 3, role: 'Cavern Lurker • Subterranean Stalker' },
-      { id: 'magma_slime_1', name: 'Magma Slime', level: 18, hp: 1550, color: 0xf97316, x: caveCenter.x - 7, z: caveCenter.z + 12, role: 'Magma Slime • Caldera Core' },
-      { id: 'cavern_golem_1', name: 'Corrupted Cavern Golem', level: 25, hp: 2900, color: 0xd97706, x: caveCenter.x, z: caveCenter.z + 14, role: 'Cavern Warden • Ancient Leyline' },
-    ];
-
-    monsterConfigs.forEach((cfg) => {
-      const mGroup = new THREE.Group();
-      mGroup.name = cfg.id;
-
-      // Stylized Cel-shaded Monster Body
-      const mBodyGeo = new THREE.DodecahedronGeometry(1.6);
-      const mBodyMat = new THREE.MeshToonMaterial({
-        color: cfg.color,
-        gradientMap: rampTexture,
-      });
-      const mBody = new THREE.Mesh(mBodyGeo, mBodyMat);
-      mBody.castShadow = true;
-      mGroup.add(mBody);
-
-      // Glowing Hostile Eyes
-      const eyeGeo = new THREE.SphereGeometry(0.35, 8, 8);
-      const eyeMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
-      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      leftEye.position.set(-0.6, 0.4, 1.3);
-      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      rightEye.position.set(0.6, 0.4, 1.3);
-      mGroup.add(leftEye);
-      mGroup.add(rightEye);
-
-      // Horns / Spikes
-      const spikeGeo = new THREE.ConeGeometry(0.3, 1.2, 5);
-      const spikeMat = new THREE.MeshStandardMaterial({ color: 0x18181b, metalness: 0.8 });
-      const s1 = new THREE.Mesh(spikeGeo, spikeMat);
-      s1.position.set(-1.0, 1.2, 0);
-      s1.rotation.z = Math.PI / 4;
-      const s2 = new THREE.Mesh(spikeGeo, spikeMat);
-      s2.position.set(1.0, 1.2, 0);
-      s2.rotation.z = -Math.PI / 4;
-      mGroup.add(s1);
-      mGroup.add(s2);
-
-      // Contact shadow
-      const mShadow = new THREE.Mesh(
-        new THREE.CircleGeometry(1.2, 12),
-        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 })
-      );
-      mShadow.rotation.x = -Math.PI / 2;
-      mShadow.position.y = -1.2;
-      mGroup.add(mShadow);
-
-      mGroup.position.set(cfg.x, 1.4, cfg.z);
-      scene.add(mGroup);
-
-      monsters.push({
-        id: cfg.id,
-        name: cfg.name,
-        level: cfg.level,
-        group: mGroup,
-        bodyMesh: mBody,
-        homePos: new THREE.Vector3(cfg.x, 1.4, cfg.z),
-        targetPos: new THREE.Vector3(cfg.x, 1.4, cfg.z),
-        state: 'patrol',
-        currentHp: cfg.hp,
-        maxHp: cfg.hp,
-        patrolTimer: 2 + Math.random() * 3,
-        attackCooldown: 0,
-        staggerTimer: 0,
-        respawnTimer: 0,
-        aggroRange: 15.0, // 15m detection range
-        attackRange: 2.5, // 2.5m melee range
-        moveSpeed: 4.8,
-        role: cfg.role,
-      });
-    });
+    // Proper quadruped Dire Wolf & Shadow Beast animal models stationed in organized wilderness packs
+    const monsters: AnimalMonster[] = initializeAnimalMonsterPacks(scene, rampTexture);
 
     // ============================================================================
     // 3.7 ARCANERANGER SYSTEM, SHADOW MONARCH SYSTEM & MINIONS REGISTRY
@@ -2432,11 +2970,15 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key in keys) {
-        keys[e.key as keyof typeof keys] = true;
-      }
-
+      const code = e.code;
       const k = e.key.toLowerCase();
+      if (k === 'w' || code === 'KeyW' || e.key === 'ArrowUp') keys.w = true;
+      if (k === 'a' || code === 'KeyA' || e.key === 'ArrowLeft') keys.a = true;
+      if (k === 's' || code === 'KeyS' || e.key === 'ArrowDown') keys.s = true;
+      if (k === 'd' || code === 'KeyD' || e.key === 'ArrowRight') keys.d = true;
+      if (e.key === 'Shift') keys.Shift = true;
+      if (e.key === ' ') keys.Space = true;
+
       if (k === 'e' || e.code === 'KeyE') {
         if (isNearLoreStoneRef.current) {
           actionTriggerRef.current.inspectLoreRequested = true;
@@ -2445,6 +2987,14 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         }
       } else if (k === 'q' || e.code === 'KeyQ') {
         actionTriggerRef.current.heavyAttackRequested = true;
+      } else if (k === 'v' || e.code === 'KeyV') {
+        if (rangedAttackTypeRef.current === 'fireball') {
+          actionTriggerRef.current.fireballRequested = true;
+        } else {
+          actionTriggerRef.current.bowAttackRequested = true;
+        }
+      } else if (k === 'x' || e.code === 'KeyX') {
+        actionTriggerRef.current.toggleRangedRequested = true;
       } else if (k === 'r' || e.code === 'KeyR') {
         actionTriggerRef.current.runicFinisherRequested = true;
       } else if (k === 'c' || (e.key === ' ' && keys.Shift)) {
@@ -2507,22 +3057,71 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key in keys) {
-        keys[e.key as keyof typeof keys] = false;
+      const code = e.code;
+      const k = e.key.toLowerCase();
+      if (k === 'w' || code === 'KeyW' || e.key === 'ArrowUp') keys.w = false;
+      if (k === 'a' || code === 'KeyA' || e.key === 'ArrowLeft') keys.a = false;
+      if (k === 's' || code === 'KeyS' || e.key === 'ArrowDown') keys.s = false;
+      if (k === 'd' || code === 'KeyD' || e.key === 'ArrowRight') keys.d = false;
+      if (e.key === 'Shift') keys.Shift = false;
+      if (e.key === ' ') keys.Space = false;
+    };
+
+    // 360-Degree Cursor Orbit Camera Controls (Drag / Move to change view, scroll to zoom)
+    let cameraYaw = 0; // Horizontal orbit angle (radians, 0 to 2*PI)
+    let cameraPitch = 0.32; // Vertical orbit angle (radians, clamped between -0.25 and 1.15)
+    let cameraDistance = 11.0; // Distance behind player
+    let isDraggingView = false;
+    let prevCursorPos = { x: 0, y: 0 };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      // Cursor is used strictly to rotate / change the view (NOT attack)
+      isDraggingView = true;
+      prevCursorPos = { x: e.clientX, y: e.clientY };
+      try {
+        container.setPointerCapture(e.pointerId);
+      } catch {
+        // ignore
       }
     };
 
-    const handleCanvasMouseDown = (e: MouseEvent) => {
-      if (e.button === 0) {
-        actionTriggerRef.current.attackRequested = true;
-      } else if (e.button === 2) {
-        e.preventDefault();
-        actionTriggerRef.current.blockRequested = true;
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDraggingView && document.pointerLockElement !== container) return;
+
+      const deltaX = document.pointerLockElement === container ? e.movementX : e.clientX - prevCursorPos.x;
+      const deltaY = document.pointerLockElement === container ? e.movementY : e.clientY - prevCursorPos.y;
+
+      prevCursorPos = { x: e.clientX, y: e.clientY };
+
+      // Smooth horizontal & vertical sensitivity
+      cameraYaw -= deltaX * 0.0055;
+      cameraPitch += deltaY * 0.0045;
+
+      // Vertical clamp: prevents camera from flipping upside down
+      cameraPitch = Math.max(-0.25, Math.min(1.15, cameraPitch));
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      isDraggingView = false;
+      try {
+        container.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
       }
     };
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      cameraDistance = Math.max(5.0, Math.min(22.0, cameraDistance + e.deltaY * 0.012));
+    };
+
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
 
-    container.addEventListener('mousedown', handleCanvasMouseDown);
+    container.addEventListener('pointerdown', handlePointerDown);
+    container.addEventListener('pointermove', handlePointerMove);
+    container.addEventListener('pointerup', handlePointerUp);
+    container.addEventListener('pointercancel', handlePointerUp);
+    container.addEventListener('wheel', handleWheel, { passive: false });
     container.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
@@ -2694,6 +3293,20 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         }
       }
 
+      // Ground-plane Camera View Direction (vector from camera through player into the screen)
+      const camForward = new THREE.Vector3();
+      camForward.x = playerGroup.position.x - camera.position.x;
+      camForward.z = playerGroup.position.z - camera.position.z;
+      camForward.y = 0;
+      if (camForward.lengthSq() > 0.0001) {
+        camForward.normalize();
+      } else {
+        camForward.set(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw)).normalize();
+      }
+
+      // Ground-plane Camera Right vector (perpendicular to camForward)
+      const camRight = new THREE.Vector3(-camForward.z, 0, camForward.x);
+
       // Forward direction for sword strikes
       const facingDir = new THREE.Vector3(0, 0, 1).applyAxisAngle(
         new THREE.Vector3(0, 1, 0),
@@ -2826,6 +3439,67 @@ export const GameViewport: React.FC<GameViewportProps> = ({
             setSelectedTarget((prev) => (prev ? { ...prev, currentHp: bossCurrentHp } : null));
           }
         }
+      }
+
+      // Long-Range Attack Casting (Fireball & Celestial Bow)
+      if (actionTriggerRef.current.fireballRequested || actionTriggerRef.current.bowAttackRequested) {
+        const isFireball = actionTriggerRef.current.fireballRequested;
+        actionTriggerRef.current.fireballRequested = false;
+        actionTriggerRef.current.bowAttackRequested = false;
+
+        if (rangedCooldownRef.current <= 0) {
+          rangedCooldownRef.current = isFireball ? 0.85 : 0.6;
+          setRangedCooldown(rangedCooldownRef.current);
+
+          const spawnOrigin = playerGroup.position.clone().add(new THREE.Vector3(0, 1.4, 0));
+          const aimDirection = camForward.clone().normalize();
+          aimDirection.y = -Math.sin(cameraPitch);
+          aimDirection.normalize();
+
+          if (isFireball) {
+            rangerSystem.fireFireball(spawnOrigin, aimDirection, 52);
+            sound.playVictory();
+            triggerCameraShake(0.12, 0.25);
+            triggerFloatingText('🔥 FIREBALL CAST! (130m RANGE)', 'loot');
+            setCharacterThought('Cast blazing long-range Fireball!');
+          } else {
+            rangerSystem.fireProjectile(spawnOrigin, aimDirection, 58, true, 'celestial_arrow');
+            sound.playTrapTrigger();
+            triggerFloatingText('🏹 CELESTIAL ARROW!', 'parry');
+            setCharacterThought('Loosed piercing long-range Celestial Arrow!');
+          }
+
+          // Arm attack thrust animation
+          isAttacking = true;
+          attackTimer = 0.24;
+          swordGroup.rotation.x = Math.PI / 2;
+          swordGroup.position.z = 1.0;
+        }
+      }
+
+      if (actionTriggerRef.current.toggleRangedRequested) {
+        actionTriggerRef.current.toggleRangedRequested = false;
+        const nextType = rangedAttackTypeRef.current === 'fireball' ? 'bow' : 'fireball';
+        setRangedAttackType(nextType);
+        triggerFloatingText(
+          nextType === 'fireball' ? 'EQUIPPED: 🔥 PYROCLASTIC FIREBALL' : 'EQUIPPED: 🏹 CELESTIAL BOW',
+          'loot'
+        );
+      }
+
+      if (actionTriggerRef.current.toggleSprintRequested) {
+        actionTriggerRef.current.toggleSprintRequested = false;
+        setIsFreeFireSprint((prev) => {
+          const next = !prev;
+          triggerFloatingText(next ? 'SPRINT: FREE FIRE AUTO-RUN ON' : 'SPRINT: AUTO-RUN OFF', 'parry');
+          return next;
+        });
+      }
+
+      // Tick Ranged Cooldown
+      if (rangedCooldownRef.current > 0) {
+        rangedCooldownRef.current = Math.max(0, rangedCooldownRef.current - delta);
+        setRangedCooldown(Math.round(rangedCooldownRef.current * 10) / 10);
       }
 
       if (actionTriggerRef.current.dodgeRequested && !isDodging && curStamina >= 20) {
@@ -2976,25 +3650,34 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         localCombo = 0;
       }
 
-      // Locomotion & Movement Calculation
+      // Locomotion & Movement Calculation (Camera-Relative TPS Orbit Movement + Free Fire Auto-Sprint)
       _moveDir.set(0, 0, 0);
-      const forward = keys.w || keys.ArrowUp;
-      const backward = keys.s || keys.ArrowDown;
-      const left = keys.a || keys.ArrowLeft;
-      const right = keys.d || keys.ArrowRight;
-      const wantsSprint = keys.Shift && curStamina > 5;
+      const isFreeFireRunning = isFreeFireSprintRef.current;
+      const forward = keys.w || isFreeFireRunning;
+      const backward = keys.s;
+      const left = keys.a;
+      const right = keys.d;
+      const wantsSprint = (keys.Shift || isFreeFireRunning) && curStamina > 5;
 
-      if (forward) _moveDir.z -= 1;
-      if (backward) _moveDir.z += 1;
-      if (left) _moveDir.x -= 1;
-      if (right) _moveDir.x += 1;
+      if (forward) {
+        _moveDir.add(camForward);
+      }
+      if (backward) {
+        _moveDir.sub(camForward);
+      }
+      if (left) {
+        _moveDir.sub(camRight);
+      }
+      if (right) {
+        _moveDir.add(camRight);
+      }
 
       const isMoving = _moveDir.lengthSq() > 0 && !isDodging;
       const isExhausted = curStamina <= 10;
-      const baseSpeed = wantsSprint ? (isExhausted ? 8 : 15) : isExhausted ? 5 : 8.5;
+      const baseSpeed = wantsSprint ? (isExhausted ? 8 : 16) : isExhausted ? 5 : 8.5;
 
       if (isMoving && wantsSprint && !isExhausted) {
-        curStamina = Math.max(0, curStamina - 22 * delta);
+        curStamina = Math.max(0, curStamina - 20 * delta);
       } else {
         curStamina = Math.min(100, curStamina + 18 * delta);
       }
@@ -3004,12 +3687,16 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         playerGroup.position.x += _moveDir.x * baseSpeed * delta;
         playerGroup.position.z += _moveDir.z * baseSpeed * delta;
 
-        // Dynamic banking & lean into turn
+        // 3D Citadel Building Wall Collision: player cannot walk through house walls, only through doors!
+        resolveCitadelWallCollision(playerGroup.position, 0.45);
+
+        // Dynamic banking & lean into turn (with forward lean in Free Fire sprint)
         const targetAngle = Math.atan2(_moveDir.x, _moveDir.z);
         playerGroup.rotation.y = THREE.MathUtils.damp(playerGroup.rotation.y, targetAngle, 14, delta);
 
         const turnDelta = playerGroup.rotation.y - targetAngle;
         playerBody.rotation.z = THREE.MathUtils.damp(playerBody.rotation.z, turnDelta * 0.4, 8, delta);
+        playerBody.rotation.x = THREE.MathUtils.damp(playerBody.rotation.x, wantsSprint ? 0.22 : 0, 8, delta);
         voxelTorso.rotation.z = THREE.MathUtils.damp(voxelTorso.rotation.z, turnDelta * 0.3, 8, delta);
 
         const strideSpeed = wantsSprint ? 18 : 12;
@@ -3125,10 +3812,13 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         }
       });
 
-      // Camera Smooth Follow
-      const camOffset = new THREE.Vector3(0, 8.2, 11.5);
-      const targetCamPos = playerGroup.position.clone().add(camOffset);
-      camera.position.lerp(targetCamPos, 0.14);
+      // 360-Degree Cursor Orbit Camera Follow (PUBG / Free Fire / BGMI TPS style)
+      const horizDist = cameraDistance * Math.cos(cameraPitch);
+      const targetCamX = playerGroup.position.x + horizDist * Math.sin(cameraYaw);
+      const targetCamY = playerGroup.position.y + cameraDistance * Math.sin(cameraPitch) + 1.8;
+      const targetCamZ = playerGroup.position.z + horizDist * Math.cos(cameraYaw);
+
+      camera.position.set(targetCamX, targetCamY, targetCamZ);
 
       // Apply Camera Screen Shake VFX
       if (cameraShakeTimer > 0) {
@@ -3251,78 +3941,47 @@ export const GameViewport: React.FC<GameViewportProps> = ({
 
       const bossDist = Math.round(playerGroup.position.distanceTo(bossGroup.position));
 
-      // Update active minions & Arcane Ranger projectiles
+      // Update Free Fire Safe Zone Barrier Net (r = 130m, height = 28m)
+      safeZoneNet.updateNet(delta, elapsed);
+
+      // Update active minions & Arcane Ranger projectiles (with fireball explosion callback)
       activeMinions.forEach((minion) => {
         minion.update(delta, playerGroup.position);
       });
-      rangerSystem.update(delta, monsterColliders);
 
-      // Update Roaming Open-World Monsters State Machine
-      monsters.forEach((m) => {
-        if (m.state === 'dead') {
-          m.respawnTimer -= delta;
-          if (m.respawnTimer <= 0) {
-            m.state = 'patrol';
-            m.currentHp = m.maxHp;
-            m.group.visible = true;
-            m.group.position.copy(m.homePos);
-          }
-          return;
-        }
+      rangerSystem.update(delta, monsterColliders, (explosionPos) => {
+        spawn3DParticleBurst(explosionPos, 0xf97316, 32, 1.6);
+        spawn3DParticleBurst(explosionPos, 0xfacc15, 20, 1.2);
+        sound.playHit(true);
+        triggerCameraShake(0.24, 0.55);
+        triggerFloatingText('💥 FIREBALL EXPLOSION!', 'crit');
+      });
 
-        if (m.state === 'stagger') {
-          m.staggerTimer -= delta;
-          if (m.staggerTimer <= 0) {
-            m.state = 'aggro';
-            (m.bodyMesh.material as THREE.MeshToonMaterial).color.setHex(0x4c0519);
-          }
-          return;
-        }
-
-        const distToPlayer = playerGroup.position.distanceTo(m.group.position);
-        if (distToPlayer <= m.aggroRange) {
-          m.state = 'aggro';
-          const dir = playerGroup.position.clone().sub(m.group.position);
-          dir.y = 0;
-          if (distToPlayer > m.attackRange) {
-            dir.normalize();
-            m.group.position.add(dir.multiplyScalar(m.moveSpeed * delta));
-            m.group.rotation.y = Math.atan2(dir.x, dir.z);
-          } else {
-            // Melee attack against local player
-            m.attackCooldown -= delta;
-            if (m.attackCooldown <= 0) {
-              m.attackCooldown = 1.6;
-              if (!isBlocking && !isDodging) {
-                curHp = Math.max(0, curHp - 12);
-                sound.playHit(false);
-                triggerFloatingText('-12 HIT', 'damage');
-              } else if (isBlocking) {
-                sound.playTrapTrigger();
-                triggerFloatingText('PARRIED!', 'parry');
-              }
+      // Update Animal Monster Wilderness Packs AI (Pack Tactics, 4-Leg Gallop, Paw Claw Attacks)
+      updateAnimalMonsterPacks(
+        monsters,
+        delta,
+        elapsed,
+        playerGroup.position,
+        isBlocking,
+        isDodging,
+        (damageAmount: number, monsterName: string) => {
+          const distToCenter = Math.hypot(playerGroup.position.x, playerGroup.position.z);
+          // Protection array: Monsters CANNOT harm player inside the net (radius < 130m)
+          if (distToCenter >= 130) {
+            if (!isBlocking && !isDodging) {
+              curHp = Math.max(0, curHp - damageAmount);
+              sound.playHit(false);
+              triggerCameraShake(0.2, 0.45);
+              triggerFloatingText(`-${damageAmount} CLAW SLASH`, 'damage');
+              setCharacterThought(`Hit by ${monsterName}'s razor claw!`);
+            } else if (isBlocking) {
+              sound.playTrapTrigger();
+              triggerFloatingText('PAW STRIKE DEFLECTED!', 'parry');
             }
           }
-        } else {
-          // Patrol wander
-          m.patrolTimer -= delta;
-          if (m.patrolTimer <= 0) {
-            m.patrolTimer = 3 + Math.random() * 4;
-            m.targetPos.set(
-              m.homePos.x + (Math.random() - 0.5) * 16,
-              m.homePos.y,
-              m.homePos.z + (Math.random() - 0.5) * 16
-            );
-          }
-          const pDir = m.targetPos.clone().sub(m.group.position);
-          pDir.y = 0;
-          if (pDir.lengthSq() > 0.5) {
-            pDir.normalize();
-            m.group.position.add(pDir.multiplyScalar(m.moveSpeed * 0.5 * delta));
-            m.group.rotation.y = Math.atan2(pDir.x, pDir.z);
-          }
         }
-      });
+      );
 
       // ============================================================================
       // 12. PROJECTED 3D FLOATING NAMEPLATES CALCULATION
@@ -3507,7 +4166,11 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     window.addEventListener('resize', handleResize);
 
     return () => {
-      container.removeEventListener('mousedown', handleCanvasMouseDown);
+      container.removeEventListener('pointerdown', handlePointerDown);
+      container.removeEventListener('pointermove', handlePointerMove);
+      container.removeEventListener('pointerup', handlePointerUp);
+      container.removeEventListener('pointercancel', handlePointerUp);
+      container.removeEventListener('wheel', handleWheel);
       container.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -3651,106 +4314,90 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(239,68,68,0.7)] border-4 border-rose-500/40 animate-pulse z-20" />
       )}
 
-      {/* Top Left: Character Identity, HP & Human Fatigue/Stamina Bar */}
-      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10">
-        <div className="bg-slate-950/90 border border-slate-800 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl w-64 pointer-events-auto">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-              <span className="font-rpg font-bold text-xs text-white uppercase">{characterName}</span>
+      {/* Top Left: Ultra-Compact Modern Game HUD (Small, unobtrusive, <3% screen space) */}
+      <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none z-10">
+        {/* Sleek Player Frame (176px width) */}
+        <div className="bg-slate-950/90 border border-slate-800/80 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-lg w-44 pointer-events-auto">
+          {/* Header: Level Badge & Character Name & HP text */}
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1">
+              <span className="px-1 py-0.2 rounded bg-amber-500/20 border border-amber-500/40 text-[9px] font-mono font-bold text-amber-300">
+                LV.{playerLevel}
+              </span>
+              <span className="font-rpg font-bold text-[11px] text-white truncate max-w-[70px]">
+                {characterName}
+              </span>
             </div>
-            <span className="text-[10px] font-mono text-cyan-300">
-              [X: {stats.posX}, Z: {stats.posZ}]
+            <span className="text-[9px] font-mono font-bold text-rose-300">
+              {Math.round(hp)}<span className="text-[8px] text-slate-500">/100</span>
             </span>
           </div>
 
-          {/* Health Bar */}
-          <div className="mb-2">
-            <div className="flex justify-between text-[10px] font-tech text-rose-300 mb-0.5">
-              <span>HP</span>
-              <span>{hp} / 100</span>
-            </div>
-            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-rose-950">
-              <div
-                className="h-full bg-gradient-to-r from-rose-600 to-red-500 transition-all duration-300"
-                style={{ width: `${hp}%` }}
-              />
-            </div>
+          {/* Slim Health Bar (6px) */}
+          <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-rose-950 mb-1">
+            <div
+              className="h-full bg-gradient-to-r from-rose-600 via-red-500 to-rose-400 transition-all duration-200"
+              style={{ width: `${hp}%` }}
+            />
           </div>
 
-          {/* Stamina & Breathing Fatigue Bar */}
-          <div className="mb-2">
-            <div className="flex justify-between text-[10px] font-tech text-amber-300 mb-0.5">
-              <span className="flex items-center gap-1">
-                <Activity className="w-3 h-3" />
-                <span>STAMINA {stats.isExhausted && '(EXHAUSTED)'}</span>
-              </span>
-              <span>{stamina}%</span>
-            </div>
-            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-amber-950">
-              <div
-                className={`h-full transition-all duration-200 ${
-                  stats.isExhausted ? 'bg-amber-600' : 'bg-gradient-to-r from-amber-500 to-yellow-400'
-                }`}
-                style={{ width: `${stamina}%` }}
-              />
-            </div>
+          {/* Slim Stamina Bar (4px) */}
+          <div className="w-full h-1 bg-slate-900 rounded-full overflow-hidden border border-amber-950 mb-1">
+            <div
+              className={`h-full transition-all duration-150 ${
+                stats.isExhausted ? 'bg-amber-600 animate-pulse' : 'bg-gradient-to-r from-amber-500 to-yellow-300'
+              }`}
+              style={{ width: `${stamina}%` }}
+            />
           </div>
 
-          {/* Level & Dynamic EXP Progression Bar */}
-          <div className="pt-2 border-t border-slate-800/80">
-            <div className="flex justify-between items-center text-[10px] font-tech mb-1">
-              <span className="flex items-center gap-1 font-bold text-amber-400">
-                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                <span>LVL {playerLevel}</span>
-              </span>
-              <span className="font-mono text-cyan-300 text-[9px]">
-                {playerExp} / {nextLevelExp} EXP ({Math.min(100, Math.floor((playerExp / nextLevelExp) * 100))}%)
-              </span>
-            </div>
-            <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-purple-950">
-              <div
-                className="h-full bg-gradient-to-r from-purple-600 via-indigo-500 to-cyan-400 transition-all duration-300"
-                style={{ width: `${Math.min(100, (playerExp / nextLevelExp) * 100)}%` }}
-              />
-            </div>
+          {/* Micro EXP Progression Bar (2px) */}
+          <div className="w-full h-0.5 bg-slate-900 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-purple-500 via-indigo-400 to-cyan-400 transition-all duration-300"
+              style={{ width: `${Math.min(100, (playerExp / nextLevelExp) * 100)}%` }}
+            />
           </div>
         </div>
 
-        {/* Story Quest Tracker (Chapter I: Sunken Rift Caverns) */}
-        <div className="bg-slate-950/90 border border-indigo-500/40 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-xl w-64 pointer-events-auto">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5 text-amber-400 font-rpg font-bold text-xs">
-              <Scroll className="w-3.5 h-3.5 text-amber-400" />
-              <span>ACTIVE QUEST</span>
+        {/* Collapsible Minimal Quest Tracker Pill */}
+        <div className="bg-slate-950/85 border border-indigo-500/30 backdrop-blur-md rounded-xl shadow-md w-44 pointer-events-auto transition-all">
+          <button
+            onClick={() => setIsQuestExpanded((prev) => !prev)}
+            className="w-full px-2.5 py-1 flex items-center justify-between text-left cursor-pointer hover:bg-slate-900/60 rounded-xl"
+          >
+            <div className="flex items-center gap-1 text-amber-400 font-rpg font-bold text-[10px] truncate">
+              <Scroll className="w-3 h-3 shrink-0 text-amber-400" />
+              <span className="truncate">Active Quest</span>
             </div>
-            <span className="text-[9px] bg-indigo-950 border border-indigo-500/40 text-indigo-300 px-1.5 py-0.2 rounded font-mono">
-              STORY
+            <span className="text-[8px] font-mono text-cyan-300 flex items-center gap-0.5">
+              <span>{isQuestExpanded ? '▲' : '▼'}</span>
             </span>
-          </div>
-          <p className="text-[11px] font-rpg font-semibold text-slate-200 mb-2 leading-tight">
-            {questState.title}
-          </p>
-          <div className="space-y-1.5">
-            {questState.objectives.map((obj) => (
-              <div key={obj.id} className="flex items-start gap-1.5 text-[10px]">
-                <span className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-bold ${
-                  obj.done ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-slate-800 text-slate-400 border border-slate-700'
-                }`}>
-                  {obj.done ? '✓' : '•'}
-                </span>
-                <span className={obj.done ? 'line-through text-slate-500 font-sans' : 'text-slate-300 font-sans'}>
-                  {obj.text} {obj.progress !== undefined && `(${obj.progress}/${obj.target})`}
-                </span>
-              </div>
-            ))}
-          </div>
+          </button>
+
+          {isQuestExpanded && (
+            <div className="px-2.5 pb-2 pt-0.5 border-t border-slate-800/60 space-y-1 animate-in fade-in duration-150">
+              <p className="text-[10px] font-rpg font-semibold text-slate-200 leading-tight">
+                {questState.title}
+              </p>
+              {questState.objectives.map((obj) => (
+                <div key={obj.id} className="flex items-start gap-1 text-[9px]">
+                  <span className={`shrink-0 font-bold ${obj.done ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    {obj.done ? '✓' : '•'}
+                  </span>
+                  <span className={obj.done ? 'line-through text-slate-500' : 'text-slate-300'}>
+                    {obj.text} {obj.progress !== undefined && `(${obj.progress}/${obj.target})`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Human-Like Floating Thought Bubble */}
-        <div className="bg-slate-950/85 border border-cyan-500/30 backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-mono text-cyan-200 flex items-center gap-2 max-w-sm shadow-lg">
-          <MessageSquare className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-          <span className="italic">"{characterThought}"</span>
+        {/* Compact Thought Bubble */}
+        <div className="bg-slate-950/80 border border-cyan-500/20 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-mono text-cyan-200/90 flex items-center gap-1.5 max-w-[176px] shadow-sm">
+          <MessageSquare className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
+          <span className="italic truncate">"{characterThought}"</span>
         </div>
       </div>
 
@@ -3851,6 +4498,19 @@ export const GameViewport: React.FC<GameViewportProps> = ({
             />
           ))}
         </div>
+
+        {/* CGAxis 3D Asset Browser & World Spawner Button */}
+        <button
+          onClick={() => setShowCGAxisBrowser(true)}
+          className="px-2.5 py-1.5 rounded-xl bg-slate-950/85 hover:bg-amber-950/70 border border-amber-500/50 hover:border-amber-400 text-amber-300 font-rpg font-bold text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer"
+          title="Open CGAxis 3D Asset Browser & World Spawner (Blender Addon)"
+        >
+          <Box className="w-3.5 h-3.5 text-amber-400" />
+          <span className="hidden md:inline">CGAXIS 3D BUILDER</span>
+          <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold">
+            {placedCGAxisObjects.length}
+          </span>
+        </button>
 
         {/* Landscape & Grass Brushes Inspector Button */}
         <button
@@ -3966,6 +4626,19 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           </div>
         </div>
       )}
+
+      {/* CGAxis 3D Asset Browser & World Spawner Modal (Blender Add-on Native Integration) */}
+      <CGAxisAssetBrowser
+        isOpen={showCGAxisBrowser}
+        onClose={() => setShowCGAxisBrowser(false)}
+        playerPos={{ x: stats.posX, y: 0, z: stats.posZ }}
+        playerYaw={0}
+        onSpawnAsset={handleSpawnCGAxisAsset}
+        placedObjects={placedCGAxisObjects}
+        onRemoveObject={handleRemoveCGAxisObject}
+        onClearAllObjects={handleClearAllCGAxisObjects}
+        onLoadPresetMap={handleLoadPresetMap}
+      />
 
       {/* Landscape Brushes & Foliage Detail Modal */}
       {showFoliageModal && (
@@ -4103,27 +4776,95 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           </button>
         </div>
 
+        {/* Free Fire Auto-Sprint Toggle Button */}
+        <button
+          onClick={() => {
+            actionTriggerRef.current.toggleSprintRequested = true;
+          }}
+          className={`px-3 py-1.5 rounded-xl border backdrop-blur-md flex items-center gap-1.5 text-xs font-rpg font-bold shadow-lg transition cursor-pointer pointer-events-auto ${
+            isFreeFireSprint
+              ? 'bg-amber-500 text-slate-950 border-amber-300 ring-2 ring-amber-400/50 shadow-amber-500/30'
+              : 'bg-slate-950/90 text-slate-300 border-slate-700 hover:border-amber-400/60'
+          }`}
+          title="Toggle Free Fire Auto-Sprint"
+        >
+          <Zap className={`w-3.5 h-3.5 ${isFreeFireSprint ? 'fill-slate-950 text-slate-950 animate-bounce' : 'text-amber-400'}`} />
+          <span>{isFreeFireSprint ? 'SPRINT: ON' : 'SPRINT [AUTO]'}</span>
+        </button>
+
+        {/* Long-Range Fireball / Celestial Bow Action */}
+        <div className="flex items-center gap-1 pointer-events-auto">
+          <button
+            onClick={() => {
+              if (rangedAttackType === 'fireball') {
+                actionTriggerRef.current.fireballRequested = true;
+              } else {
+                actionTriggerRef.current.bowAttackRequested = true;
+              }
+            }}
+            disabled={rangedCooldown > 0}
+            className={`px-3.5 py-1.5 rounded-xl border backdrop-blur-md flex items-center gap-2 text-xs font-rpg font-bold shadow-lg transition cursor-pointer ${
+              rangedAttackType === 'fireball'
+                ? 'bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white border-orange-400/80 shadow-orange-500/40 hover:scale-105 active:scale-95'
+                : 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white border-cyan-400/80 shadow-cyan-500/40 hover:scale-105 active:scale-95'
+            } ${rangedCooldown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Cast Long-Range Attack (130m Range) [Key: V]"
+          >
+            {rangedAttackType === 'fireball' ? (
+              <Flame className="w-4 h-4 fill-amber-300 text-amber-200 animate-pulse" />
+            ) : (
+              <Crosshair className="w-4 h-4 text-cyan-200" />
+            )}
+            <span>
+              {rangedAttackType === 'fireball' ? 'FIREBALL [V]' : 'BOW [V]'}
+            </span>
+            {rangedCooldown > 0 && (
+              <span className="text-[10px] font-mono bg-black/40 px-1 py-0.2 rounded">
+                {rangedCooldown.toFixed(1)}s
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              actionTriggerRef.current.toggleRangedRequested = true;
+            }}
+            className="px-2 py-1.5 rounded-xl bg-slate-950/90 border border-slate-700 hover:border-amber-400/60 text-slate-300 text-xs font-mono transition cursor-pointer"
+            title="Switch Ranged Weapon [Key: X]"
+          >
+            [X] {rangedAttackType === 'fireball' ? '🏹' : '🔥'}
+          </button>
+        </div>
+
         {/* Right: Key Controls Dock */}
-        <div className="bg-slate-950/90 border border-slate-800 backdrop-blur-md px-4 py-2 rounded-2xl text-[11px] font-tech text-slate-300 flex items-center gap-2.5 shadow-xl pointer-events-auto">
+        <div className="bg-slate-950/90 border border-slate-800 backdrop-blur-md px-3 py-1.5 rounded-2xl text-[10px] font-tech text-slate-300 flex items-center gap-2 shadow-xl pointer-events-auto">
           <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-cyan-300 font-bold">WASD</span>
+            <span className="px-1 py-0.2 rounded bg-slate-800 font-mono text-cyan-300 font-bold">Drag</span>
+            <span>View</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="px-1 py-0.2 rounded bg-slate-800 font-mono text-cyan-300 font-bold">WASD</span>
             <span>Move</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-cyan-300 font-bold">TAB</span>
-            <span>Target</span>
+            <span className="px-1 py-0.2 rounded bg-slate-800 font-mono text-cyan-300 font-bold">V</span>
+            <span>Fireball</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-cyan-300 font-bold">E / Q</span>
-            <span>Slash</span>
+            <span className="px-1 py-0.2 rounded bg-slate-800 font-mono text-cyan-300 font-bold">E/Q</span>
+            <span>Melee</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-cyan-300 font-bold">C</span>
+            <span className="px-1 py-0.2 rounded bg-slate-800 font-mono text-cyan-300 font-bold">C</span>
             <span>Roll</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded bg-slate-800 font-mono text-cyan-300 font-bold">B</span>
-            <span>Parry</span>
+            <span className="px-1 py-0.2 rounded bg-slate-800 font-mono text-cyan-300 font-bold">M</span>
+            <span>Minimap</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="px-1 py-0.2 rounded bg-slate-800 font-mono text-cyan-300 font-bold">U</span>
+            <span>Status</span>
           </div>
         </div>
       </div>

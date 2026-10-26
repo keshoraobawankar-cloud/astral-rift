@@ -1,0 +1,427 @@
+{
+  "dungeon_metadata": {
+    "name": "S-Rank Demon King's Labyrinth - Abyss Layer 99",
+    "floor_number": 99,
+    "difficulty_tier": "S-Rank Calamity",
+    "ambient_weather": "Crimson Miasma Void Surge",
+    "total_rooms": 8,
+    "recommended_combat_power": 125000
+  },
+  "rooms": [
+    {
+      "room_id": "room_1_descent_hall",
+      "room_type": "spawn_room",
+      "dimensions": { "width": 24.0, "height": 10.0, "depth": 24.0 },
+      "world_coordinates": { "x": 0.0, "y": 0.0, "z": 0.0 },
+      "connected_to": ["room_2_obsidian_corridor"],
+      "placed_objects": [
+        {
+          "id": "spawn_magic_circle_1",
+          "object_type": "teleportation_rune_circle",
+          "local_coordinates": { "x": 0.0, "y": 0.05, "z": 0.0 },
+          "rotation_y": 0.0,
+          "scale": 1.8
+        },
+        {
+          "id": "warden_pillar_1",
+          "object_type": "glowing_mana_brazier",
+          "local_coordinates": { "x": -8.5, "y": 0.0, "z": -8.5 },
+          "rotation_y": 45.0,
+          "scale": 1.2
+        },
+        {
+          "id": "warden_pillar_2",
+          "object_type": "glowing_mana_brazier",
+          "local_coordinates": { "x": 8.5, "y": 0.0, "z": -8.5 },
+          "rotation_y": 315.0,
+          "scale": 1.2
+        },
+        {
+          "id": "mana_crystal_spawn_1",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": -9.2, "y": 0.0, "z": 7.4 },
+          "rotation_y": 128.4,
+          "scale": 1.15
+        },
+        {
+          "id": "mana_crystal_spawn_2",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": 9.0, "y": 0.0, "z": 7.8 },
+          "rotation_y": 210.6,
+          "scale": 0.95
+        }
+      ]
+    },
+    {
+      "room_id": "room_2_obsidian_corridor",
+      "room_type": "hallway_junction",
+      "dimensions": { "width": 18.0, "height": 8.0, "depth": 42.0 },
+      "world_coordinates": { "x": 0.0, "y": -2.0, "z": 45.0 },
+      "connected_to": ["room_1_descent_hall", "room_3_bloodfiend_nest", "room_4_abyssal_crypt"],
+      "placed_objects": [
+        {
+          "id": "corridor_trap_1",
+          "object_type": "floor_spiked_rune_trap",
+          "local_coordinates": { "x": 0.0, "y": 0.02, "z": -12.0 },
+          "rotation_y": 0.0,
+          "scale": 1.4
+        },
+        {
+          "id": "corridor_trap_2",
+          "object_type": "flame_jet_gargoyle",
+          "local_coordinates": { "x": -7.2, "y": 1.5, "z": 4.0 },
+          "rotation_y": 90.0,
+          "scale": 1.1
+        },
+        {
+          "id": "corridor_trap_3",
+          "object_type": "flame_jet_gargoyle",
+          "local_coordinates": { "x": 7.2, "y": 1.5, "z": 4.0 },
+          "rotation_y": 270.0,
+          "scale": 1.1
+        },
+        {
+          "id": "mana_crystal_corridor_1",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": -6.5, "y": 0.0, "z": 16.0 },
+          "rotation_y": 305.2,
+          "scale": 1.35
+        },
+        {
+          "id": "chest_corridor_hidden",
+          "object_type": "uncommon_treasure_chest",
+          "local_coordinates": { "x": 6.8, "y": 0.0, "z": 18.2 },
+          "rotation_y": 180.0,
+          "scale": 1.05
+        }
+      ]
+    },
+    {
+      "room_id": "room_3_bloodfiend_nest",
+      "room_type": "monster_nest",
+      "dimensions": { "width": 36.0, "height": 14.0, "depth": 36.0 },
+      "world_coordinates": { "x": -45.0, "y": -4.0, "z": 65.0 },
+      "connected_to": ["room_2_obsidian_corridor", "room_5_arcane_sanctuary"],
+      "placed_objects": [
+        {
+          "id": "fiend_spawner_egg_1",
+          "object_type": "abyssal_incubator_sac",
+          "local_coordinates": { "x": -10.5, "y": 0.0, "z": -9.0 },
+          "rotation_y": 74.0,
+          "scale": 1.6
+        },
+        {
+          "id": "fiend_spawner_egg_2",
+          "object_type": "abyssal_incubator_sac",
+          "local_coordinates": { "x": 11.2, "y": 0.0, "z": 8.5 },
+          "rotation_y": 192.5,
+          "scale": 1.75
+        },
+        {
+          "id": "crystal_nest_cluster_1",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": 0.0, "y": 0.0, "z": 14.2 },
+          "rotation_y": 15.0,
+          "scale": 1.95
+        },
+        {
+          "id": "crystal_nest_cluster_2",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": -14.0, "y": 0.0, "z": 6.0 },
+          "rotation_y": 284.1,
+          "scale": 1.45
+        },
+        {
+          "id": "nest_trap_acid_1",
+          "object_type": "caustic_sludge_geyser",
+          "local_coordinates": { "x": 4.5, "y": 0.0, "z": -5.0 },
+          "rotation_y": 12.0,
+          "scale": 1.3
+        },
+        {
+          "id": "nest_iron_chest",
+          "object_type": "reinforced_iron_chest",
+          "local_coordinates": { "x": -13.5, "y": 0.0, "z": -12.5 },
+          "rotation_y": 42.0,
+          "scale": 1.2
+        }
+      ]
+    },
+    {
+      "room_id": "room_4_abyssal_crypt",
+      "room_type": "puzzle_chamber",
+      "dimensions": { "width": 32.0, "height": 12.0, "depth": 32.0 },
+      "world_coordinates": { "x": 45.0, "y": -4.0, "z": 65.0 },
+      "connected_to": ["room_2_obsidian_corridor", "room_6_treasury_vault"],
+      "placed_objects": [
+        {
+          "id": "puzzle_obelisk_alpha",
+          "object_type": "rotatable_elemental_obelisk",
+          "local_coordinates": { "x": -8.0, "y": 0.0, "z": -8.0 },
+          "rotation_y": 90.0,
+          "scale": 1.5
+        },
+        {
+          "id": "puzzle_obelisk_beta",
+          "object_type": "rotatable_elemental_obelisk",
+          "local_coordinates": { "x": 8.0, "y": 0.0, "z": -8.0 },
+          "rotation_y": 180.0,
+          "scale": 1.5
+        },
+        {
+          "id": "puzzle_obelisk_gamma",
+          "object_type": "rotatable_elemental_obelisk",
+          "local_coordinates": { "x": 0.0, "y": 0.0, "z": 9.0 },
+          "rotation_y": 270.0,
+          "scale": 1.5
+        },
+        {
+          "id": "puzzle_central_plinth",
+          "object_type": "ancient_relic_lock_altar",
+          "local_coordinates": { "x": 0.0, "y": 0.0, "z": -1.0 },
+          "rotation_y": 0.0,
+          "scale": 1.7
+        },
+        {
+          "id": "dart_trap_crypt_1",
+          "object_type": "wall_pressure_dart_trap",
+          "local_coordinates": { "x": -14.5, "y": 2.0, "z": 0.0 },
+          "rotation_y": 90.0,
+          "scale": 0.9
+        },
+        {
+          "id": "dart_trap_crypt_2",
+          "object_type": "wall_pressure_dart_trap",
+          "local_coordinates": { "x": 14.5, "y": 2.0, "z": 0.0 },
+          "rotation_y": 270.0,
+          "scale": 0.9
+        }
+      ]
+    },
+    {
+      "room_id": "room_5_arcane_sanctuary",
+      "room_type": "shrine_chamber",
+      "dimensions": { "width": 26.0, "height": 16.0, "depth": 26.0 },
+      "world_coordinates": { "x": -45.0, "y": -6.0, "z": 120.0 },
+      "connected_to": ["room_3_bloodfiend_nest", "room_7_infernal_coliseum"],
+      "placed_objects": [
+        {
+          "id": "goddess_sanctuary_statue",
+          "object_type": "monolithic_goddess_shrine",
+          "local_coordinates": { "x": 0.0, "y": 0.0, "z": -8.5 },
+          "rotation_y": 0.0,
+          "scale": 2.0
+        },
+        {
+          "id": "holy_cleansing_circle",
+          "object_type": "purification_font_circle",
+          "local_coordinates": { "x": 0.0, "y": 0.04, "z": 0.0 },
+          "rotation_y": 135.0,
+          "scale": 1.6
+        },
+        {
+          "id": "pure_crystal_pylon_1",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": -9.0, "y": 0.0, "z": 7.0 },
+          "rotation_y": 48.3,
+          "scale": 1.5
+        },
+        {
+          "id": "pure_crystal_pylon_2",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": 9.0, "y": 0.0, "z": 7.0 },
+          "rotation_y": 312.7,
+          "scale": 1.5
+        },
+        {
+          "id": "sanctuary_cache_chest",
+          "object_type": "ornate_silver_chest",
+          "local_coordinates": { "x": 0.0, "y": 0.0, "z": -5.0 },
+          "rotation_y": 0.0,
+          "scale": 1.1
+        }
+      ]
+    },
+    {
+      "room_id": "room_6_treasury_vault",
+      "room_type": "treasure_vault",
+      "dimensions": { "width": 28.0, "height": 11.0, "depth": 28.0 },
+      "world_coordinates": { "x": 45.0, "y": -6.0, "z": 120.0 },
+      "connected_to": ["room_4_abyssal_crypt", "room_7_infernal_coliseum"],
+      "placed_objects": [
+        {
+          "id": "vault_royal_chest_1",
+          "object_type": "gilded_dragon_chest",
+          "local_coordinates": { "x": 0.0, "y": 0.0, "z": -9.0 },
+          "rotation_y": 0.0,
+          "scale": 1.65
+        },
+        {
+          "id": "vault_mimic_trap_chest",
+          "object_type": "fanged_chest_mimic",
+          "local_coordinates": { "x": -8.0, "y": 0.0, "z": 2.0 },
+          "rotation_y": 45.0,
+          "scale": 1.3
+        },
+        {
+          "id": "vault_side_chest_2",
+          "object_type": "ornate_silver_chest",
+          "local_coordinates": { "x": 8.0, "y": 0.0, "z": 2.0 },
+          "rotation_y": 315.0,
+          "scale": 1.25
+        },
+        {
+          "id": "gold_pile_cluster_1",
+          "object_type": "spilled_gold_urn",
+          "local_coordinates": { "x": -4.0, "y": 0.0, "z": -7.5 },
+          "rotation_y": 112.0,
+          "scale": 0.95
+        },
+        {
+          "id": "gold_pile_cluster_2",
+          "object_type": "spilled_gold_urn",
+          "local_coordinates": { "x": 4.0, "y": 0.0, "z": -7.5 },
+          "rotation_y": 248.0,
+          "scale": 0.95
+        },
+        {
+          "id": "laser_grid_emitter_trap",
+          "object_type": "arcane_tripwire_beacon",
+          "local_coordinates": { "x": 0.0, "y": 0.0, "z": 8.0 },
+          "rotation_y": 180.0,
+          "scale": 1.4
+        }
+      ]
+    },
+    {
+      "room_id": "room_7_infernal_coliseum",
+      "room_type": "mini_boss_arena",
+      "dimensions": { "width": 46.0, "height": 18.0, "depth": 46.0 },
+      "world_coordinates": { "x": 0.0, "y": -9.0, "z": 160.0 },
+      "connected_to": ["room_5_arcane_sanctuary", "room_6_treasury_vault", "room_8_throne_of_the_calamity_monarch"],
+      "placed_objects": [
+        {
+          "id": "coliseum_magma_grate_1",
+          "object_type": "molten_lava_grate_trap",
+          "local_coordinates": { "x": -12.0, "y": 0.0, "z": -12.0 },
+          "rotation_y": 0.0,
+          "scale": 1.8
+        },
+        {
+          "id": "coliseum_magma_grate_2",
+          "object_type": "molten_lava_grate_trap",
+          "local_coordinates": { "x": 12.0, "y": 0.0, "z": -12.0 },
+          "rotation_y": 0.0,
+          "scale": 1.8
+        },
+        {
+          "id": "coliseum_magma_grate_3",
+          "object_type": "molten_lava_grate_trap",
+          "local_coordinates": { "x": -12.0, "y": 0.0, "z": 12.0 },
+          "rotation_y": 0.0,
+          "scale": 1.8
+        },
+        {
+          "id": "coliseum_magma_grate_4",
+          "object_type": "molten_lava_grate_trap",
+          "local_coordinates": { "x": 12.0, "y": 0.0, "z": 12.0 },
+          "rotation_y": 0.0,
+          "scale": 1.8
+        },
+        {
+          "id": "champion_arena_banner_1",
+          "object_type": "demon_sigil_war_banner",
+          "local_coordinates": { "x": -18.0, "y": 0.0, "z": 0.0 },
+          "rotation_y": 90.0,
+          "scale": 1.7
+        },
+        {
+          "id": "champion_arena_banner_2",
+          "object_type": "demon_sigil_war_banner",
+          "local_coordinates": { "x": 18.0, "y": 0.0, "z": 0.0 },
+          "rotation_y": 270.0,
+          "scale": 1.7
+        },
+        {
+          "id": "mana_spire_coliseum_1",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": 0.0, "y": 0.0, "z": -18.0 },
+          "rotation_y": 14.5,
+          "scale": 1.85
+        }
+      ]
+    },
+    {
+      "room_id": "room_8_throne_of_the_calamity_monarch",
+      "room_type": "boss_arena",
+      "dimensions": { "width": 60.0, "height": 26.0, "depth": 60.0 },
+      "world_coordinates": { "x": 0.0, "y": -14.0, "z": 240.0 },
+      "connected_to": ["room_7_infernal_coliseum"],
+      "placed_objects": [
+        {
+          "id": "demon_king_abyssal_throne",
+          "object_type": "throne_of_the_s_rank_monarch",
+          "local_coordinates": { "x": 0.0, "y": 3.2, "z": -22.0 },
+          "rotation_y": 0.0,
+          "scale": 2.0
+        },
+        {
+          "id": "grand_calamity_magic_circle",
+          "object_type": "apocalyptic_seal_circle",
+          "local_coordinates": { "x": 0.0, "y": 0.08, "z": 0.0 },
+          "rotation_y": 66.6,
+          "scale": 2.0
+        },
+        {
+          "id": "boss_pillar_void_1",
+          "object_type": "monolithic_void_pillar",
+          "local_coordinates": { "x": -20.0, "y": 0.0, "z": -15.0 },
+          "rotation_y": 32.0,
+          "scale": 1.9
+        },
+        {
+          "id": "boss_pillar_void_2",
+          "object_type": "monolithic_void_pillar",
+          "local_coordinates": { "x": 20.0, "y": 0.0, "z": -15.0 },
+          "rotation_y": 328.0,
+          "scale": 1.9
+        },
+        {
+          "id": "boss_pillar_void_3",
+          "object_type": "monolithic_void_pillar",
+          "local_coordinates": { "x": -20.0, "y": 0.0, "z": 15.0 },
+          "rotation_y": 145.0,
+          "scale": 1.9
+        },
+        {
+          "id": "boss_pillar_void_4",
+          "object_type": "monolithic_void_pillar",
+          "local_coordinates": { "x": 20.0, "y": 0.0, "z": 15.0 },
+          "rotation_y": 215.0,
+          "scale": 1.9
+        },
+        {
+          "id": "grand_mana_crystal_apex_1",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": -24.0, "y": 0.0, "z": 0.0 },
+          "rotation_y": 88.2,
+          "scale": 1.95
+        },
+        {
+          "id": "grand_mana_crystal_apex_2",
+          "object_type": "breakable_mana_crystal",
+          "local_coordinates": { "x": 24.0, "y": 0.0, "z": 0.0 },
+          "rotation_y": 268.4,
+          "scale": 1.95
+        },
+        {
+          "id": "celestial_emperor_chest_reward",
+          "object_type": "mythic_calamity_vault_chest",
+          "local_coordinates": { "x": 0.0, "y": 0.0, "z": -27.5 },
+          "rotation_y": 0.0,
+          "scale": 1.8
+        }
+      ]
+    }
+  ]
+}

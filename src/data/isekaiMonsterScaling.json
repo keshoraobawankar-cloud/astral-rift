@@ -1,0 +1,449 @@
+[
+  {
+    "id": "mon_01",
+    "level": 1,
+    "profile": {
+      "name": "Azure Jelly Slime",
+      "ranking_tier": "F",
+      "elemental_affinity": "Water",
+      "personality_description": "A translucent, jiggly sapphire blob that squeaks rhythmically and bounces aimlessly through sunlit meadows until stepped on."
+    },
+    "base_stats": {
+      "hp": 85,
+      "mp": 20,
+      "attack": 14,
+      "defense": 6,
+      "agility": 12,
+      "luck": 15
+    },
+    "behavioral_ai": [
+      { "action": "Jelly Squish Tackle", "weight": 60 },
+      { "action": "Spit Acid Droplet when MP >= 5", "weight": 25 },
+      { "action": "Flee and Wiggle when HP < 20%", "weight": 15 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Sticky Pure Gel Core", "Tiny Aquamarine Pebble"],
+      "standard_materials": ["Clear Slime Fluid", "Meadow Moss Shard"],
+      "experience_points": 25,
+      "gold_coins": 12
+    }
+  },
+  {
+    "id": "mon_02",
+    "level": 5,
+    "profile": {
+      "name": "Horned Moss Hare",
+      "ranking_tier": "F",
+      "elemental_affinity": "Earth",
+      "personality_description": "An anxious, twitchy lagomorph sporting verdant floral fur and a surprisingly sharp obsidian horn between its long ears."
+    },
+    "base_stats": {
+      "hp": 240,
+      "mp": 45,
+      "attack": 38,
+      "defense": 22,
+      "agility": 48,
+      "luck": 32
+    },
+    "behavioral_ai": [
+      { "action": "Zig-Zag Dash Leap", "weight": 45 },
+      { "action": "Horn Drill Piercing Strike", "weight": 35 },
+      { "action": "Burrow into Earth and Evade when HP < 25%", "weight": 20 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Pristine Obsidian Horn", "Lucky Hare's Emerald Foot"],
+      "standard_materials": ["Soft Verdant Pelt", "Edible Burrow Carrot"],
+      "experience_points": 78,
+      "gold_coins": 35
+    }
+  },
+  {
+    "id": "mon_03",
+    "level": 10,
+    "profile": {
+      "name": "Forest Goblin Marauder",
+      "ranking_tier": "E",
+      "elemental_affinity": "Nature",
+      "personality_description": "Cackling, spiteful woodland scavengers draped in patchwork leather, obsessed with setting crude tripwires and tossing flint stones."
+    },
+    "base_stats": {
+      "hp": 580,
+      "mp": 80,
+      "attack": 86,
+      "defense": 52,
+      "agility": 75,
+      "luck": 40
+    },
+    "behavioral_ai": [
+      { "action": "Serrated Bone Cleaver Slash", "weight": 50 },
+      { "action": "Hurl Jagged Stone Shard when Target Distance > 4m", "weight": 30 },
+      { "action": "Toss Smoke Powder and Retreat when HP < 15%", "weight": 20 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Notched Steel Dagger", "Goblin Chief's Brass Earring"],
+      "standard_materials": ["Tanned Goblin Hide", "Rough Flint arrowhead"],
+      "experience_points": 185,
+      "gold_coins": 85
+    }
+  },
+  {
+    "id": "mon_04",
+    "level": 16,
+    "profile": {
+      "name": "Sporecap Fungal Shaman",
+      "ranking_tier": "E",
+      "elemental_affinity": "Arcane",
+      "personality_description": "A hunched, psychedelic mushroom-folk chanting eerie guttural hymns while dancing atop bubbling cauldron pools."
+    },
+    "base_stats": {
+      "hp": 1150,
+      "mp": 380,
+      "attack": 135,
+      "defense": 88,
+      "agility": 62,
+      "luck": 55
+    },
+    "behavioral_ai": [
+      { "action": "Cast Toxic Spore Nova when MP >= 30", "weight": 40 },
+      { "action": "Chant Fungal Haste Ward when Allies Nearby", "weight": 30 },
+      { "action": "Bonk with Rotwood Staff", "weight": 20 },
+      { "action": "Detonate Hallucinogenic Mist when HP < 20%", "weight": 10 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Luminescent Mycelium Spore", "Shamanic Staff of Whispers"],
+      "standard_materials": ["Bitter Alchemical Truffle", "Damp Moss Weave"],
+      "experience_points": 420,
+      "gold_coins": 190
+    }
+  },
+  {
+    "id": "mon_05",
+    "level": 22,
+    "profile": {
+      "name": "Ironfang Direwolf",
+      "ranking_tier": "D",
+      "elemental_affinity": "Wind",
+      "personality_description": "A savage pack predator with steely silver bristles and jaw canines capable of crunching reinforced iron shields in half."
+    },
+    "base_stats": {
+      "hp": 2350,
+      "mp": 160,
+      "attack": 290,
+      "defense": 175,
+      "agility": 210,
+      "luck": 45
+    },
+    "behavioral_ai": [
+      { "action": "Frenzied Pounce and Throat Crush", "weight": 45 },
+      { "action": "Pack Howl (Grants +25% Party Attack)", "weight": 25 },
+      { "action": "Gale-Blade Claw Sweep", "weight": 20 },
+      { "action": "Enraged Berserk Sprint when HP < 30%", "weight": 10 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Ironfang Alpha Canine", "Wind-Infused Silver Pelt"],
+      "standard_materials": ["Direwolf Sinew", "Sharp Claw Talons"],
+      "experience_points": 890,
+      "gold_coins": 420
+    }
+  },
+  {
+    "id": "mon_06",
+    "level": 28,
+    "profile": {
+      "name": "Skeletal Crypt Vanguard",
+      "ranking_tier": "D",
+      "elemental_affinity": "Dark",
+      "personality_description": "An imposing ancient soldier stripped of flesh, silently marching forward with glowing cyan pupil flames behind a dented tower shield."
+    },
+    "base_stats": {
+      "hp": 4100,
+      "mp": 120,
+      "attack": 440,
+      "defense": 480,
+      "agility": 110,
+      "luck": 30
+    },
+    "behavioral_ai": [
+      { "action": "Phalanx Shield Bash (Causes Stun)", "weight": 40 },
+      { "action": "Rust-Coated Broadsword Thrust", "weight": 35 },
+      { "action": "Bone Fortress Guard (Reduces Damage by 60%)", "weight": 20 },
+      { "action": "Necrotic Bone Spikes on Death", "weight": 5 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Antique Royal Guard Insignia", "Dark Iron Tower Shield"],
+      "standard_materials": ["Ancient Marrow Bone", "Torn Funeral Shroud"],
+      "experience_points": 1650,
+      "gold_coins": 780
+    }
+  },
+  {
+    "id": "mon_07",
+    "level": 35,
+    "profile": {
+      "name": "Blazing Magma Salamander",
+      "ranking_tier": "C",
+      "elemental_affinity": "Fire",
+      "personality_description": "A heavy, subterranean reptile coated in obsidian scales that constantly sweats liquid caldera lava, basking lazily until provoked."
+    },
+    "base_stats": {
+      "hp": 7800,
+      "mp": 450,
+      "attack": 790,
+      "defense": 620,
+      "agility": 230,
+      "luck": 60
+    },
+    "behavioral_ai": [
+      { "action": "Spew Magma Breath Cone when MP >= 50", "weight": 40 },
+      { "action": "Tail Whip Flame Sweep", "weight": 30 },
+      { "action": "Submerge into Molten Pool and Regenerate", "weight": 20 },
+      { "action": "Ignite Body Lava Aura when HP < 40%", "weight": 10 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Ever-Burning Salamander Heart", "Caldera Fire Opal"],
+      "standard_materials": ["Obsidian Scale Shell", "Brimstone Droplet"],
+      "experience_points": 3400,
+      "gold_coins": 1550
+    }
+  },
+  {
+    "id": "mon_08",
+    "level": 42,
+    "profile": {
+      "name": "Shadow Gahu Chimera",
+      "ranking_tier": "C",
+      "elemental_affinity": "Void",
+      "personality_description": "A grotesque fusion of panther, scorpion, and bat that phases between reality planes, toying sadistically with exhausted prey."
+    },
+    "base_stats": {
+      "hp": 13200,
+      "mp": 680,
+      "attack": 1280,
+      "defense": 820,
+      "agility": 620,
+      "luck": 95
+    },
+    "behavioral_ai": [
+      { "action": "Shadow Step Ambush from Behind", "weight": 40 },
+      { "action": "Venomous Stinger Pierce (Inflicts Neurotoxin)", "weight": 30 },
+      { "action": "Supersonic Sonic Shriek", "weight": 20 },
+      { "action": "Cast Mirror Clone Hallucination when HP < 30%", "weight": 10 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Void-Infused Chimera Wings", "Paralytic Stinger Core"],
+      "standard_materials": ["Abyssal Velvet Fur", "Chimera Bone Talons"],
+      "experience_points": 6200,
+      "gold_coins": 2900
+    }
+  },
+  {
+    "id": "mon_09",
+    "level": 49,
+    "profile": {
+      "name": "Armored Runic Minotaur",
+      "ranking_tier": "B",
+      "elemental_affinity": "Earth",
+      "personality_description": "A disciplined, muscle-bound bovine gladiator clad in enchanted dwarven steel, bellowing war-cries that shake labyrinth masonry."
+    },
+    "base_stats": {
+      "hp": 24500,
+      "mp": 520,
+      "attack": 2150,
+      "defense": 1820,
+      "agility": 410,
+      "luck": 75
+    },
+    "behavioral_ai": [
+      { "action": "Tectonic Greataxe Groundslam", "weight": 35 },
+      { "action": "Unstoppable Bull Charge across Arena", "weight": 30 },
+      { "action": "Runic Roar (Cleanses Crowd Control)", "weight": 20 },
+      { "action": "Bloodrage Rampage (+80% Atk, -30% Def) when HP < 25%", "weight": 15 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Titan Horn of the Labyrinth", "Runic Dwarven Steel Greataxe"],
+      "standard_materials": ["Hardened Colossus Leather", "Polished Iron Rings"],
+      "experience_points": 11800,
+      "gold_coins": 5600
+    }
+  },
+  {
+    "id": "mon_10",
+    "level": 56,
+    "profile": {
+      "name": "Abyssal Phantom Siren",
+      "ranking_tier": "B",
+      "elemental_affinity": "Holy / Dark",
+      "personality_description": "An ethereal winged maiden singing sorrowful ballads that bewitch the soul, turning party members against one another with melancholic tears."
+    },
+    "base_stats": {
+      "hp": 38000,
+      "mp": 2400,
+      "attack": 2980,
+      "defense": 1650,
+      "agility": 880,
+      "luck": 160
+    },
+    "behavioral_ai": [
+      { "action": "Bewitching Melody (Applies Charm / Confusion)", "weight": 35 },
+      { "action": "Spectral Wave of Wailing Souls", "weight": 30 },
+      { "action": "Cast Tidal Arcane Maelstrom when MP > 500", "weight": 25 },
+      { "action": "Phase Shift into Invulnerability for 3s when HP < 20%", "weight": 10 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Siren's Tear Pearl Necklace", "Prismatic Feather of Harmony"],
+      "standard_materials": ["Ethereal Mist Silk", "Resonant Voice Crystal"],
+      "experience_points": 21500,
+      "gold_coins": 9800
+    }
+  },
+  {
+    "id": "mon_11",
+    "level": 63,
+    "profile": {
+      "name": "Stormforged Thunder Griffin",
+      "ranking_tier": "A",
+      "elemental_affinity": "Lightning",
+      "personality_description": "A proud, noble apex ruler of mountain crags whose golden plumage crackles with 10,000 volts of celestial lightning."
+    },
+    "base_stats": {
+      "hp": 65000,
+      "mp": 3200,
+      "attack": 4650,
+      "defense": 2950,
+      "agility": 1420,
+      "luck": 130
+    },
+    "behavioral_ai": [
+      { "action": "Thunderclap Dive Bomb from Clouds", "weight": 35 },
+      { "action": "Call Lightning Storm Strike Pillars", "weight": 30 },
+      { "action": "Hurricane Vortex Wing Buffet", "weight": 20 },
+      { "action": "Supercharge Plasma Discharge when HP < 30%", "weight": 15 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Thunder Griffin Beak Talon", "Core of the Storm Sovereign"],
+      "standard_materials": ["Conductive Golden Feather", "Pure Sky Essence"],
+      "experience_points": 42000,
+      "gold_coins": 18500
+    }
+  },
+  {
+    "id": "mon_12",
+    "level": 70,
+    "profile": {
+      "name": "Infernal Blood Sovereign Knight",
+      "ranking_tier": "A",
+      "elemental_affinity": "Blood / Fire",
+      "personality_description": "A fallen chivalric grandmaster possessing cursed sanguine blade mastery, relishing duel combat with theatrical warrior respect."
+    },
+    "base_stats": {
+      "hp": 115000,
+      "mp": 4500,
+      "attack": 7400,
+      "defense": 5200,
+      "agility": 1680,
+      "luck": 175
+    },
+    "behavioral_ai": [
+      { "action": "Sanguine Cross Slash with Crimson Wave", "weight": 35 },
+      { "action": "Blood Drain Thrust (Recovers 15% Dealt Damage)", "weight": 25 },
+      { "action": "Hellfire Meteor Slam", "weight": 25 },
+      { "action": "Awaken Demon King Vanguard Aura when HP < 35%", "weight": 15 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Cursed Blood Knight Greatsword", "Vampiric Aegis Plate"],
+      "standard_materials": ["Demonic Armor Shard", "Concentrated Pure Sanguine Flask"],
+      "experience_points": 76000,
+      "gold_coins": 34000
+    }
+  },
+  {
+    "id": "mon_13",
+    "level": 74,
+    "profile": {
+      "name": "Eclipse Void Arch-Lich",
+      "ranking_tier": "S",
+      "elemental_affinity": "Void",
+      "personality_description": "An ancient necromantic grand magus holding the secrets of cosmic entropy, hovering silently while manipulating gravitational fields."
+    },
+    "base_stats": {
+      "hp": 195000,
+      "mp": 16000,
+      "attack": 11200,
+      "defense": 6800,
+      "agility": 1850,
+      "luck": 240
+    },
+    "behavioral_ai": [
+      { "action": "Summon 4 Abyssal Skeleton Lords", "weight": 30 },
+      { "action": "Cast Singularity Black Hole Gravitation", "weight": 30 },
+      { "action": "Entropy Soul Siphon (Drains 400 MP/s)", "weight": 25 },
+      { "action": "Phylactery Divine Ward (Immune for 5s) when HP < 15%", "weight": 15 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Tome of Void Necromancy", "Unbroken Arch-Lich Phylactery"],
+      "standard_materials": ["Eternal Nether Fabric", "Condensed Void Soul Crystal"],
+      "experience_points": 135000,
+      "gold_coins": 62000
+    }
+  },
+  {
+    "id": "mon_14",
+    "level": 78,
+    "profile": {
+      "name": "Frost Sovereign Glacial Wyrm",
+      "ranking_tier": "S",
+      "elemental_affinity": "Ice",
+      "personality_description": "A majestic continental ice serpent spanning hundreds of meters, commanding blizzards that freeze absolute zero temperatures."
+    },
+    "base_stats": {
+      "hp": 340000,
+      "mp": 22000,
+      "attack": 16800,
+      "defense": 12400,
+      "agility": 2100,
+      "luck": 210
+    },
+    "behavioral_ai": [
+      { "action": "Absolute Zero Glacial Breath (Freezes Solid)", "weight": 35 },
+      { "action": "Avalanche Tail Crush (Pierces Armor)", "weight": 25 },
+      { "action": "Glacial Spike Cataclysm from Sky", "weight": 25 },
+      { "action": "Enrage: Permafrost Blizzard Storm when HP < 25%", "weight": 15 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Heart of the Glacial Empress", "Diamond Dragon Eye"],
+      "standard_materials": ["Permafrost Dragon Scales", "Ancient Glacial Horn"],
+      "experience_points": 240000,
+      "gold_coins": 115000
+    }
+  },
+  {
+    "id": "mon_15",
+    "level": 80,
+    "profile": {
+      "name": "Calamity Chaos Dragon (Ignis Bahamut)",
+      "ranking_tier": "S",
+      "elemental_affinity": "Chaos / Solar Flame",
+      "personality_description": "The primordial doomsday progenitor whose wings blot out the sun with black flames, viewing all mortal kingdoms as fleeting embers."
+    },
+    "base_stats": {
+      "hp": 650000,
+      "mp": 38000,
+      "attack": 25500,
+      "defense": 18200,
+      "agility": 2800,
+      "luck": 320
+    },
+    "behavioral_ai": [
+      { "action": "Cosmic Supernova Breath (True Apocalyptic Damage)", "weight": 35 },
+      { "action": "Calamity Claw Sever (Destroys Equipment Durability)", "weight": 25 },
+      { "action": "Solar Flare Roar (Disrupts Spellcasting for 8s)", "weight": 20 },
+      { "action": "Ultimate: Hellfire Extinction Sky Drop when HP < 20%", "weight": 20 }
+    ],
+    "loot_table": {
+      "rare_drops": ["Calamity Dragon World Core", "Crown of the Dragon Emperor", "Mythic Ignis Blade Blueprint"],
+      "standard_materials": ["True Dragon Sinew", "Indestructible Bahamut Plate x10"],
+      "experience_points": 500000,
+      "gold_coins": 250000
+    }
+  }
+]

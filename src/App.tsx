@@ -507,13 +507,11 @@ export const App: React.FC = () => {
         onOpenCloudVault={() => setIsCloudVaultOpen(true)}
         isPlaying3D={isPlaying3D}
         onToggle3DPlayable={() => {
-          setIsPlaying3D((prev) => {
-            const next = !prev;
-            if (next) {
-              dungeonSynth.setMood('sylph_voyage');
-            }
-            return next;
-          });
+          const next = !isPlaying3D;
+          if (next) {
+            dungeonSynth.setMood('sylph_voyage');
+          }
+          setIsPlaying3D(next);
         }}
         onOpenRetentionModal={() => setIsRetentionModalOpen(true)}
       />

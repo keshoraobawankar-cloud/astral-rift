@@ -192,14 +192,33 @@ export class DungeonSynth {
 
   public subscribe(listener: (isPlaying: boolean, currentMood: DungeonSynthMood) => void): () => void {
     this.onStateChangeListeners.push(listener);
-    listener(this.isPlaying, this.currentMood);
     return () => {
       this.onStateChangeListeners = this.onStateChangeListeners.filter((l) => l !== listener);
     };
   }
 
   private notifyListeners() {
-    this.onStateChangeListeners.forEach((l) => l(this.isPlaying, this.currentMood));
+    if (typeof queueMicrotask === 'function') {
+      queueMicrotask(() => {
+        this.onStateChangeListeners.forEach((l) => {
+          try {
+            l(this.isPlaying, this.currentMood);
+          } catch {
+            // ignore
+          }
+        });
+      });
+    } else {
+      setTimeout(() => {
+        this.onStateChangeListeners.forEach((l) => {
+          try {
+            l(this.isPlaying, this.currentMood);
+          } catch {
+            // ignore
+          }
+        });
+      }, 0);
+    }
   }
 
   public ensureAudioContext(): AudioContext | null {

@@ -1,0 +1,514 @@
+{
+  "biome_name": "Whispering Woods",
+  "biome_theme": "Anime Fantasy Lush Forest",
+  "compiler_target": "SpeedTree Runtime v9",
+  "total_instances": 50,
+  "bounds": {
+    "min_x": -180.0,
+    "max_x": 180.0,
+    "min_z": -180.0,
+    "max_z": 180.0
+  },
+  "instances": [
+    {
+      "id": "ww_tree_01",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": 14.5, "z": -42.8 },
+      "speedtree_seed": 14829,
+      "growth_age_factor": 1.15,
+      "foliage_tint": "#a7f3d0",
+      "canopy_density": 0.88,
+      "trunk_curvature": 0.08
+    },
+    {
+      "id": "ww_tree_02",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": -28.2, "z": -65.1 },
+      "speedtree_seed": 48921,
+      "growth_age_factor": 0.72,
+      "foliage_tint": "#86efac",
+      "canopy_density": 0.65,
+      "trunk_curvature": 0.14
+    },
+    {
+      "id": "ww_tree_03",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": 58.7, "z": -19.4 },
+      "speedtree_seed": 92314,
+      "growth_age_factor": 1.48,
+      "foliage_tint": "#6ee7b7",
+      "canopy_density": 0.95,
+      "trunk_curvature": 0.05
+    },
+    {
+      "id": "ww_tree_04",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": -45.6, "z": 12.3 },
+      "speedtree_seed": 7320,
+      "growth_age_factor": 0.58,
+      "foliage_tint": "#93c5fd",
+      "canopy_density": 0.52,
+      "trunk_curvature": 0.18
+    },
+    {
+      "id": "ww_tree_05",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": 82.1, "z": 45.6 },
+      "speedtree_seed": 61045,
+      "growth_age_factor": 1.02,
+      "foliage_tint": "#fbcfe8",
+      "canopy_density": 0.82,
+      "trunk_curvature": 0.09
+    },
+    {
+      "id": "ww_tree_06",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": -94.3, "z": -38.7 },
+      "speedtree_seed": 33902,
+      "growth_age_factor": 1.34,
+      "foliage_tint": "#a7f3d0",
+      "canopy_density": 0.91,
+      "trunk_curvature": 0.06
+    },
+    {
+      "id": "ww_tree_07",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": 31.8, "z": 88.2 },
+      "speedtree_seed": 84512,
+      "growth_age_factor": 0.84,
+      "foliage_tint": "#86efac",
+      "canopy_density": 0.74,
+      "trunk_curvature": 0.12
+    },
+    {
+      "id": "ww_tree_08",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": -72.4, "z": 79.5 },
+      "speedtree_seed": 20491,
+      "growth_age_factor": 1.21,
+      "foliage_tint": "#f9a8d4",
+      "canopy_density": 0.86,
+      "trunk_curvature": 0.11
+    },
+    {
+      "id": "ww_tree_09",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": 112.5, "z": -73.2 },
+      "speedtree_seed": 97843,
+      "growth_age_factor": 1.45,
+      "foliage_tint": "#6ee7b7",
+      "canopy_density": 0.94,
+      "trunk_curvature": 0.04
+    },
+    {
+      "id": "ww_tree_10",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": -118.7, "z": 24.6 },
+      "speedtree_seed": 5128,
+      "growth_age_factor": 0.63,
+      "foliage_tint": "#c4b5fd",
+      "canopy_density": 0.58,
+      "trunk_curvature": 0.22
+    },
+    {
+      "id": "ww_tree_11",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": 6.9, "z": -125.4 },
+      "speedtree_seed": 42109,
+      "growth_age_factor": 0.98,
+      "foliage_tint": "#fbcfe8",
+      "canopy_density": 0.79,
+      "trunk_curvature": 0.07
+    },
+    {
+      "id": "ww_tree_12",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": -35.2, "z": -142.1 },
+      "speedtree_seed": 88319,
+      "growth_age_factor": 1.41,
+      "foliage_tint": "#a7f3d0",
+      "canopy_density": 0.93,
+      "trunk_curvature": 0.05
+    },
+    {
+      "id": "ww_tree_13",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": 145.2, "z": 18.9 },
+      "speedtree_seed": 16734,
+      "growth_age_factor": 0.78,
+      "foliage_tint": "#86efac",
+      "canopy_density": 0.69,
+      "trunk_curvature": 0.15
+    },
+    {
+      "id": "ww_tree_14",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": -64.8, "z": -98.3 },
+      "speedtree_seed": 55820,
+      "growth_age_factor": 1.18,
+      "foliage_tint": "#f472b6",
+      "canopy_density": 0.85,
+      "trunk_curvature": 0.10
+    },
+    {
+      "id": "ww_tree_15",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": 98.4, "z": 114.7 },
+      "speedtree_seed": 79241,
+      "growth_age_factor": 1.39,
+      "foliage_tint": "#6ee7b7",
+      "canopy_density": 0.92,
+      "trunk_curvature": 0.06
+    },
+    {
+      "id": "ww_tree_16",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": -152.3, "z": -71.5 },
+      "speedtree_seed": 2984,
+      "growth_age_factor": 0.54,
+      "foliage_tint": "#93c5fd",
+      "canopy_density": 0.55,
+      "trunk_curvature": 0.19
+    },
+    {
+      "id": "ww_tree_17",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": 48.1, "z": -158.2 },
+      "speedtree_seed": 64392,
+      "growth_age_factor": 1.07,
+      "foliage_tint": "#fbcfe8",
+      "canopy_density": 0.81,
+      "trunk_curvature": 0.08
+    },
+    {
+      "id": "ww_tree_18",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": -88.9, "z": 136.4 },
+      "speedtree_seed": 91048,
+      "growth_age_factor": 1.47,
+      "foliage_tint": "#a7f3d0",
+      "canopy_density": 0.96,
+      "trunk_curvature": 0.04
+    },
+    {
+      "id": "ww_tree_19",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": 162.7, "z": -48.9 },
+      "speedtree_seed": 37190,
+      "growth_age_factor": 0.89,
+      "foliage_tint": "#86efac",
+      "canopy_density": 0.76,
+      "trunk_curvature": 0.13
+    },
+    {
+      "id": "ww_tree_20",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": -139.6, "z": 82.1 },
+      "speedtree_seed": 72481,
+      "growth_age_factor": 1.25,
+      "foliage_tint": "#f9a8d4",
+      "canopy_density": 0.87,
+      "trunk_curvature": 0.11
+    },
+    {
+      "id": "ww_tree_21",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": 75.3, "z": -89.4 },
+      "speedtree_seed": 86345,
+      "growth_age_factor": 1.32,
+      "foliage_tint": "#6ee7b7",
+      "canopy_density": 0.90,
+      "trunk_curvature": 0.07
+    },
+    {
+      "id": "ww_tree_22",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": -18.4, "z": 156.8 },
+      "speedtree_seed": 9140,
+      "growth_age_factor": 0.67,
+      "foliage_tint": "#c4b5fd",
+      "canopy_density": 0.61,
+      "trunk_curvature": 0.17
+    },
+    {
+      "id": "ww_tree_23",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": 128.9, "z": 73.2 },
+      "speedtree_seed": 49832,
+      "growth_age_factor": 1.12,
+      "foliage_tint": "#fbcfe8",
+      "canopy_density": 0.84,
+      "trunk_curvature": 0.09
+    },
+    {
+      "id": "ww_tree_24",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": -165.8, "z": -12.7 },
+      "speedtree_seed": 94812,
+      "growth_age_factor": 1.49,
+      "foliage_tint": "#a7f3d0",
+      "canopy_density": 0.97,
+      "trunk_curvature": 0.03
+    },
+    {
+      "id": "ww_tree_25",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": 19.3, "z": -168.5 },
+      "speedtree_seed": 24890,
+      "growth_age_factor": 0.75,
+      "foliage_tint": "#86efac",
+      "canopy_density": 0.68,
+      "trunk_curvature": 0.14
+    },
+    {
+      "id": "ww_tree_26",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": -102.1, "z": -118.9 },
+      "speedtree_seed": 58923,
+      "growth_age_factor": 1.19,
+      "foliage_tint": "#f472b6",
+      "canopy_density": 0.86,
+      "trunk_curvature": 0.10
+    },
+    {
+      "id": "ww_tree_27",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": 154.6, "z": 128.3 },
+      "speedtree_seed": 81920,
+      "growth_age_factor": 1.36,
+      "foliage_tint": "#6ee7b7",
+      "canopy_density": 0.91,
+      "trunk_curvature": 0.05
+    },
+    {
+      "id": "ww_tree_28",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": -48.7, "z": 169.2 },
+      "speedtree_seed": 4291,
+      "growth_age_factor": 0.52,
+      "foliage_tint": "#93c5fd",
+      "canopy_density": 0.51,
+      "trunk_curvature": 0.21
+    },
+    {
+      "id": "ww_tree_29",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": 89.4, "z": -145.6 },
+      "speedtree_seed": 67812,
+      "growth_age_factor": 1.05,
+      "foliage_tint": "#fbcfe8",
+      "canopy_density": 0.80,
+      "trunk_curvature": 0.08
+    },
+    {
+      "id": "ww_tree_30",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": -142.5, "z": 148.1 },
+      "speedtree_seed": 90514,
+      "growth_age_factor": 1.44,
+      "foliage_tint": "#a7f3d0",
+      "canopy_density": 0.95,
+      "trunk_curvature": 0.04
+    },
+    {
+      "id": "ww_tree_31",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": 172.1, "z": -82.4 },
+      "speedtree_seed": 31204,
+      "growth_age_factor": 0.86,
+      "foliage_tint": "#86efac",
+      "canopy_density": 0.73,
+      "trunk_curvature": 0.13
+    },
+    {
+      "id": "ww_tree_32",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": -171.3, "z": 54.8 },
+      "speedtree_seed": 75619,
+      "growth_age_factor": 1.28,
+      "foliage_tint": "#f9a8d4",
+      "canopy_density": 0.89,
+      "trunk_curvature": 0.12
+    },
+    {
+      "id": "ww_tree_33",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": 118.3, "z": -122.7 },
+      "speedtree_seed": 85194,
+      "growth_age_factor": 1.35,
+      "foliage_tint": "#6ee7b7",
+      "canopy_density": 0.92,
+      "trunk_curvature": 0.06
+    },
+    {
+      "id": "ww_tree_34",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": -76.9, "z": 161.4 },
+      "speedtree_seed": 8632,
+      "growth_age_factor": 0.61,
+      "foliage_tint": "#c4b5fd",
+      "canopy_density": 0.57,
+      "trunk_curvature": 0.18
+    },
+    {
+      "id": "ww_tree_35",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": 139.7, "z": 98.1 },
+      "speedtree_seed": 46210,
+      "growth_age_factor": 1.14,
+      "foliage_tint": "#fbcfe8",
+      "canopy_density": 0.83,
+      "trunk_curvature": 0.09
+    },
+    {
+      "id": "ww_tree_36",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": -178.4, "z": -49.6 },
+      "speedtree_seed": 96240,
+      "growth_age_factor": 1.50,
+      "foliage_tint": "#a7f3d0",
+      "canopy_density": 0.98,
+      "trunk_curvature": 0.03
+    },
+    {
+      "id": "ww_tree_37",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": 62.4, "z": -171.8 },
+      "speedtree_seed": 21890,
+      "growth_age_factor": 0.79,
+      "foliage_tint": "#86efac",
+      "canopy_density": 0.70,
+      "trunk_curvature": 0.15
+    },
+    {
+      "id": "ww_tree_38",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": -125.7, "z": -139.2 },
+      "speedtree_seed": 59481,
+      "growth_age_factor": 1.17,
+      "foliage_tint": "#f472b6",
+      "canopy_density": 0.85,
+      "trunk_curvature": 0.10
+    },
+    {
+      "id": "ww_tree_39",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": 168.9, "z": 89.5 },
+      "speedtree_seed": 82741,
+      "growth_age_factor": 1.38,
+      "foliage_tint": "#6ee7b7",
+      "canopy_density": 0.93,
+      "trunk_curvature": 0.05
+    },
+    {
+      "id": "ww_tree_40",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": -109.3, "z": 172.6 },
+      "speedtree_seed": 3819,
+      "growth_age_factor": 0.50,
+      "foliage_tint": "#93c5fd",
+      "canopy_density": 0.50,
+      "trunk_curvature": 0.20
+    },
+    {
+      "id": "ww_tree_41",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": 105.8, "z": -162.3 },
+      "speedtree_seed": 69142,
+      "growth_age_factor": 1.08,
+      "foliage_tint": "#fbcfe8",
+      "canopy_density": 0.82,
+      "trunk_curvature": 0.07
+    },
+    {
+      "id": "ww_tree_42",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": -159.2, "z": 118.4 },
+      "speedtree_seed": 89723,
+      "growth_age_factor": 1.42,
+      "foliage_tint": "#a7f3d0",
+      "canopy_density": 0.94,
+      "trunk_curvature": 0.04
+    },
+    {
+      "id": "ww_tree_43",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": 179.4, "z": -115.1 },
+      "speedtree_seed": 34910,
+      "growth_age_factor": 0.88,
+      "foliage_tint": "#86efac",
+      "canopy_density": 0.75,
+      "trunk_curvature": 0.12
+    },
+    {
+      "id": "ww_tree_44",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": -176.5, "z": 18.2 },
+      "speedtree_seed": 77410,
+      "growth_age_factor": 1.26,
+      "foliage_tint": "#f9a8d4",
+      "canopy_density": 0.88,
+      "trunk_curvature": 0.11
+    },
+    {
+      "id": "ww_tree_45",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": 141.2, "z": -148.9 },
+      "speedtree_seed": 87632,
+      "growth_age_factor": 1.33,
+      "foliage_tint": "#6ee7b7",
+      "canopy_density": 0.91,
+      "trunk_curvature": 0.06
+    },
+    {
+      "id": "ww_tree_46",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": -132.8, "z": 164.7 },
+      "speedtree_seed": 6920,
+      "growth_age_factor": 0.65,
+      "foliage_tint": "#c4b5fd",
+      "canopy_density": 0.59,
+      "trunk_curvature": 0.16
+    },
+    {
+      "id": "ww_tree_47",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": 158.3, "z": 54.2 },
+      "speedtree_seed": 52194,
+      "growth_age_factor": 1.16,
+      "foliage_tint": "#fbcfe8",
+      "canopy_density": 0.85,
+      "trunk_curvature": 0.08
+    },
+    {
+      "id": "ww_tree_48",
+      "species": "Anime_Elder_Oak",
+      "position": { "x": -173.1, "z": -88.7 },
+      "speedtree_seed": 98451,
+      "growth_age_factor": 1.48,
+      "foliage_tint": "#a7f3d0",
+      "canopy_density": 0.97,
+      "trunk_curvature": 0.04
+    },
+    {
+      "id": "ww_tree_49",
+      "species": "Anime_Whispering_Birch",
+      "position": { "x": 94.7, "z": -176.4 },
+      "speedtree_seed": 18450,
+      "growth_age_factor": 0.77,
+      "foliage_tint": "#86efac",
+      "canopy_density": 0.71,
+      "trunk_curvature": 0.14
+    },
+    {
+      "id": "ww_tree_50",
+      "species": "Anime_Sakura_Cedar",
+      "position": { "x": -148.6, "z": -162.5 },
+      "speedtree_seed": 62890,
+      "growth_age_factor": 1.22,
+      "foliage_tint": "#f472b6",
+      "canopy_density": 0.87,
+      "trunk_curvature": 0.09
+    }
+  ]
+}
