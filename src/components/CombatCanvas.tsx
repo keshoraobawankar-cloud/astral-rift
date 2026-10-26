@@ -31,6 +31,7 @@ import {
   ChevronRight,
   Crosshair,
 } from 'lucide-react';
+import { bestiaryService } from '../services/bestiaryService';
 
 interface CombatCanvasProps {
   party: Character[];
@@ -115,6 +116,7 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
   const shockwavesRef = useRef<Shockwave[]>([]);
   const shadowClonesRef = useRef<ShadowAfterimage[]>([]);
   const screenShakeRef = useRef<number>(0);
+  const slainEnemyIdsRef = useRef<Set<string>>(new Set());
 
   // Player Arena Position
   const playerPosRef = useRef<{ x: number; y: number; vx: number; vy: number; radius: number; facing: number }>({
@@ -318,6 +320,11 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
         stunTimer: 0,
       });
     }
+
+    slainEnemyIdsRef.current.clear();
+    spawnedEnemies.forEach((e) => {
+      bestiaryService.recordEncounter(e.type || e.id);
+    });
 
     setEnemies(spawnedEnemies);
     setTraps(spawnedTraps);
@@ -788,6 +795,25 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
 
       // Update Enemies AI
       setEnemies((prevEnemies) => {
+        // Track Bestiary Defeat for enemies dropping to 0 HP
+        prevEnemies.forEach((e) => {
+          if (e.currentHp <= 0 && !slainEnemyIdsRef.current.has(e.id)) {
+            slainEnemyIdsRef.current.add(e.id);
+            const entry = bestiaryService.recordDefeat(e.type || e.id);
+            floatingTextsRef.current.push({
+              id: Math.random().toString(),
+              text: `📖 BESTIARY: ${entry ? entry.name.toUpperCase() : e.name.toUpperCase()} SLAIN!`,
+              x: e.x,
+              y: e.y - 32,
+              color: '#38bdf8',
+              alpha: 1,
+              vy: -1.2,
+              isCrit: true,
+              life: 2.0,
+            });
+          }
+        });
+
         const aliveEnemies = prevEnemies.filter((e) => e.currentHp > 0);
 
         if (aliveEnemies.length === 0 && combatOutcome === 'playing') {

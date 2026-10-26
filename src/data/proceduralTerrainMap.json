@@ -1,0 +1,539 @@
+{
+  "metadata": {
+    "tool": "Procedural Terrain Generator v1.0",
+    "grid": {
+      "width": 100,
+      "height": 100,
+      "unit": "meters"
+    },
+    "algorithm": "Perlin-Harmonic Hash Noise Distribution",
+    "summary": {
+      "total_objects": 65,
+      "trees": 40,
+      "rocks": 20,
+      "enemies": 5
+    }
+  },
+  "objects": [
+    {
+      "id": "tree_1",
+      "type": "tree",
+      "x": 87,
+      "z": 18,
+      "rotation_y": 358.34,
+      "scale": 1.2
+    },
+    {
+      "id": "tree_2",
+      "type": "tree",
+      "x": 36,
+      "z": 77,
+      "rotation_y": 135.1,
+      "scale": 1.49
+    },
+    {
+      "id": "tree_3",
+      "type": "tree",
+      "x": 34,
+      "z": 40,
+      "rotation_y": 158.99,
+      "scale": 1.48
+    },
+    {
+      "id": "tree_4",
+      "type": "tree",
+      "x": 53,
+      "z": 14,
+      "rotation_y": 218.69,
+      "scale": 0.99
+    },
+    {
+      "id": "tree_5",
+      "type": "tree",
+      "x": 70,
+      "z": 20,
+      "rotation_y": 80.16,
+      "scale": 1
+    },
+    {
+      "id": "tree_6",
+      "type": "tree",
+      "x": 67,
+      "z": 16,
+      "rotation_y": 89.27,
+      "scale": 1.16
+    },
+    {
+      "id": "tree_7",
+      "type": "tree",
+      "x": 34,
+      "z": 55,
+      "rotation_y": 29.77,
+      "scale": 1.4
+    },
+    {
+      "id": "tree_8",
+      "type": "tree",
+      "x": 17,
+      "z": 25,
+      "rotation_y": 3.77,
+      "scale": 1.16
+    },
+    {
+      "id": "tree_9",
+      "type": "tree",
+      "x": 79,
+      "z": 43,
+      "rotation_y": 268.81,
+      "scale": 1.48
+    },
+    {
+      "id": "tree_10",
+      "type": "tree",
+      "x": 17,
+      "z": 84,
+      "rotation_y": 133.53,
+      "scale": 1.04
+    },
+    {
+      "id": "tree_11",
+      "type": "tree",
+      "x": 90,
+      "z": 73,
+      "rotation_y": 151.95,
+      "scale": 1.22
+    },
+    {
+      "id": "tree_12",
+      "type": "tree",
+      "x": 70,
+      "z": 72,
+      "rotation_y": 321.15,
+      "scale": 1.41
+    },
+    {
+      "id": "tree_13",
+      "type": "tree",
+      "x": 59,
+      "z": 49,
+      "rotation_y": 208.26,
+      "scale": 0.88
+    },
+    {
+      "id": "tree_14",
+      "type": "tree",
+      "x": 15,
+      "z": 17,
+      "rotation_y": 333.81,
+      "scale": 0.94
+    },
+    {
+      "id": "tree_15",
+      "type": "tree",
+      "x": 22,
+      "z": 67,
+      "rotation_y": 331.35,
+      "scale": 1.17
+    },
+    {
+      "id": "tree_16",
+      "type": "tree",
+      "x": 66,
+      "z": 7,
+      "rotation_y": 128.92,
+      "scale": 1.26
+    },
+    {
+      "id": "tree_17",
+      "type": "tree",
+      "x": 35,
+      "z": 8,
+      "rotation_y": 253.67,
+      "scale": 1.48
+    },
+    {
+      "id": "tree_18",
+      "type": "tree",
+      "x": 80,
+      "z": 89,
+      "rotation_y": 161.89,
+      "scale": 1.31
+    },
+    {
+      "id": "tree_19",
+      "type": "tree",
+      "x": 7,
+      "z": 69,
+      "rotation_y": 59.11,
+      "scale": 1.37
+    },
+    {
+      "id": "tree_20",
+      "type": "tree",
+      "x": 32,
+      "z": 20,
+      "rotation_y": 190.91,
+      "scale": 0.93
+    },
+    {
+      "id": "tree_21",
+      "type": "tree",
+      "x": 22,
+      "z": 20,
+      "rotation_y": 91.2,
+      "scale": 1.15
+    },
+    {
+      "id": "tree_22",
+      "type": "tree",
+      "x": 54,
+      "z": 40,
+      "rotation_y": 0.77,
+      "scale": 1.3
+    },
+    {
+      "id": "tree_23",
+      "type": "tree",
+      "x": 57,
+      "z": 68,
+      "rotation_y": 267.51,
+      "scale": 1.42
+    },
+    {
+      "id": "tree_24",
+      "type": "tree",
+      "x": 6,
+      "z": 5,
+      "rotation_y": 95.2,
+      "scale": 1.23
+    },
+    {
+      "id": "tree_25",
+      "type": "tree",
+      "x": 52,
+      "z": 55,
+      "rotation_y": 17.67,
+      "scale": 0.92
+    },
+    {
+      "id": "tree_26",
+      "type": "tree",
+      "x": 69,
+      "z": 45,
+      "rotation_y": 238.7,
+      "scale": 1.07
+    },
+    {
+      "id": "tree_27",
+      "type": "tree",
+      "x": 86,
+      "z": 18,
+      "rotation_y": 121.88,
+      "scale": 1.19
+    },
+    {
+      "id": "tree_28",
+      "type": "tree",
+      "x": 52,
+      "z": 84,
+      "rotation_y": 43.47,
+      "scale": 1.14
+    },
+    {
+      "id": "tree_29",
+      "type": "tree",
+      "x": 69,
+      "z": 55,
+      "rotation_y": 231.94,
+      "scale": 1.41
+    },
+    {
+      "id": "tree_30",
+      "type": "tree",
+      "x": 84,
+      "z": 47,
+      "rotation_y": 131.58,
+      "scale": 1.27
+    },
+    {
+      "id": "tree_31",
+      "type": "tree",
+      "x": 59,
+      "z": 87,
+      "rotation_y": 77.92,
+      "scale": 0.82
+    },
+    {
+      "id": "tree_32",
+      "type": "tree",
+      "x": 32,
+      "z": 35,
+      "rotation_y": 189.39,
+      "scale": 1.35
+    },
+    {
+      "id": "tree_33",
+      "type": "tree",
+      "x": 70,
+      "z": 47,
+      "rotation_y": 128.22,
+      "scale": 1.1
+    },
+    {
+      "id": "tree_34",
+      "type": "tree",
+      "x": 14,
+      "z": 22,
+      "rotation_y": 63.23,
+      "scale": 0.89
+    },
+    {
+      "id": "tree_35",
+      "type": "tree",
+      "x": 19,
+      "z": 94,
+      "rotation_y": 301.93,
+      "scale": 1.21
+    },
+    {
+      "id": "tree_36",
+      "type": "tree",
+      "x": 38,
+      "z": 53,
+      "rotation_y": 291,
+      "scale": 0.83
+    },
+    {
+      "id": "tree_37",
+      "type": "tree",
+      "x": 64,
+      "z": 59,
+      "rotation_y": 243.18,
+      "scale": 1.27
+    },
+    {
+      "id": "tree_38",
+      "type": "tree",
+      "x": 45,
+      "z": 62,
+      "rotation_y": 352.44,
+      "scale": 1.08
+    },
+    {
+      "id": "tree_39",
+      "type": "tree",
+      "x": 48,
+      "z": 43,
+      "rotation_y": 126.04,
+      "scale": 1.33
+    },
+    {
+      "id": "tree_40",
+      "type": "tree",
+      "x": 20,
+      "z": 87,
+      "rotation_y": 318.88,
+      "scale": 0.8
+    },
+    {
+      "id": "rock_1",
+      "type": "rock",
+      "x": 50,
+      "z": 13,
+      "rotation_y": 87.06,
+      "scale": 1.24
+    },
+    {
+      "id": "rock_2",
+      "type": "rock",
+      "x": 64,
+      "z": 51,
+      "rotation_y": 125.2,
+      "scale": 1.44
+    },
+    {
+      "id": "rock_3",
+      "type": "rock",
+      "x": 56,
+      "z": 62,
+      "rotation_y": 235.11,
+      "scale": 1.42
+    },
+    {
+      "id": "rock_4",
+      "type": "rock",
+      "x": 82,
+      "z": 92,
+      "rotation_y": 192.52,
+      "scale": 0.89
+    },
+    {
+      "id": "rock_5",
+      "type": "rock",
+      "x": 46,
+      "z": 58,
+      "rotation_y": 117.77,
+      "scale": 1.08
+    },
+    {
+      "id": "rock_6",
+      "type": "rock",
+      "x": 22,
+      "z": 77,
+      "rotation_y": 334.44,
+      "scale": 1.09
+    },
+    {
+      "id": "rock_7",
+      "type": "rock",
+      "x": 66,
+      "z": 8,
+      "rotation_y": 134.94,
+      "scale": 0.97
+    },
+    {
+      "id": "rock_8",
+      "type": "rock",
+      "x": 60,
+      "z": 77,
+      "rotation_y": 31.48,
+      "scale": 1.16
+    },
+    {
+      "id": "rock_9",
+      "type": "rock",
+      "x": 72,
+      "z": 62,
+      "rotation_y": 15.31,
+      "scale": 0.91
+    },
+    {
+      "id": "rock_10",
+      "type": "rock",
+      "x": 32,
+      "z": 30,
+      "rotation_y": 296.43,
+      "scale": 0.91
+    },
+    {
+      "id": "rock_11",
+      "type": "rock",
+      "x": 14,
+      "z": 28,
+      "rotation_y": 172.29,
+      "scale": 0.84
+    },
+    {
+      "id": "rock_12",
+      "type": "rock",
+      "x": 53,
+      "z": 7,
+      "rotation_y": 141.96,
+      "scale": 1.33
+    },
+    {
+      "id": "rock_13",
+      "type": "rock",
+      "x": 26,
+      "z": 23,
+      "rotation_y": 325.57,
+      "scale": 1.03
+    },
+    {
+      "id": "rock_14",
+      "type": "rock",
+      "x": 55,
+      "z": 35,
+      "rotation_y": 276.03,
+      "scale": 1.44
+    },
+    {
+      "id": "rock_15",
+      "type": "rock",
+      "x": 68,
+      "z": 67,
+      "rotation_y": 145.17,
+      "scale": 1.02
+    },
+    {
+      "id": "rock_16",
+      "type": "rock",
+      "x": 24,
+      "z": 70,
+      "rotation_y": 302.68,
+      "scale": 1.15
+    },
+    {
+      "id": "rock_17",
+      "type": "rock",
+      "x": 20,
+      "z": 28,
+      "rotation_y": 315,
+      "scale": 0.94
+    },
+    {
+      "id": "rock_18",
+      "type": "rock",
+      "x": 61,
+      "z": 30,
+      "rotation_y": 201.17,
+      "scale": 1.08
+    },
+    {
+      "id": "rock_19",
+      "type": "rock",
+      "x": 7,
+      "z": 47,
+      "rotation_y": 18.6,
+      "scale": 1.39
+    },
+    {
+      "id": "rock_20",
+      "type": "rock",
+      "x": 84,
+      "z": 52,
+      "rotation_y": 303.15,
+      "scale": 1.27
+    },
+    {
+      "id": "enemy_1",
+      "type": "enemy",
+      "x": 82,
+      "z": 20,
+      "rotation_y": 208.66,
+      "scale": 1.16
+    },
+    {
+      "id": "enemy_2",
+      "type": "enemy",
+      "x": 63,
+      "z": 86,
+      "rotation_y": 190.76,
+      "scale": 1.36
+    },
+    {
+      "id": "enemy_3",
+      "type": "enemy",
+      "x": 10,
+      "z": 65,
+      "rotation_y": 233.73,
+      "scale": 1.1
+    },
+    {
+      "id": "enemy_4",
+      "type": "enemy",
+      "x": 19,
+      "z": 18,
+      "rotation_y": 42.35,
+      "scale": 1.44
+    },
+    {
+      "id": "enemy_5",
+      "type": "enemy",
+      "x": 46,
+      "z": 88,
+      "rotation_y": 123.85,
+      "scale": 0.9
+    }
+  ]
+}

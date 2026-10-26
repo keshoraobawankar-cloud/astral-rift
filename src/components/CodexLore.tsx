@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Castle,
   Swords,
@@ -10,11 +10,61 @@ import {
   Dice5,
   Scroll,
   Zap,
+  BookOpen,
+  Search,
+  Crosshair,
+  Award,
+  Filter,
+  CheckCircle2,
+  HelpCircle,
+  Flame,
+  Wind,
+  Layers,
+  ChevronRight,
+  Info,
 } from 'lucide-react';
 import { sound } from '../services/soundService';
+import { bestiaryService, BestiaryEntry, MonsterLootDrop } from '../services/bestiaryService';
 
 export const CodexLore: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState<'guild' | 'synergy' | 'ecology' | 'crafting' | 'loot'>('synergy');
+  const [activeCategory, setActiveCategory] = useState<'bestiary' | 'synergy' | 'ecology' | 'crafting' | 'guild' | 'loot'>('bestiary');
+  const [bestiaryEntries, setBestiaryEntries] = useState<BestiaryEntry[]>(() => bestiaryService.getAll());
+  const [bestiaryStats, setBestiaryStats] = useState(() => bestiaryService.getStats());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [zoneFilter, setZoneFilter] = useState<'all' | 'dungeon' | 'open_world' | 'cavern' | 'world_boss'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'discovered' | 'slain' | 'undiscovered'>('all');
+  const [selectedMonsterModal, setSelectedMonsterModal] = useState<BestiaryEntry | null>(null);
+
+  useEffect(() => {
+    const unsub = bestiaryService.subscribe(() => {
+      setBestiaryEntries(bestiaryService.getAll());
+      setBestiaryStats(bestiaryService.getStats());
+    });
+    return () => unsub();
+  }, []);
+
+  const filteredBestiary = bestiaryEntries.filter((m) => {
+    // Zone filter
+    if (zoneFilter !== 'all' && m.zone !== zoneFilter) return false;
+
+    // Status filter
+    if (statusFilter === 'discovered' && !m.encountered) return false;
+    if (statusFilter === 'slain' && m.killCount <= 0) return false;
+    if (statusFilter === 'undiscovered' && m.encountered) return false;
+
+    // Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = m.name.toLowerCase().includes(q);
+      const matchHabitat = m.habitat.toLowerCase().includes(q);
+      const matchCategory = m.category.toLowerCase().includes(q);
+      const matchWeakness = m.weaknesses.some((w) => w.element.toLowerCase().includes(q) || w.description.toLowerCase().includes(q));
+      const matchLoot = m.lootTable.some((l) => l.name.toLowerCase().includes(q) || l.description.toLowerCase().includes(q));
+      return matchName || matchHabitat || matchCategory || matchWeakness || matchLoot;
+    }
+
+    return true;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 select-none">
@@ -28,15 +78,16 @@ export const CodexLore: React.FC = () => {
           Non-Protagonist MMORPG Codex
         </h1>
         <p className="text-slate-400 text-sm mt-1 max-w-2xl font-sans">
-          Deep tactical archives documenting Guild Estates, dynamic party synergy combos, living dungeon ecology, and racial forge masteries.
+          Deep tactical archives documenting Hunter Bestiary entries, Guild Estates, dynamic party synergy combos, living dungeon ecology, and racial forge masteries.
         </p>
       </div>
 
       {/* Category Tabs */}
       <div className="flex flex-wrap gap-2 mb-8 border-b border-slate-800 pb-4">
         {[
+          { id: 'bestiary', label: "Hunter's Bestiary & Loot", icon: Skull, highlight: true },
           { id: 'synergy', label: 'Dynamic Party Synergy', icon: Swords },
-          { id: 'ecology', label: 'Dungeon Ecology & Monsters', icon: Skull },
+          { id: 'ecology', label: 'Dungeon Ecology & Monsters', icon: Layers },
           { id: 'crafting', label: 'Dwarven & Elven Crafting', icon: Hammer },
           { id: 'guild', label: 'Guild Halls & Charters', icon: Castle },
           { id: 'loot', label: 'Shared Loot & Rolling', icon: Dice5 },
@@ -50,7 +101,7 @@ export const CodexLore: React.FC = () => {
                 sound.playClick();
                 setActiveCategory(tab.id as typeof activeCategory);
               }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-rpg font-bold text-sm transition ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-rpg font-bold text-sm transition relative ${
                 isActive
                   ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-600/30'
                   : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800'
@@ -58,12 +109,448 @@ export const CodexLore: React.FC = () => {
             >
               <Icon className="w-4 h-4" />
               <span>{tab.label}</span>
+              {tab.highlight && (
+                <span className="ml-1.5 px-1.5 py-0.5 text-[10px] bg-amber-500/30 text-amber-300 rounded font-tech font-bold border border-amber-500/40">
+                  LIVE
+                </span>
+              )}
             </button>
           );
         })}
       </div>
 
       {/* Content Panels */}
+      {activeCategory === 'bestiary' && (
+        <div className="space-y-6">
+          {/* Bestiary Overview & Stats Bar */}
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                  <Skull className="w-7 h-7" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-rpg font-bold text-white tracking-wide">Hunter's Tactical Bestiary</h2>
+                  <p className="text-xs text-purple-400 font-tech">
+                    ACTIVE ARCHIVE OF DISCOVERED SPECIES, ELEMENTAL WEAKNESSES, & LOOT DROP PROBABILITIES
+                  </p>
+                </div>
+              </div>
+
+              {/* Live Hunter Tracking Badges */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="bg-slate-950/80 border border-slate-800 px-3.5 py-2 rounded-xl text-center">
+                  <div className="text-[10px] text-slate-400 font-tech uppercase">Discovered</div>
+                  <div className="text-lg font-rpg font-bold text-cyan-400">
+                    {bestiaryStats.discoveredCount} / {bestiaryStats.totalMonsters}
+                  </div>
+                </div>
+                <div className="bg-slate-950/80 border border-slate-800 px-3.5 py-2 rounded-xl text-center">
+                  <div className="text-[10px] text-slate-400 font-tech uppercase">Species Slain</div>
+                  <div className="text-lg font-rpg font-bold text-amber-400">
+                    {bestiaryStats.defeatedCount} / {bestiaryStats.totalMonsters}
+                  </div>
+                </div>
+                <div className="bg-slate-950/80 border border-slate-800 px-3.5 py-2 rounded-xl text-center">
+                  <div className="text-[10px] text-slate-400 font-tech uppercase">Total Kills</div>
+                  <div className="text-lg font-rpg font-bold text-rose-400">
+                    ⚔️ {bestiaryStats.totalKills}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bestiary Completion Progress Bar */}
+            <div className="space-y-1.5 mb-6">
+              <div className="flex justify-between text-xs font-tech">
+                <span className="text-slate-400">Vanguard Bestiary Decryption Progress</span>
+                <span className="text-cyan-400 font-bold">{bestiaryStats.completionRate}% COMPLETE</span>
+              </div>
+              <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 via-cyan-500 to-amber-400 rounded-full transition-all duration-500"
+                  style={{ width: `${bestiaryStats.completionRate}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Search & Filters */}
+            <div className="flex flex-col lg:flex-row gap-3 pt-4 border-t border-slate-800">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by monster name, weakness, resistance, or loot..."
+                  className="w-full pl-10 pr-4 py-2 bg-slate-950/90 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-sans"
+                />
+              </div>
+
+              {/* Zone Filter */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: 'all', label: 'All Zones' },
+                  { id: 'dungeon', label: 'Dungeons' },
+                  { id: 'open_world', label: 'Open World' },
+                  { id: 'cavern', label: 'Subterranean Cavern' },
+                  { id: 'world_boss', label: 'World Bosses' },
+                ].map((z) => (
+                  <button
+                    key={z.id}
+                    onClick={() => setZoneFilter(z.id as typeof zoneFilter)}
+                    className={`px-3 py-1.5 text-xs font-rpg font-semibold rounded-lg transition ${
+                      zoneFilter === z.id
+                        ? 'bg-cyan-500 text-slate-950 font-bold'
+                        : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    {z.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex gap-1.5">
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'discovered', label: 'Discovered' },
+                  { id: 'slain', label: 'Slain' },
+                  { id: 'undiscovered', label: 'Hidden' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setStatusFilter(s.id as typeof statusFilter)}
+                    className={`px-2.5 py-1.5 text-xs font-tech font-bold rounded-lg transition ${
+                      statusFilter === s.id
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Monster Cards Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredBestiary.map((monster) => {
+              const isDiscovered = monster.encountered;
+              const isSlain = monster.killCount > 0;
+
+              if (!isDiscovered) {
+                return (
+                  <div
+                    key={monster.id}
+                    className="relative bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 overflow-hidden flex flex-col justify-between opacity-80 hover:opacity-100 transition group"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-950/5 to-slate-950/90 pointer-events-none" />
+                    <div>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl text-slate-600 font-rpg">
+                          ❓
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-tech font-bold bg-slate-900 text-slate-500 border border-slate-800">
+                          ZONE: {monster.zone.toUpperCase()}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-rpg font-bold text-slate-400 mb-1">
+                        Unknown Entity
+                      </h3>
+                      <p className="text-xs text-slate-500 font-tech uppercase mb-3">
+                        CLASSIFICATION ENCRYPTED
+                      </p>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Encounter this monster in the wilderness, dungeon, or subterranean cavern to decipher its elemental weaknesses and unlock its complete loot table.
+                      </p>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-900 text-[11px] text-purple-400 font-tech flex items-center gap-1.5">
+                      <HelpCircle className="w-3.5 h-3.5" />
+                      <span>Reported habitat: {monster.habitat}</span>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={monster.id}
+                  onClick={() => setSelectedMonsterModal(monster)}
+                  className="bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 rounded-2xl p-5 flex flex-col justify-between transition-all duration-200 hover:shadow-xl hover:shadow-cyan-950/30 cursor-pointer group relative overflow-hidden"
+                >
+                  <div
+                    className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none opacity-20"
+                    style={{ backgroundColor: monster.color }}
+                  />
+
+                  <div>
+                    {/* Top Header Badge */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-13 h-13 rounded-2xl flex items-center justify-center text-3xl border shadow-lg"
+                          style={{
+                            backgroundColor: `${monster.color}25`,
+                            borderColor: monster.color,
+                          }}
+                        >
+                          {monster.icon}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-tech font-bold text-cyan-400 uppercase">
+                              LVL {monster.level}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-tech uppercase">
+                              {monster.element}
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-rpg font-bold text-white group-hover:text-cyan-300 transition">
+                            {monster.name}
+                          </h3>
+                        </div>
+                      </div>
+
+                      {/* Kill Status Badge */}
+                      <span
+                        className={`px-2 py-1 rounded-lg text-[10px] font-tech font-bold border ${
+                          isSlain
+                            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600/40'
+                            : 'bg-amber-950/80 text-amber-300 border-amber-600/40'
+                        }`}
+                      >
+                        {isSlain ? `⚔️ ${monster.killCount} SLAIN` : '⚠️ DISCOVERED'}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-purple-300 font-tech mb-2">
+                      {monster.title} • {monster.habitat}
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed mb-4 line-clamp-2">
+                      {monster.description}
+                    </p>
+
+                    {/* Elemental Weaknesses Section */}
+                    <div className="mb-3 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80">
+                      <div className="text-[10px] font-tech font-bold text-rose-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                        <Flame className="w-3 h-3 text-rose-400" />
+                        <span>Elemental Weaknesses</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {monster.weaknesses.map((w, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-950/50 border border-rose-500/40 text-[11px] font-tech text-rose-200"
+                          >
+                            <span className="font-bold text-rose-300">{w.element}</span>
+                            <span className="text-amber-400 font-bold">{w.multiplier}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Resistances Section */}
+                    {monster.resistances.length > 0 && (
+                      <div className="mb-4 flex items-center gap-1.5 text-[11px] font-tech text-slate-400">
+                        <Shield className="w-3 h-3 text-slate-500" />
+                        <span className="text-slate-500">Resistant to:</span>
+                        <span className="text-slate-300">{monster.resistances.join(', ')}</span>
+                      </div>
+                    )}
+
+                    {/* Loot Table Preview */}
+                    <div className="border-t border-slate-800 pt-3">
+                      <div className="flex items-center justify-between text-[11px] font-tech text-slate-400 mb-2">
+                        <span className="text-amber-400 font-bold">LOOT TABLE & DROP RATES</span>
+                        <span className="text-slate-500">{monster.lootTable.length} drops</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {monster.lootTable.slice(0, 3).map((item, idx) => {
+                          const rarityColors: Record<string, string> = {
+                            common: 'text-slate-300 border-slate-700 bg-slate-900',
+                            uncommon: 'text-emerald-400 border-emerald-800 bg-emerald-950/40',
+                            rare: 'text-sky-400 border-sky-800 bg-sky-950/40',
+                            epic: 'text-purple-400 border-purple-800 bg-purple-950/40',
+                            legendary: 'text-amber-400 border-amber-800 bg-amber-950/40',
+                          };
+                          return (
+                            <div key={idx} className="flex items-center justify-between text-xs font-sans">
+                              <span className="text-slate-200 truncate pr-2 flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  item.rarity === 'legendary' ? 'bg-amber-400' :
+                                  item.rarity === 'epic' ? 'bg-purple-400' :
+                                  item.rarity === 'rare' ? 'bg-sky-400' :
+                                  item.rarity === 'uncommon' ? 'bg-emerald-400' : 'bg-slate-400'
+                                }`} />
+                                {item.name}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-12 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-cyan-400"
+                                    style={{ width: `${item.dropChance}%` }}
+                                  />
+                                </div>
+                                <span className="font-mono text-[10px] text-cyan-300 font-bold min-w-[28px] text-right">
+                                  {item.dropChance}%
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-tech text-cyan-400 group-hover:text-cyan-300">
+                    <span>Inspect Full Tactical Analysis</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Inspect Monster Modal */}
+          {selectedMonsterModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                <button
+                  onClick={() => setSelectedMonsterModal(null)}
+                  className="absolute top-5 right-5 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+                >
+                  ✕
+                </button>
+
+                <div className="flex items-center gap-4 mb-6">
+                  <div
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl border"
+                    style={{
+                      backgroundColor: `${selectedMonsterModal.color}30`,
+                      borderColor: selectedMonsterModal.color,
+                    }}
+                  >
+                    {selectedMonsterModal.icon}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-tech font-bold text-cyan-400 uppercase">
+                        LEVEL {selectedMonsterModal.level}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-tech uppercase">
+                        {selectedMonsterModal.element}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-purple-950 text-purple-300 font-tech uppercase border border-purple-800">
+                        {selectedMonsterModal.category}
+                      </span>
+                    </div>
+                    <h2 className="text-2xl font-rpg font-bold text-white">{selectedMonsterModal.name}</h2>
+                    <p className="text-xs text-slate-400 font-tech">{selectedMonsterModal.title}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+                    <div className="text-xs font-tech text-cyan-400 uppercase font-bold mb-1">Ecology & Habitat</div>
+                    <p className="text-xs text-slate-300 leading-relaxed">{selectedMonsterModal.description}</p>
+                    <div className="mt-2 text-[11px] text-slate-400 font-tech">
+                      📍 Primary Location: <strong className="text-white">{selectedMonsterModal.habitat}</strong>
+                    </div>
+                  </div>
+
+                  {/* Tactical Combat Advice */}
+                  <div className="p-4 rounded-xl bg-cyan-950/30 border border-cyan-500/40">
+                    <div className="text-xs font-rpg text-cyan-300 font-bold mb-1 flex items-center gap-1.5">
+                      <Info className="w-4 h-4 text-cyan-400" />
+                      <span>Hunter Tactical Advice</span>
+                    </div>
+                    <p className="text-xs text-slate-200 leading-relaxed">{selectedMonsterModal.tacticalTip}</p>
+                  </div>
+
+                  {/* Weaknesses & Resistances */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+                      <div className="text-xs font-tech text-rose-400 uppercase font-bold mb-2 flex items-center gap-1">
+                        <Flame className="w-3.5 h-3.5" />
+                        <span>Vulnerabilities</span>
+                      </div>
+                      <div className="space-y-2">
+                        {selectedMonsterModal.weaknesses.map((w, i) => (
+                          <div key={i} className="text-xs">
+                            <div className="flex justify-between font-tech mb-0.5">
+                              <span className="font-bold text-rose-300">{w.element}</span>
+                              <span className="text-amber-400 font-bold">{w.multiplier} DMG</span>
+                            </div>
+                            <p className="text-[11px] text-slate-400">{w.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+                      <div className="text-xs font-tech text-slate-400 uppercase font-bold mb-2 flex items-center gap-1">
+                        <Shield className="w-3.5 h-3.5" />
+                        <span>Resistances</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {selectedMonsterModal.resistances.map((r, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-xs font-tech text-slate-300"
+                          >
+                            {r}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-tech">
+                        Total Hunter Kills: <strong className="text-emerald-400">{selectedMonsterModal.killCount}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Full Loot Table */}
+                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+                    <div className="text-xs font-tech text-amber-400 uppercase font-bold mb-3 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>Full Loot Drop Rates & Reagents</span>
+                    </div>
+                    <div className="space-y-2.5">
+                      {selectedMonsterModal.lootTable.map((item, i) => (
+                        <div key={i} className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-rpg font-bold text-xs text-white flex items-center gap-2">
+                              <span>{item.name}</span>
+                              <span className={`text-[10px] uppercase font-tech px-1.5 py-0.2 rounded border ${
+                                item.rarity === 'legendary' ? 'text-amber-400 border-amber-800 bg-amber-950' :
+                                item.rarity === 'epic' ? 'text-purple-400 border-purple-800 bg-purple-950' :
+                                item.rarity === 'rare' ? 'text-sky-400 border-sky-800 bg-sky-950' :
+                                item.rarity === 'uncommon' ? 'text-emerald-400 border-emerald-800 bg-emerald-950' :
+                                'text-slate-400 border-slate-800 bg-slate-950'
+                              }`}>
+                                {item.rarity}
+                              </span>
+                            </span>
+                            <span className="text-xs font-mono font-bold text-cyan-400">{item.dropChance}% CHANCE</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400">{item.description}</p>
+                          <div className="w-full h-1 bg-slate-950 rounded-full mt-2 overflow-hidden">
+                            <div className="h-full bg-cyan-400" style={{ width: `${item.dropChance}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {activeCategory === 'synergy' && (
         <div className="space-y-6">
           <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur">

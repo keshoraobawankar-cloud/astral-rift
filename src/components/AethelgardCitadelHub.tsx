@@ -250,10 +250,18 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
               </div>
 
               <button
-                onClick={handleToggleBoundary}
-                className="px-3 py-1.5 rounded-xl font-tech font-bold text-xs bg-slate-900 border border-slate-700 text-white hover:bg-slate-800 transition cursor-pointer"
+                onClick={() => {
+                  sound.playClick();
+                  if (onEnter3DPlayableWorld) {
+                    onEnter3DPlayableWorld();
+                  } else {
+                    handleToggleBoundary();
+                  }
+                }}
+                className="px-4 py-2 rounded-xl font-rpg font-bold text-xs bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white shadow-lg shadow-emerald-950/40 border border-emerald-400/40 transition cursor-pointer flex items-center gap-1.5"
               >
-                {safeZone.bIsInSafeZone ? 'Leave Sanctuary Gates' : 'Return to Citadel'}
+                <span>Walk into 3D Open World</span>
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 

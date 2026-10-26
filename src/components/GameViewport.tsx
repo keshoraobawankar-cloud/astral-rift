@@ -23,6 +23,10 @@ import {
   Box,
   Gift,
   Radio,
+  BookOpen,
+  Scroll,
+  Trophy,
+  Star,
 } from 'lucide-react';
 import { sound } from '../services/soundService';
 import { syncPlayerState } from '../services/api';
@@ -39,6 +43,26 @@ import { DungeonSynthWidget } from './DungeonSynthWidget';
 import { RetentionRiftModal } from './RetentionRiftModal';
 import { growthRetention } from '../services/growthRetentionService';
 import { INITIAL_PET_COMPANIONS } from '../data/petData';
+import {
+  createAmbientStardust,
+  createLandscapeTerrainTexture,
+  createVegetationClusters,
+} from '../game/environment';
+import { setupPostProcessing } from '../game/renderer';
+
+export interface QuestObjective {
+  id: string;
+  text: string;
+  done: boolean;
+  progress?: number;
+  target?: number;
+}
+
+export interface QuestData {
+  title: string;
+  objectives: QuestObjective[];
+  completed: boolean;
+}
 
 interface GameViewportProps {
   onReturnToDashboard?: () => void;
@@ -613,6 +637,63 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     return () => clearInterval(interval);
   }, []);
 
+  // Player EXP & Milestone Level Progression (Feature: Cave Crawl & Monster EXP Loop)
+  const [playerLevel, setPlayerLevel] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('aethelgard_player_level') || '1', 10);
+    } catch {
+      return 1;
+    }
+  });
+  const [playerExp, setPlayerExp] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('aethelgard_player_exp') || '0', 10);
+    } catch {
+      return 0;
+    }
+  });
+  const playerLevelRef = useRef<number>(playerLevel);
+  useEffect(() => {
+    playerLevelRef.current = playerLevel;
+  }, [playerLevel]);
+  const nextLevelExp = playerLevel * 600;
+
+  // Story & Dungeon Quest Tracker
+  const [questState, setQuestState] = useState<QuestData>({
+    title: 'Chapter I: The Sunken Rift Caverns',
+    objectives: [
+      { id: 'enter_cave', text: 'Infiltrate the Abyssal Cave Archway (South-West)', done: false, progress: 0, target: 1 },
+      { id: 'defeat_cavern', text: 'Slay 3 Cavern Lurkers & Magma Slimes', progress: 0, target: 3, done: false },
+      { id: 'decipher_stone', text: 'Decipher the Ancient Titan Lore Tablet', done: false, progress: 0, target: 1 },
+    ],
+    completed: false,
+  });
+
+  // Cave Lore Inspection Modal Dialog
+  const [activeLoreDialog, setActiveLoreDialog] = useState<{
+    title: string;
+    chapter: string;
+    lore: string;
+    rewardEssence: number;
+    stoneId: string;
+  } | null>(null);
+
+  const [isNearLoreStone, setIsNearLoreStone] = useState<boolean>(false);
+  const [nearLoreStoneData, setNearLoreStoneData] = useState<{
+    title: string;
+    chapter: string;
+    lore: string;
+    rewardEssence: number;
+    stoneId: string;
+  } | null>(null);
+  const isNearLoreStoneRef = useRef<boolean>(false);
+  const nearLoreStoneDataRef = useRef<any>(null);
+
+  const [isNearDestructible, setIsNearDestructible] = useState<boolean>(false);
+  const isNearDestructibleRef = useRef<boolean>(false);
+
+  const [showFoliageModal, setShowFoliageModal] = useState<boolean>(false);
+
   // Action Trigger References for Animation Loop
   const actionTriggerRef = useRef<{
     attackRequested: boolean;
@@ -631,6 +712,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     skinToggledRequested: boolean | null;
     prismBladeToggledRequested: boolean | null;
     petToggledRequested: 'void_hatchling' | 'solar_phoenix' | 'none' | null;
+    inspectLoreRequested: boolean;
+    strikeDestructibleRequested: boolean;
   }>({
     attackRequested: false,
     heavyAttackRequested: false,
@@ -648,6 +731,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     skinToggledRequested: null,
     prismBladeToggledRequested: null,
     petToggledRequested: null,
+    inspectLoreRequested: false,
+    strikeDestructibleRequested: false,
   });
 
   // Remote Players Registry
@@ -718,8 +803,19 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
     container.appendChild(renderer.domElement);
+
+    // High-End Post-Processing Composer with Unreal Bloom (Magical Glows, Stardust, Reflections)
+    const postProcessing = setupPostProcessing(
+      renderer,
+      scene,
+      camera,
+      container.clientWidth,
+      container.clientHeight
+    );
+
+    // Dynamic Floating Leyline Stardust Particles across outdoor and cavern biomes
+    const updateStardust = createAmbientStardust(scene, 1200);
 
     // ============================================================================
     // 2. DYNAMIC ATMOSPHERIC LIGHTING (Warm Golden Sun, Sky-Blue Ambient & Soft Fog)
@@ -750,13 +846,16 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     // ============================================================================
     // 3. EXPANDED PROCEDURAL 1KM TERRAIN & SANCTUARY ENVIRONMENT
     // ============================================================================
-    // 1. Massive 1000x1000 terrain plane with vibrant fantasy cel-shaded green
+    // 1. Massive 1000x1000 terrain plane with painted landscape grass brush texture
     const terrainSize = 1000;
+    const landscapeTexture = createLandscapeTerrainTexture(terrainSize);
+
     const groundGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 64, 64);
     groundGeo.rotateX(-Math.PI / 2); // Make it horizontal
 
     const groundMat = new THREE.MeshToonMaterial({
-      color: 0x065f46, // Rich forest green
+      color: 0xffffff, // White tint lets the painted landscape brush texture shine with vibrant fantasy colors
+      map: landscapeTexture,
       gradientMap: rampTexture,
       wireframe: false,
     });
@@ -894,7 +993,7 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     // ============================================================================
     // 3.4 COLORED BIOME ELEMENTS (Emerald Trees, Rocks & Mana Crystals)
     // ============================================================================
-    function generateEnvironmentBiomes(targetScene: THREE.Scene, count = 180) {
+    function generateEnvironmentBiomes(targetScene: THREE.Scene, count = 180): THREE.Vector3[] {
       const treeGeometry = new THREE.ConeGeometry(2.5, 7, 6);
       const treeMaterial = new THREE.MeshToonMaterial({ color: 0x10b981, gradientMap: rampTexture });
       const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 2.5, 6);
@@ -905,6 +1004,8 @@ export const GameViewport: React.FC<GameViewportProps> = ({
 
       const crystalGeo = new THREE.OctahedronGeometry(1.6);
       const crystalMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+      const treePositions: THREE.Vector3[] = [];
 
       for (let i = 0; i < count; i++) {
         const x = (Math.random() - 0.5) * 850;
@@ -925,6 +1026,7 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           treeGroup.add(trunk);
           treeGroup.add(foliage);
           treeGroup.position.set(x, 0, z);
+          treePositions.push(new THREE.Vector3(x, 0, z));
           const s = 0.8 + Math.random() * 0.7;
           treeGroup.scale.setScalar(s);
           targetScene.add(treeGroup);
@@ -945,9 +1047,10 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           targetScene.add(cLight);
         }
       }
+      return treePositions;
     }
 
-    generateEnvironmentBiomes(scene);
+    const treePositions = generateEnvironmentBiomes(scene);
 
     // Roaming Abyss Void Titan (World Boss)
     const bossGroup = new THREE.Group();
@@ -1031,7 +1134,265 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     });
 
     // ============================================================================
-    // 3.6 ROAMING OPEN-WORLD MONSTERS (Patrol, Aggro, Attack, Stagger State Machine)
+    // 3.5B ANCIENT SUNKEN RIFT CAVERN & DUNGEON ENTRANCE (X: -85, Z: 85)
+    // ============================================================================
+    const caveCenter = new THREE.Vector3(-85, 0, 85);
+
+    // 3D Instanced Foliage & Wild Vegetation Clusters (Cave Entrance, Trails, Tree Undergrowth & Open Plains)
+    const vegetation = createVegetationClusters(scene, treePositions, caveCenter, 2800);
+
+    // 1. Dark Subterranean Rock Bed
+    const caveFloor = new THREE.Mesh(
+      new THREE.CylinderGeometry(36, 40, 0.45, 32),
+      new THREE.MeshToonMaterial({ color: 0x090d16, gradientMap: rampTexture })
+    );
+    caveFloor.position.set(caveCenter.x, 0.22, caveCenter.z);
+    caveFloor.receiveShadow = true;
+    scene.add(caveFloor);
+
+    // 2. Grand Cavern Archway (Basalt Monoliths + Runic Lintel)
+    const cavePillarMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.85, metalness: 0.3 });
+    const archPillar1 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.2, 9, 8), cavePillarMat);
+    archPillar1.position.set(caveCenter.x - 7.5, 4.5, caveCenter.z - 24);
+    archPillar1.castShadow = true;
+    scene.add(archPillar1);
+
+    const archPillar2 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.2, 9, 8), cavePillarMat);
+    archPillar2.position.set(caveCenter.x + 7.5, 4.5, caveCenter.z - 24);
+    archPillar2.castShadow = true;
+    scene.add(archPillar2);
+
+    const archLintel = new THREE.Mesh(new THREE.BoxGeometry(17, 2.4, 3.2), cavePillarMat);
+    archLintel.position.set(caveCenter.x, 9.5, caveCenter.z - 24);
+    archLintel.castShadow = true;
+    scene.add(archLintel);
+
+    // Glowing Runic Glyphs on Archway
+    const archRune = new THREE.Mesh(
+      new THREE.RingGeometry(0.8, 1.8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x8b5cf6, side: THREE.DoubleSide })
+    );
+    archRune.position.set(caveCenter.x, 9.5, caveCenter.z - 22.3);
+    scene.add(archRune);
+
+    // Glowing Void Portal Mist at Cavern Threshold
+    const portalMist = new THREE.Mesh(
+      new THREE.RingGeometry(0.5, 6.8, 24),
+      new THREE.MeshBasicMaterial({ color: 0x7c3aed, side: THREE.DoubleSide, transparent: true, opacity: 0.45 })
+    );
+    portalMist.position.set(caveCenter.x, 4.8, caveCenter.z - 23.5);
+    scene.add(portalMist);
+
+    // Cavern Point Lights (Magma Orange & Azure Leyline)
+    const magmaCaveLight = new THREE.PointLight(0xf97316, 3.0, 36);
+    magmaCaveLight.position.set(caveCenter.x - 14, 3.5, caveCenter.z + 8);
+    scene.add(magmaCaveLight);
+
+    const azureCaveLight = new THREE.PointLight(0x06b6d4, 3.0, 36);
+    azureCaveLight.position.set(caveCenter.x + 14, 3.5, caveCenter.z + 8);
+    scene.add(azureCaveLight);
+
+    // Stalagmites & Rock Spires rising inside cave perimeter
+    const stalagMat = new THREE.MeshToonMaterial({ color: 0x1e293b, gradientMap: rampTexture });
+    for (let i = 0; i < 16; i++) {
+      const angle = (i / 16) * Math.PI * 2;
+      const rad = 18 + (i % 3) * 6;
+      const sx = caveCenter.x + Math.cos(angle) * rad;
+      const sz = caveCenter.z + Math.sin(angle) * rad;
+      const h = 3.5 + (i % 4) * 1.4;
+      const stalag = new THREE.Mesh(new THREE.ConeGeometry(1.1, h, 6), stalagMat);
+      stalag.position.set(sx, h / 2, sz);
+      stalag.castShadow = true;
+      scene.add(stalag);
+    }
+
+    // Interactive Destructibles inside Cave (Mana Crystal Cluster & Ancient Urn)
+    interface DestructibleEntity {
+      id: string;
+      name: string;
+      group: THREE.Group;
+      position: THREE.Vector3;
+      hp: number;
+      destroyed: boolean;
+      type: 'mana_crystal' | 'ancient_urn';
+      rewardGold: number;
+      rewardEssence: number;
+    }
+    const caveDestructibles: DestructibleEntity[] = [];
+
+    // 1. Gleaming Leyline Crystal Cluster in Cave
+    const crystalGroup = new THREE.Group();
+    const cMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.9,
+      metalness: 0.9,
+    });
+    for (let i = 0; i < 5; i++) {
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 5), cMat);
+      spike.position.set(Math.sin(i * 1.3) * 0.7, 0.7, Math.cos(i * 1.3) * 0.7);
+      spike.rotation.z = (i % 2 === 0 ? 0.3 : -0.3);
+      crystalGroup.add(spike);
+    }
+    crystalGroup.position.set(caveCenter.x - 8, 0, caveCenter.z + 6);
+    scene.add(crystalGroup);
+    caveDestructibles.push({
+      id: 'destruct_crystal_1',
+      name: 'Gleaming Leyline Crystal Cluster',
+      group: crystalGroup,
+      position: crystalGroup.position,
+      hp: 50,
+      destroyed: false,
+      type: 'mana_crystal',
+      rewardGold: 60,
+      rewardEssence: 45,
+    });
+
+    // 2. Ancient Dwarven Relic Urn in Cave
+    const urnGroup = new THREE.Group();
+    const urnMat = new THREE.MeshStandardMaterial({ color: 0x78350f, metalness: 0.6, roughness: 0.4 });
+    const urnBody = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.5, 1.3, 12), urnMat);
+    urnBody.position.y = 0.65;
+    urnGroup.add(urnBody);
+    const urnLid = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), urnMat);
+    urnLid.position.y = 1.4;
+    urnGroup.add(urnLid);
+    urnGroup.position.set(caveCenter.x + 8, 0, caveCenter.z + 6);
+    scene.add(urnGroup);
+    caveDestructibles.push({
+      id: 'destruct_urn_1',
+      name: 'Ancient Dwarven Relic Urn',
+      group: urnGroup,
+      position: urnGroup.position,
+      hp: 40,
+      destroyed: false,
+      type: 'ancient_urn',
+      rewardGold: 90,
+      rewardEssence: 20,
+    });
+
+    // Interactive Ancient Lore Tablets inside the Cave
+    interface CaveLoreEntity {
+      id: string;
+      title: string;
+      chapter: string;
+      lore: string;
+      group: THREE.Group;
+      position: THREE.Vector3;
+      inspected: boolean;
+      rewardEssence: number;
+    }
+    const caveLoreEntities: CaveLoreEntity[] = [];
+
+    // Lore Stone 1: Tablet of the Sunken Epoch
+    const loreStoneGroup1 = new THREE.Group();
+    const tabletMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.8 });
+    const tabletMesh1 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.6, 0.4), tabletMat);
+    tabletMesh1.position.y = 1.3;
+    tabletMesh1.castShadow = true;
+    loreStoneGroup1.add(tabletMesh1);
+    const runeGlyph1 = new THREE.Mesh(
+      new THREE.RingGeometry(0.25, 0.5, 6),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+    );
+    runeGlyph1.position.set(0, 1.6, 0.22);
+    loreStoneGroup1.add(runeGlyph1);
+    loreStoneGroup1.position.set(caveCenter.x - 12, 0, caveCenter.z - 4);
+    scene.add(loreStoneGroup1);
+
+    caveLoreEntities.push({
+      id: 'lore_tablet_epoch',
+      title: 'Tablet of the Sunken Epoch',
+      chapter: 'Aethelgard Annals • Chapter III: The Deep Bedrock',
+      lore:
+        'Before the Great Sundering, these crystalline caverns were the pulsing planetary heartbeat of Aethelgard. Ancient Dwarven Forge-Thanes and High Elven Weavers forged leylines directly through the bedrock to seal the Abyssal Titans deep within the planet core.',
+      group: loreStoneGroup1,
+      position: loreStoneGroup1.position,
+      inspected: false,
+      rewardEssence: 80,
+    });
+
+    // Lore Stone 2: Runestone of the Umbral Sovereign
+    const loreStoneGroup2 = new THREE.Group();
+    const tabletMesh2 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.6, 0.4), tabletMat);
+    tabletMesh2.position.y = 1.3;
+    tabletMesh2.castShadow = true;
+    loreStoneGroup2.add(tabletMesh2);
+    const runeGlyph2 = new THREE.Mesh(
+      new THREE.RingGeometry(0.25, 0.5, 6),
+      new THREE.MeshBasicMaterial({ color: 0xa855f7 })
+    );
+    runeGlyph2.position.set(0, 1.6, 0.22);
+    loreStoneGroup2.add(runeGlyph2);
+    loreStoneGroup2.position.set(caveCenter.x + 12, 0, caveCenter.z - 4);
+    scene.add(loreStoneGroup2);
+
+    caveLoreEntities.push({
+      id: 'lore_tablet_sovereign',
+      title: 'Runestone of the Umbral Sovereign',
+      chapter: 'Shadow Monarch Chronicles • Inscription of the Void King',
+      lore:
+        'When darkness blankets the realm and abyssal gates tear the skies asunder, the Shadow Monarch ascends above death itself. "ARISE," commands the sovereign, turning fallen enemies into immortal umbral vanguards.',
+      group: loreStoneGroup2,
+      position: loreStoneGroup2.position,
+      inspected: false,
+      rewardEssence: 120,
+    });
+
+    // 3D VFX Particle Emitter Pooling (Zero Allocation during gameplay)
+    const particlePoolCount = 45;
+    const particlePoolGeo = new THREE.OctahedronGeometry(0.18);
+    const particlePool: { mesh: THREE.Mesh; vel: THREE.Vector3; life: number; maxLife: number }[] = [];
+
+    for (let i = 0; i < particlePoolCount; i++) {
+      const pMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0 });
+      const pMesh = new THREE.Mesh(particlePoolGeo, pMat);
+      pMesh.visible = false;
+      scene.add(pMesh);
+      particlePool.push({
+        mesh: pMesh,
+        vel: new THREE.Vector3(),
+        life: 0,
+        maxLife: 1.0,
+      });
+    }
+
+    const spawn3DParticleBurst = (pos: THREE.Vector3, hexColor: number, count = 16, speedMult = 1.0) => {
+      let spawned = 0;
+      for (let i = 0; i < particlePool.length && spawned < count; i++) {
+        const p = particlePool[i];
+        if (p.life <= 0) {
+          p.mesh.position.copy(pos);
+          p.mesh.position.y += 0.5;
+          (p.mesh.material as THREE.MeshBasicMaterial).color.setHex(hexColor);
+          (p.mesh.material as THREE.MeshBasicMaterial).opacity = 1.0;
+          p.mesh.visible = true;
+
+          const angle = Math.random() * Math.PI * 2;
+          const pitch = (Math.random() - 0.2) * Math.PI;
+          const speed = (Math.random() * 5 + 3) * speedMult;
+          p.vel.set(
+            Math.cos(angle) * Math.cos(pitch) * speed,
+            Math.sin(pitch) * speed + 3,
+            Math.sin(angle) * Math.cos(pitch) * speed
+          );
+          p.maxLife = 0.6 + Math.random() * 0.4;
+          p.life = p.maxLife;
+          spawned++;
+        }
+      }
+    };
+
+    // Camera Screen Shake Engine
+    let cameraShakeTimer = 0;
+    let cameraShakeIntensity = 0;
+    const triggerCameraShake = (duration = 0.22, intensity = 0.45) => {
+      cameraShakeTimer = duration;
+      cameraShakeIntensity = intensity;
+    };
+
+    // ============================================================================
+    // 3.6 ROAMING OPEN-WORLD & CAVERN DUNGEON MONSTERS (Patrol, Aggro, Attack, Stagger)
     // ============================================================================
     const monsters: MonsterEntity[] = [];
 
@@ -1039,6 +1400,10 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       { id: 'shadow_stalker_1', name: 'Void Shadow Stalker', level: 28, hp: 2200, color: 0x4c0519, x: 36, z: 18, role: 'Wild Predator • Abyss Swarm' },
       { id: 'golem_scout_1', name: 'Ironpeak Golem Scout', level: 32, hp: 3000, color: 0x78350f, x: -38, z: -25, role: 'Dwarven Caldera Construct' },
       { id: 'bloodfang_beast_1', name: 'Bloodfang Abyss Beast', level: 30, hp: 2600, color: 0x3f3f46, x: 22, z: -40, role: 'Badlands Carnivore' },
+      // Subterranean Cavern Dungeon Monsters
+      { id: 'cavern_lurker_1', name: 'Cavern Lurker', level: 15, hp: 1350, color: 0x6366f1, x: caveCenter.x + 8, z: caveCenter.z - 3, role: 'Cavern Lurker • Subterranean Stalker' },
+      { id: 'magma_slime_1', name: 'Magma Slime', level: 18, hp: 1550, color: 0xf97316, x: caveCenter.x - 7, z: caveCenter.z + 12, role: 'Magma Slime • Caldera Core' },
+      { id: 'cavern_golem_1', name: 'Corrupted Cavern Golem', level: 25, hp: 2900, color: 0xd97706, x: caveCenter.x, z: caveCenter.z + 14, role: 'Cavern Warden • Ancient Leyline' },
     ];
 
     monsterConfigs.forEach((cfg) => {
@@ -1151,6 +1516,30 @@ export const GameViewport: React.FC<GameViewportProps> = ({
     );
 
     const applyDamageToMonsters = (dmg: number, radius: number) => {
+      // 1. Check Destructibles inside Cave (Leyline Crystals & Ancient Urns)
+      caveDestructibles.forEach((dest) => {
+        if (!dest.destroyed) {
+          const dist = playerGroup.position.distanceTo(dest.position);
+          if (dist <= radius + 1.2) {
+            dest.hp -= dmg;
+            triggerCameraShake(0.18, 0.35);
+            spawn3DParticleBurst(dest.position, dest.type === 'mana_crystal' ? 0x38bdf8 : 0xf59e0b, 15);
+            if (dest.hp <= 0) {
+              dest.destroyed = true;
+              dest.group.visible = false;
+              sound.playVictory();
+              triggerCameraShake(0.28, 0.6);
+              spawn3DParticleBurst(dest.position, 0xfacc15, 30, 1.4);
+              triggerFloatingText(`SMASHED ${dest.name}! +${dest.rewardGold} GOLD`, 'loot');
+              triggerFloatingText(`+${dest.rewardEssence} ESSENCE`, 'heal');
+              setGoldEarned((g) => g + dest.rewardGold);
+              if (onLootGained) onLootGained(dest.rewardGold, dest.rewardEssence);
+            }
+          }
+        }
+      });
+
+      // 2. Check Living Monsters
       monsters.forEach((m) => {
         if (m.state !== 'dead') {
           const dist = playerGroup.position.distanceTo(m.group.position);
@@ -1159,6 +1548,9 @@ export const GameViewport: React.FC<GameViewportProps> = ({
             m.state = 'stagger';
             m.staggerTimer = 0.35;
             (m.bodyMesh.material as THREE.MeshToonMaterial).color.setHex(0xf43f5e);
+
+            triggerCameraShake(dmg > 400 ? 0.28 : 0.16, dmg > 400 ? 0.6 : 0.32);
+            spawn3DParticleBurst(m.group.position, dmg > 400 ? 0xfacc15 : 0xef4444, dmg > 400 ? 18 : 10);
             triggerFloatingText(`${m.name.slice(0, 10)} -${dmg}`, dmg > 400 ? 'crit' : 'damage');
 
             if (m.currentHp <= 0) {
@@ -1166,8 +1558,61 @@ export const GameViewport: React.FC<GameViewportProps> = ({
               m.group.visible = false;
               m.respawnTimer = 14;
               sound.playVictory();
-              setGoldEarned((g) => g + 120);
+              triggerCameraShake(0.35, 0.75);
+              spawn3DParticleBurst(m.group.position, 0xeab308, 30, 1.4);
+              spawn3DParticleBurst(m.group.position, 0xa855f7, 22, 1.2);
+
+              const expReward = m.level * 28 + 220;
+              triggerFloatingText(`+${expReward} EXP`, 'loot');
               triggerFloatingText(`DEFEATED ${m.name}! +120 GOLD`, 'loot');
+              setGoldEarned((g) => g + 120);
+              if (onLootGained) onLootGained(120, 15);
+
+              // EXP Progression & Milestone Level Up Check
+              setPlayerExp((prevExp) => {
+                const totalExp = prevExp + expReward;
+                const currentThresh = playerLevelRef.current * 600;
+                if (totalExp >= currentThresh) {
+                  const nextLvl = playerLevelRef.current + 1;
+                  playerLevelRef.current = nextLvl;
+                  setPlayerLevel(nextLvl);
+                  try {
+                    localStorage.setItem('aethelgard_player_level', nextLvl.toString());
+                  } catch {}
+                  curHp = 100;
+                  curStamina = 100;
+                  sound.playLevelUp();
+                  triggerFloatingText(`★ LEVEL UP! LVL ${nextLvl} ★`, 'crit');
+                  triggerFloatingText(`HP RESTORED & +35 COMBAT POWER!`, 'heal');
+                  spawn3DParticleBurst(playerGroup.position, 0x22c55e, 45, 2.0);
+                  triggerCameraShake(0.45, 0.9);
+                  return totalExp - currentThresh;
+                }
+                try {
+                  localStorage.setItem('aethelgard_player_exp', totalExp.toString());
+                } catch {}
+                return totalExp;
+              });
+
+              // Story Quest Objective Progression
+              setQuestState((q) => {
+                const obj = q.objectives.find((o) => o.id === 'defeat_cavern');
+                if (obj && !obj.done) {
+                  const nextProg = Math.min(3, (obj.progress || 0) + 1);
+                  const isDone = nextProg >= 3;
+                  if (isDone) {
+                    sound.playVictory();
+                    triggerFloatingText('🏆 OBJECTIVE COMPLETE: CAVERN PURGED!', 'crit');
+                  }
+                  return {
+                    ...q,
+                    objectives: q.objectives.map((o) =>
+                      o.id === 'defeat_cavern' ? { ...o, progress: nextProg, done: isDone } : o
+                    ),
+                  };
+                }
+                return q;
+              });
 
               // Shadow Extraction Trigger
               if (selectedArchetype.id === 'sung_jinwoo') {
@@ -1993,16 +2438,25 @@ export const GameViewport: React.FC<GameViewportProps> = ({
 
       const k = e.key.toLowerCase();
       if (k === 'e' || e.code === 'KeyE') {
-        actionTriggerRef.current.attackRequested = true;
+        if (isNearLoreStoneRef.current) {
+          actionTriggerRef.current.inspectLoreRequested = true;
+        } else {
+          actionTriggerRef.current.attackRequested = true;
+        }
       } else if (k === 'q' || e.code === 'KeyQ') {
         actionTriggerRef.current.heavyAttackRequested = true;
       } else if (k === 'r' || e.code === 'KeyR') {
         actionTriggerRef.current.runicFinisherRequested = true;
       } else if (k === 'c' || (e.key === ' ' && keys.Shift)) {
         actionTriggerRef.current.dodgeRequested = true;
-      } else if (k === 'b' || (k === 'f' && isNearOre)) {
-        if (isNearOre) actionTriggerRef.current.gatherRequested = true;
-        else actionTriggerRef.current.blockRequested = true;
+      } else if (k === 'b' || k === 'f' || e.code === 'KeyF') {
+        if (isNearLoreStoneRef.current) {
+          actionTriggerRef.current.inspectLoreRequested = true;
+        } else if (isNearOreRef.current) {
+          actionTriggerRef.current.gatherRequested = true;
+        } else {
+          actionTriggerRef.current.blockRequested = true;
+        }
       } else if (k === '1') {
         actionTriggerRef.current.emoteRequested = 'cheer';
         multiplayerSocket.sendEmote('cheer');
@@ -2417,6 +2871,33 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         });
       }
 
+      if (actionTriggerRef.current.inspectLoreRequested) {
+        actionTriggerRef.current.inspectLoreRequested = false;
+        if (nearLoreStoneDataRef.current) {
+          const stone = nearLoreStoneDataRef.current;
+          setActiveLoreDialog(stone);
+          sound.playVictory();
+          if (onLootGained) onLootGained(0, stone.rewardEssence);
+          triggerFloatingText(`+${stone.rewardEssence} ESSENCE`, 'heal');
+          triggerFloatingText('✦ LORE UNLOCKED', 'loot');
+          setCharacterThought(`"Deciphered: ${stone.title}."`);
+
+          // Complete Story Quest Objective
+          setQuestState((q) => {
+            const obj = q.objectives.find((o) => o.id === 'decipher_stone');
+            if (obj && !obj.done) {
+              sound.playLevelUp();
+              triggerFloatingText('🏆 QUEST: TITAN TABLET DECIPHERED!', 'crit');
+              return {
+                ...q,
+                objectives: q.objectives.map((o) => (o.id === 'decipher_stone' ? { ...o, done: true } : o)),
+              };
+            }
+            return q;
+          });
+        }
+      }
+
       // Emotes
       if (actionTriggerRef.current.emoteRequested) {
         const em = actionTriggerRef.current.emoteRequested;
@@ -2648,8 +3129,34 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       const camOffset = new THREE.Vector3(0, 8.2, 11.5);
       const targetCamPos = playerGroup.position.clone().add(camOffset);
       camera.position.lerp(targetCamPos, 0.14);
+
+      // Apply Camera Screen Shake VFX
+      if (cameraShakeTimer > 0) {
+        cameraShakeTimer -= delta;
+        const shakePct = Math.max(0, cameraShakeTimer / 0.25);
+        const curIntensity = cameraShakeIntensity * shakePct;
+        camera.position.x += (Math.random() - 0.5) * curIntensity * 1.8;
+        camera.position.y += (Math.random() - 0.5) * curIntensity * 1.8;
+      }
+
       _camTarget.copy(playerGroup.position).add(new THREE.Vector3(0, 1.4, 0));
       camera.lookAt(_camTarget);
+
+      // 3D VFX Particle Pool Simulation
+      for (let i = 0; i < particlePool.length; i++) {
+        const p = particlePool[i];
+        if (p.life > 0) {
+          p.life -= delta;
+          p.mesh.position.addScaledVector(p.vel, delta);
+          p.vel.y -= 12 * delta; // Gravity
+          const pAlpha = Math.max(0, p.life / p.maxLife);
+          (p.mesh.material as THREE.MeshBasicMaterial).opacity = pAlpha;
+          p.mesh.scale.setScalar(pAlpha * 1.25);
+          if (p.life <= 0) {
+            p.mesh.visible = false;
+          }
+        }
+      }
 
       // Shard pickup check
       shards.forEach((shard) => {
@@ -2682,6 +3189,58 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         setIsNearLantern(nearLantern);
       }
 
+      // Lore Stone Proximity Check in Cave
+      let foundLoreStone: any = null;
+      for (const stone of caveLoreEntities) {
+        const d = playerGroup.position.distanceTo(stone.position);
+        if (d < 3.8) {
+          foundLoreStone = stone;
+          break;
+        }
+      }
+      const isNearLore = Boolean(foundLoreStone);
+      if (isNearLore !== isNearLoreStoneRef.current) {
+        isNearLoreStoneRef.current = isNearLore;
+        setIsNearLoreStone(isNearLore);
+        nearLoreStoneDataRef.current = foundLoreStone;
+        setNearLoreStoneData(foundLoreStone);
+      }
+
+      // Destructibles Proximity Check in Cave
+      let foundDestruct = false;
+      for (const dest of caveDestructibles) {
+        if (!dest.destroyed && playerGroup.position.distanceTo(dest.position) < 3.5) {
+          foundDestruct = true;
+          break;
+        }
+      }
+      if (foundDestruct !== isNearDestructibleRef.current) {
+        isNearDestructibleRef.current = foundDestruct;
+        setIsNearDestructible(foundDestruct);
+      }
+
+      // Safe-Zone & Cavern Zone Boundary Check
+      const distCenter = Math.hypot(playerGroup.position.x, playerGroup.position.z);
+      const distToCave = playerGroup.position.distanceTo(caveCenter);
+      const inCave = distToCave <= 36;
+      const inAegis = distCenter <= 30 && !inCave;
+
+      // Quest Objective 1: Enter Cave Trigger
+      if (inCave) {
+        setQuestState((q) => {
+          const obj = q.objectives.find((o) => o.id === 'enter_cave');
+          if (obj && !obj.done) {
+            sound.playLevelUp();
+            triggerFloatingText('QUEST: INFILTRATED SUNKEN CAVERN!', 'crit');
+            return {
+              ...q,
+              objectives: q.objectives.map((o) => (o.id === 'enter_cave' ? { ...o, done: true } : o)),
+            };
+          }
+          return q;
+        });
+      }
+
       // Roaming Abyss Void Titan Patrol
       bossAngle += delta * 0.22;
       const bossRadius = 45;
@@ -2691,10 +3250,6 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       bossGroup.rotation.y = bossAngle + Math.PI / 2;
 
       const bossDist = Math.round(playerGroup.position.distanceTo(bossGroup.position));
-
-      // Safe-Zone Boundary Check
-      const distCenter = Math.hypot(playerGroup.position.x, playerGroup.position.z);
-      const inAegis = distCenter <= 30;
 
       // Update active minions & Arcane Ranger projectiles
       activeMinions.forEach((minion) => {
@@ -2861,9 +3416,11 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           isExhausted,
           isDodging,
           isBlocking,
-          zoneName: inAegis
+          zoneName: inCave
+            ? 'Abyssal Sunken Cavern (Dungeon Floor 1)'
+            : inAegis
             ? 'Citadel of Oakhaven (Safe-Zone)'
-            : 'Shattered Badlands (Wilderness PvP Active)',
+            : 'Shattered Badlands (Wilderness Active)',
           bossDistance: bossDist,
           bossStatus: bossDist < 26 ? 'Aggressive • Roaming Nearby' : 'Patrolling Outer Perimeter',
         });
@@ -2928,7 +3485,14 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         setMinimapEntities(radarEntities);
       }
 
-      renderer.render(scene, camera);
+      // Update Floating Leyline Stardust Drift
+      updateStardust(delta);
+
+      // Animate 3D Wind Sway on Foliage & Grass Clusters
+      vegetation.update(delta);
+
+      // Render through Unreal Bloom Post-Processing Composer
+      postProcessing.composer.render();
     };
 
     animate();
@@ -2938,6 +3502,7 @@ export const GameViewport: React.FC<GameViewportProps> = ({
       camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
+      postProcessing.resize(container.clientWidth, container.clientHeight);
     };
     window.addEventListener('resize', handleResize);
 
@@ -2953,10 +3518,17 @@ export const GameViewport: React.FC<GameViewportProps> = ({
         container.removeChild(renderer.domElement);
       }
       renderer.dispose();
+      landscapeTexture.dispose();
       groundGeo.dispose();
       groundMat.dispose();
       domeGeo.dispose();
       domeMat.dispose();
+      vegetation.mesh.geometry.dispose();
+      if (Array.isArray(vegetation.mesh.material)) {
+        vegetation.mesh.material.forEach((m) => m.dispose());
+      } else {
+        vegetation.mesh.material.dispose();
+      }
     };
   }, [triggerFloatingText]);
 
@@ -3107,7 +3679,7 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           </div>
 
           {/* Stamina & Breathing Fatigue Bar */}
-          <div>
+          <div className="mb-2">
             <div className="flex justify-between text-[10px] font-tech text-amber-300 mb-0.5">
               <span className="flex items-center gap-1">
                 <Activity className="w-3 h-3" />
@@ -3123,6 +3695,55 @@ export const GameViewport: React.FC<GameViewportProps> = ({
                 style={{ width: `${stamina}%` }}
               />
             </div>
+          </div>
+
+          {/* Level & Dynamic EXP Progression Bar */}
+          <div className="pt-2 border-t border-slate-800/80">
+            <div className="flex justify-between items-center text-[10px] font-tech mb-1">
+              <span className="flex items-center gap-1 font-bold text-amber-400">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                <span>LVL {playerLevel}</span>
+              </span>
+              <span className="font-mono text-cyan-300 text-[9px]">
+                {playerExp} / {nextLevelExp} EXP ({Math.min(100, Math.floor((playerExp / nextLevelExp) * 100))}%)
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-purple-950">
+              <div
+                className="h-full bg-gradient-to-r from-purple-600 via-indigo-500 to-cyan-400 transition-all duration-300"
+                style={{ width: `${Math.min(100, (playerExp / nextLevelExp) * 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Story Quest Tracker (Chapter I: Sunken Rift Caverns) */}
+        <div className="bg-slate-950/90 border border-indigo-500/40 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-xl w-64 pointer-events-auto">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5 text-amber-400 font-rpg font-bold text-xs">
+              <Scroll className="w-3.5 h-3.5 text-amber-400" />
+              <span>ACTIVE QUEST</span>
+            </div>
+            <span className="text-[9px] bg-indigo-950 border border-indigo-500/40 text-indigo-300 px-1.5 py-0.2 rounded font-mono">
+              STORY
+            </span>
+          </div>
+          <p className="text-[11px] font-rpg font-semibold text-slate-200 mb-2 leading-tight">
+            {questState.title}
+          </p>
+          <div className="space-y-1.5">
+            {questState.objectives.map((obj) => (
+              <div key={obj.id} className="flex items-start gap-1.5 text-[10px]">
+                <span className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-bold ${
+                  obj.done ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}>
+                  {obj.done ? '✓' : '•'}
+                </span>
+                <span className={obj.done ? 'line-through text-slate-500 font-sans' : 'text-slate-300 font-sans'}>
+                  {obj.text} {obj.progress !== undefined && `(${obj.progress}/${obj.target})`}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -3231,6 +3852,16 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           ))}
         </div>
 
+        {/* Landscape & Grass Brushes Inspector Button */}
+        <button
+          onClick={() => setShowFoliageModal(true)}
+          className="px-2.5 py-1.5 rounded-xl bg-slate-950/85 hover:bg-emerald-950/70 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-rpg font-bold text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer"
+          title="Inspect Landscape Brushes & Foliage Ground Cover"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="hidden md:inline">LANDSCAPE BRUSHES</span>
+        </button>
+
         {/* Procedural Dungeon Synth Ambience */}
         <DungeonSynthWidget compact={true} />
 
@@ -3262,6 +3893,140 @@ export const GameViewport: React.FC<GameViewportProps> = ({
           >
             MINE [F]
           </button>
+        </div>
+      )}
+
+      {/* Center Interactive Lore Tablet Prompt */}
+      {isNearLoreStone && nearLoreStoneData && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-24 pointer-events-auto bg-slate-950/95 border border-indigo-500/80 backdrop-blur-md px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce z-30 ring-1 ring-indigo-400/50">
+          <BookOpen className="w-5 h-5 text-indigo-400 shrink-0" />
+          <div>
+            <p className="text-xs font-rpg font-bold text-indigo-200">{nearLoreStoneData.title}</p>
+            <p className="text-[10px] text-slate-400">Press [F] or [E] to decipher ancient chronicle</p>
+          </div>
+          <button
+            onClick={() => {
+              actionTriggerRef.current.inspectLoreRequested = true;
+            }}
+            className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-rpg font-bold rounded-xl text-xs cursor-pointer shadow-md"
+          >
+            DECIPHER [F]
+          </button>
+        </div>
+      )}
+
+      {/* Center Destructible Object Nearby Hint */}
+      {isNearDestructible && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-32 pointer-events-none bg-slate-950/90 border border-cyan-500/50 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-xl flex items-center gap-2 z-30">
+          <Sparkles className="w-4 h-4 text-cyan-400" />
+          <span className="text-[11px] font-rpg font-bold text-cyan-200">
+            Destructible Cavern Relic Nearby — Strike to Smash!
+          </span>
+        </div>
+      )}
+
+      {/* Interactive Ancient Lore Chronicle Modal */}
+      {activeLoreDialog && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 pointer-events-auto">
+          <div className="max-w-xl w-full bg-slate-950 border border-indigo-500/60 rounded-3xl p-6 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 ring-1 ring-indigo-400/40">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-indigo-900/60">
+              <div className="flex items-center gap-2 text-xs font-rpg font-bold text-amber-400 uppercase tracking-wider">
+                <Scroll className="w-4 h-4 text-amber-400" />
+                <span>{activeLoreDialog.chapter}</span>
+              </div>
+              <button
+                onClick={() => setActiveLoreDialog(null)}
+                className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-mono transition cursor-pointer"
+              >
+                ✕ CLOSE
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-xl font-rpg font-extrabold text-white mb-2 flex items-center gap-2">
+                <span>📜 {activeLoreDialog.title}</span>
+              </h3>
+              <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-800/40 text-slate-200 font-serif leading-relaxed text-sm italic">
+                "{activeLoreDialog.lore}"
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <span className="text-xs font-tech font-bold text-cyan-400 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Reward Granted: +{activeLoreDialog.rewardEssence} Astral Essence</span>
+              </span>
+              <button
+                onClick={() => setActiveLoreDialog(null)}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-rpg font-bold text-xs rounded-xl shadow-lg cursor-pointer"
+              >
+                RECORD IN CODEX ✓
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Landscape Brushes & Foliage Detail Modal */}
+      {showFoliageModal && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 pointer-events-auto">
+          <div className="max-w-xl w-full bg-slate-950 border border-emerald-500/50 rounded-3xl p-6 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 ring-1 ring-emerald-400/30">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-emerald-900/60">
+              <div className="flex items-center gap-2 text-xs font-rpg font-bold text-emerald-400 uppercase tracking-wider">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span>Landscape Brushes & Foliage System</span>
+              </div>
+              <button
+                onClick={() => setShowFoliageModal(false)}
+                className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs font-mono transition cursor-pointer"
+              >
+                ✕ CLOSE
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs font-sans text-slate-300">
+              <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-800/40">
+                <h4 className="font-rpg font-bold text-sm text-emerald-300 mb-1 flex items-center gap-1.5">
+                  <span>🌿 1. Terrain Texturing & Ground Cover</span>
+                </h4>
+                <p className="text-slate-300 leading-relaxed text-[11px]">
+                  Painted 2048x2048 high-resolution procedural landscape canvas with multi-tone emerald, clover, and golden-green grass blade strokes. Open meadows and forest plains are filled with natural ground cover and floral accents so the 1km terrain never appears barren.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800">
+                <h4 className="font-rpg font-bold text-sm text-amber-300 mb-1 flex items-center gap-1.5">
+                  <span>⛰️ 2. Cave Entrances & Path Edges</span>
+                </h4>
+                <p className="text-slate-300 leading-relaxed text-[11px]">
+                  Softened transitions around the South-West Sunken Rift Cavern (X: -85, Z: 85) archway and mountain foothills. Dirt walking trails leading from the Citadel to the dungeon threshold are bordered by feathered grass brush strokes that blend naturally into rock textures.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800">
+                <h4 className="font-rpg font-bold text-sm text-cyan-300 mb-1 flex items-center gap-1.5">
+                  <span>🌾 3. 3D Instanced Vegetation Clusters</span>
+                </h4>
+                <p className="text-slate-300 leading-relaxed text-[11px]">
+                  2,800 active 3D instanced grass tufts and wild undergrowth clusters sway organically with the wind around tree trunks, rock spires, monoliths, and along the cavern threshold.
+                </p>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-[10px] font-mono text-slate-400 flex items-center justify-between">
+                <span>Asset Pack: Free_Basic_Landscape_Brushes_eee8800c.zip</span>
+                <span className="text-emerald-400 font-bold">ACTIVE ✓</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 mt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowFoliageModal(false)}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-rpg font-bold text-xs rounded-xl shadow-lg cursor-pointer"
+              >
+                RESUME ADVENTURE
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
