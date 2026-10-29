@@ -57,3 +57,71 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(56, 189, 248, 0.6);
 }
+
+/* Regional Weather System Atmosphere Effects */
+@keyframes eclipseDimCycle {
+  0%, 100% {
+    opacity: 0.12;
+    filter: brightness(0.96);
+  }
+  45%, 55% {
+    opacity: 0.42;
+    filter: brightness(0.72) contrast(1.18);
+  }
+}
+
+.animate-eclipse-dim {
+  animation: eclipseDimCycle 7s ease-in-out infinite;
+}
+
+@keyframes fogDriftLayerA {
+  0% {
+    transform: translate3d(-10%, 0, 0);
+  }
+  50% {
+    transform: translate3d(8%, -2%, 0);
+  }
+  100% {
+    transform: translate3d(-10%, 0, 0);
+  }
+}
+
+@keyframes fogDriftLayerB {
+  0% {
+    transform: translate3d(10%, 0, 0);
+  }
+  50% {
+    transform: translate3d(-8%, 3%, 0);
+  }
+  100% {
+    transform: translate3d(10%, 0, 0);
+  }
+}
+
+.animate-fog-slow {
+  animation: fogDriftLayerA 22s ease-in-out infinite alternate;
+}
+
+.animate-fog-reverse {
+  animation: fogDriftLayerB 28s ease-in-out infinite alternate;
+}
+
+@keyframes astralAmbientFlicker {
+  0%, 91%, 95%, 100% {
+    opacity: 0;
+  }
+  92% {
+    opacity: 0.18;
+  }
+  93% {
+    opacity: 0.04;
+  }
+  94% {
+    opacity: 0.28;
+  }
+}
+
+.animate-astral-lightning {
+  animation: astralAmbientFlicker 9s ease-in-out infinite;
+}
+

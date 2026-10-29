@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   Gift,
   Flame,
+  Sliders,
 } from 'lucide-react';
 import { DungeonSynthWidget } from './DungeonSynthWidget';
 import { sound } from '../services/soundService';
@@ -51,6 +52,8 @@ interface HeaderNavProps {
   isPlaying3D?: boolean;
   onToggle3DPlayable?: () => void;
   onOpenRetentionModal?: () => void;
+  heavyWeatherFxEnabled?: boolean;
+  onToggleHeavyWeatherFx?: () => void;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -68,6 +71,8 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   isPlaying3D,
   onToggle3DPlayable,
   onOpenRetentionModal,
+  heavyWeatherFxEnabled = true,
+  onToggleHeavyWeatherFx,
 }) => {
   return (
     <header className="w-full bg-slate-950/95 border-b border-slate-800/80 backdrop-blur-md sticky top-0 z-40 select-none shadow-xl">
@@ -164,6 +169,27 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
             {/* Dungeon Synth Ambient Audio */}
             <DungeonSynthWidget compact={true} />
+
+            {/* Quick Weather FX / Low-End Device Mode Toggle */}
+            {onToggleHeavyWeatherFx && (
+              <button
+                onClick={onToggleHeavyWeatherFx}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-tech font-bold transition border cursor-pointer ${
+                  heavyWeatherFxEnabled
+                    ? 'bg-slate-900/90 border-cyan-500/50 text-cyan-300 hover:border-cyan-400'
+                    : 'bg-amber-950/60 border-amber-500/60 text-amber-300 hover:border-amber-400'
+                }`}
+                title={
+                  heavyWeatherFxEnabled
+                    ? 'Graphics: High Fidelity FX. Click to enable Low-End Device Optimization (bypasses heavy fog & lightning)'
+                    : 'Graphics: Low-End Optimized Mode. Click to enable High Fidelity FX'
+                }
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline">{heavyWeatherFxEnabled ? 'FX: HIGH' : 'FX: LOW (OPT)'}</span>
+                <span className="xl:hidden">{heavyWeatherFxEnabled ? 'FX' : 'OPT'}</span>
+              </button>
+            )}
 
             {/* Hunter Auth Status */}
             {hunterUsername ? (

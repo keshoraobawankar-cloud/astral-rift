@@ -29,6 +29,7 @@ export interface Character {
   title: string;
   race: RaceType;
   className?: string;
+  classType?: string;
   element: ElementType;
   rarity: 4 | 5 | 'SSR' | 'SR' | number | string;
   totalPower?: number;
@@ -213,6 +214,32 @@ export type BiomeType =
   | 'citadel_plaza'
   | 'floating_expanse';
 
+export type RegionalWeatherType = 'Astral Storm' | 'Crystal Mist' | 'Void Eclipse';
+
+export interface WeatherStatModifiers {
+  attackMultiplier: number;
+  defenseMultiplier: number;
+  critRateBonus: number;
+  critDmgMultiplier: number;
+  speedMultiplier: number;
+  maxHpMultiplier: number;
+  lifeStealRate?: number;
+}
+
+export interface RegionalWeather {
+  type: RegionalWeatherType;
+  name: string;
+  tagline: string;
+  description: string;
+  icon: string;
+  color: string;
+  accentGlow: string;
+  bgGradient: string;
+  borderColor: string;
+  statSummary: string;
+  modifiers: WeatherStatModifiers;
+}
+
 export interface WorldBossInfo {
   id: string;
   name: string;
@@ -365,6 +392,7 @@ export interface RealmNode {
   id: string;
   realmId: string;
   name: string;
+  tier?: 1 | 2 | string | number;
   type: 'combat' | 'elite' | 'boss' | 'monolith' | 'merchant' | 'vault' | 'dungeon_level' | 'world_boss';
   floorMutator?: 'Mana Drought' | 'Overgrowth' | 'Arcane Surge' | 'None';
   description: string;

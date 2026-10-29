@@ -11,6 +11,7 @@ import {
   ElementType,
   RealmNode,
   LootMode,
+  RegionalWeather,
 } from '../types/game';
 import { sound } from '../services/soundService';
 import {
@@ -45,6 +46,7 @@ interface CombatCanvasProps {
   onDefeat: () => void;
   onExit: () => void;
   activePetId?: string;
+  weather?: RegionalWeather;
 }
 
 interface LootRollResult {
@@ -73,13 +75,15 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
   onDefeat,
   onExit,
   activePetId = 'void_hatchling',
+  weather,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Active Hero State
   const activeChar = party[activeCharIndex] || party[0];
-  const [playerHp, setPlayerHp] = useState(activeChar.hp);
-  const [playerMaxHp] = useState(activeChar.maxHp);
+  const effectiveMaxHp = Math.round(activeChar.maxHp * (weather?.modifiers.maxHpMultiplier ?? 1.0));
+  const [playerHp, setPlayerHp] = useState(effectiveMaxHp);
+  const [playerMaxHp, setPlayerMaxHp] = useState(effectiveMaxHp);
   const [playerEnergy, setPlayerEnergy] = useState(activeChar.energy);
   const [activeCooldowns, setActiveCooldowns] = useState<{ normal: number; active: number; burst: number; dodge: number }>({
     normal: 0,
@@ -358,17 +362,26 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
 
     setEnemies(spawnedEnemies);
     setTraps(spawnedTraps);
-    setPlayerHp(activeChar.hp);
+    setPlayerHp(effectiveMaxHp);
+    setPlayerMaxHp(effectiveMaxHp);
     setPlayerEnergy(activeChar.energy);
     setComboHits(0);
     setCombatOutcome('playing');
 
     addCombatLog(
       'system',
-      `⚔️ Encounter Started: ${node.name} (${node.tier})`,
-      `Party Leader: ${activeChar.name} (LV. ${activeChar.level} ${activeChar.classType}). Foes: ${spawnedEnemies.map((e) => e.name).join(', ')}.`
+      `⚔️ Encounter Started: ${node.name} (${node.tier ?? node.type})`,
+      `Party Leader: ${activeChar.name} (LV. ${activeChar.level} ${activeChar.classType || activeChar.className || activeChar.title}). Foes: ${spawnedEnemies.map((e) => e.name).join(', ')}.`
     );
-  }, [node, activeChar, addCombatLog]);
+
+    if (weather) {
+      addCombatLog(
+        'system',
+        `⛈️ Regional Weather Active: ${weather.name} ${weather.icon}`,
+        `${weather.tagline} — Modifiers: ${weather.statSummary}`
+      );
+    }
+  }, [node, activeChar, addCombatLog, effectiveMaxHp, weather]);
 
   // Key Event Listeners
   useEffect(() => {
@@ -455,8 +468,30 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
 
         if (dist <= enemy.radius + 50) {
           registerHit(1);
-          const isCrit = Math.random() < activeChar.critRate;
-          let damage = Math.floor(activeChar.attack * activeChar.skills.normal.scalingPct * (isCrit ? activeChar.critDmg : 1));
+          const weatherAtk = weather?.modifiers.attackMultiplier ?? 1.0;
+          const weatherCritRate = (activeChar.critRate || 0.25) + (weather?.modifiers.critRateBonus ?? 0);
+          const weatherCritDmg = (activeChar.critDmg || 1.5) * (weather?.modifiers.critDmgMultiplier ?? 1.0);
+          const isCrit = Math.random() < Math.min(0.95, weatherCritRate);
+          let damage = Math.floor(
+            activeChar.attack * activeChar.skills.normal.scalingPct * (isCrit ? weatherCritDmg : 1) * weatherAtk
+          );
+
+          // Void Eclipse Life-Steal Leech
+          if (isCrit && (weather?.modifiers.lifeStealRate || 0) > 0) {
+            const leech = Math.max(1, Math.floor(damage * weather!.modifiers.lifeStealRate!));
+            setPlayerHp((hp) => Math.min(effectiveMaxHp, hp + leech));
+            floatingTextsRef.current.push({
+              id: Math.random().toString(),
+              text: `🩸 +${leech} VOID LEECH`,
+              x: player.x,
+              y: player.y - 45,
+              color: '#c084fc',
+              alpha: 1,
+              vy: -1.2,
+              isCrit: true,
+              life: 1.2,
+            });
+          }
 
           // Golem Armor Plate logic
           let updatedArmor = enemy.armorPlates;
@@ -667,6 +702,8 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
     registerHit(5);
 
     const player = playerPosRef.current;
+    const weatherAtk = weather?.modifiers.attackMultiplier ?? 1.0;
+    const burstDmg = Math.floor(950 * weatherAtk);
     shockwavesRef.current.push({
       x: player.x,
       y: player.y,
@@ -679,7 +716,7 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
     setEnemies((prev) =>
       prev.map((e) => ({
         ...e,
-        currentHp: Math.max(0, e.currentHp - 950),
+        currentHp: Math.max(0, e.currentHp - burstDmg),
         stunTimer: 3.0,
       }))
     );
@@ -782,9 +819,10 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
         return next;
       });
 
-      // Player Movement with Agility Scaling & Mana Sickness debuff (-30% Agility)
+      // Player Movement with Agility Scaling & Mana Sickness debuff (-30% Agility) & Weather Speed
       const player = playerPosRef.current;
-      const effectiveSpeed = manaSicknessTimer > 0 ? activeChar.speed * 0.7 : activeChar.speed;
+      const weatherSpeedMod = weather?.modifiers.speedMultiplier ?? 1.0;
+      const effectiveSpeed = (manaSicknessTimer > 0 ? activeChar.speed * 0.7 : activeChar.speed) * weatherSpeedMod;
       let moveX = 0;
       let moveY = 0;
       if (keysRef.current['w'] || keysRef.current['arrowup']) moveY -= 1;
@@ -884,7 +922,9 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
             vy = (dy / dist) * enemy.speed;
           } else {
             setPlayerHp((hp) => {
-              const next = Math.max(0, hp - enemy.attack * dt * 0.5);
+              const defMultiplier = weather?.modifiers.defenseMultiplier ?? 1.0;
+              const incomingDmg = (enemy.attack * dt * 0.5) / defMultiplier;
+              const next = Math.max(0, hp - incomingDmg);
               if (next <= 0 && combatOutcome === 'playing') {
                 setCombatOutcome('defeat');
               }
@@ -1236,14 +1276,27 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
       )}
 
       {/* Top Bar matching Solo Leveling Screenshot 1 & 2 */}
-      <div className="flex items-center justify-between mb-3 text-xs font-tech text-slate-400">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 text-xs font-tech text-slate-400">
+        <div className="flex items-center gap-2">
           <span className="bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg text-slate-300 font-bold">
             CAMERA: MANUAL [F1]
           </span>
           <span className="bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg text-amber-400 font-bold">
             ⚔️ AUTO TARGET [F2]
           </span>
+
+          {weather && (
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border backdrop-blur text-xs font-rpg font-bold ${weather.borderColor} bg-slate-900/90 shadow-md`}
+              title={`${weather.tagline} — ${weather.statSummary}`}
+            >
+              <span className="text-sm">{weather.icon}</span>
+              <span style={{ color: weather.color }}>{weather.name}</span>
+              <span className="text-[10px] text-slate-400 font-tech hidden sm:inline">
+                ({weather.statSummary})
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-4">

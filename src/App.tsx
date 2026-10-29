@@ -8,7 +8,9 @@ import {
   SafeZoneState,
   TeleportationArray,
   AttributeMatrix,
+  RegionalWeather,
 } from './types/game';
+import { REGIONAL_WEATHERS } from './data/weatherData';
 import { INITIAL_CHARACTERS } from './data/characters';
 import { INITIAL_REALMS } from './data/realms';
 import { INITIAL_WEAPONS, INITIAL_RELICS } from './data/items';
@@ -161,6 +163,58 @@ export const App: React.FC = () => {
     }
   });
 
+  // Dynamic Regional Weather System ('Astral Storm', 'Crystal Mist', 'Void Eclipse')
+  const [currentWeather, setCurrentWeather] = useState<RegionalWeather>(() => {
+    try {
+      const saved = localStorage.getItem('aethelgard_weather');
+      return saved ? JSON.parse(saved) : REGIONAL_WEATHERS['Astral Storm'];
+    } catch {
+      return REGIONAL_WEATHERS['Astral Storm'];
+    }
+  });
+
+  const handleWeatherChange = (nextWeather: RegionalWeather) => {
+    setCurrentWeather(nextWeather);
+    try {
+      localStorage.setItem('aethelgard_weather', JSON.stringify(nextWeather));
+    } catch {
+      // ignore
+    }
+    sound.playLevelUp();
+    setSystemToast(
+      `⛈️ Regional Weather Attuned: ${nextWeather.name} (${nextWeather.icon}) — ${nextWeather.statSummary}`
+    );
+    setTimeout(() => setSystemToast(null), 4000);
+  };
+
+  // User Settings: Heavy Weather Visual Effects Toggle (for low-end devices)
+  const [heavyWeatherFxEnabled, setHeavyWeatherFxEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('aethelgard_heavy_weather_fx') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleHeavyWeatherFx = () => {
+    setHeavyWeatherFxEnabled((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('aethelgard_heavy_weather_fx', next ? 'true' : 'false');
+      } catch {
+        // ignore
+      }
+      sound.playClick();
+      setSystemToast(
+        next
+          ? '✨ High Fidelity Graphics: Heavy weather visual effects (fog blurs & lightning) enabled.'
+          : '⚡ Low-End Device Mode: Heavy weather visual effects disabled for optimal performance.'
+      );
+      setTimeout(() => setSystemToast(null), 4000);
+      return next;
+    });
+  };
+
   const handleSelectPet = (petId: string) => {
     setActivePetId(petId);
     try {
@@ -232,10 +286,11 @@ export const App: React.FC = () => {
       localStorage.setItem('aethelgard_realms', JSON.stringify(realms));
       localStorage.setItem('aethelgard_guild', JSON.stringify(guild));
       localStorage.setItem('aethelgard_affinity', affinityManager.serialize());
+      localStorage.setItem('aethelgard_weather', JSON.stringify(currentWeather));
     } catch {
       // ignore
     }
-  }, [safeZone, teleportArray, inventory, party, realms, guild, affinityManager]);
+  }, [safeZone, teleportArray, inventory, party, realms, guild, affinityManager, currentWeather]);
 
   // Load persistent state from Express backend on mount
   useEffect(() => {
@@ -514,6 +569,8 @@ export const App: React.FC = () => {
           setIsPlaying3D(next);
         }}
         onOpenRetentionModal={() => setIsRetentionModalOpen(true)}
+        heavyWeatherFxEnabled={heavyWeatherFxEnabled}
+        onToggleHeavyWeatherFx={handleToggleHeavyWeatherFx}
       />
 
       {/* System Toast Banner */}
@@ -573,6 +630,8 @@ export const App: React.FC = () => {
                 onOpenRetentionModal={() => setIsRetentionModalOpen(true)}
                 activePetId={activePetId}
                 onSelectPet={handleSelectPet}
+                heavyWeatherFxEnabled={heavyWeatherFxEnabled}
+                onToggleHeavyWeatherFx={handleToggleHeavyWeatherFx}
               />
             )}
 
@@ -612,6 +671,11 @@ export const App: React.FC = () => {
             activeRealmId={activeRealmId}
             onSelectRealm={setActiveRealmId}
             onSelectNode={handleSelectNode}
+            currentWeather={currentWeather}
+            onWeatherChange={handleWeatherChange}
+            party={party}
+            heavyWeatherFxEnabled={heavyWeatherFxEnabled}
+            onToggleHeavyWeatherFx={handleToggleHeavyWeatherFx}
           />
         )}
 
@@ -630,6 +694,7 @@ export const App: React.FC = () => {
             onDefeat={handleCombatDefeat}
             onExit={handleExitCombat}
             activePetId={activePetId}
+            weather={currentWeather}
           />
         )}
 

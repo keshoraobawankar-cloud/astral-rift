@@ -20,6 +20,9 @@ import {
   Gift,
   Flame,
   Box,
+  Sliders,
+  Cpu,
+  Zap,
 } from 'lucide-react';
 import { growthRetention } from '../services/growthRetentionService';
 import { INITIAL_PET_COMPANIONS } from '../data/petData';
@@ -40,6 +43,8 @@ interface AethelgardCitadelHubProps {
   onOpenRetentionModal?: () => void;
   activePetId?: string;
   onSelectPet?: (petId: string) => void;
+  heavyWeatherFxEnabled?: boolean;
+  onToggleHeavyWeatherFx?: () => void;
 }
 
 const TIER1_BIOMES = [
@@ -103,6 +108,8 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
   onOpenRetentionModal,
   activePetId = 'void_hatchling',
   onSelectPet,
+  heavyWeatherFxEnabled = true,
+  onToggleHeavyWeatherFx,
 }) => {
   const [fundsCollected, setFundsCollected] = useState<boolean>(false);
   const [exhaustedTimer, setExhaustedTimer] = useState<number>(safeZone.exhaustedSleeperTimer || 0);
@@ -617,6 +624,79 @@ export const AethelgardCitadelHub: React.FC<AethelgardCitadelHubProps> = ({
             <span>FORGE & WEAVE</span>
             <ChevronRight className="w-3 h-3" />
           </div>
+        </div>
+      </div>
+
+      {/* User Settings: Device Performance & Heavy Weather Visual Effects Optimization */}
+      <div className="p-5 md:p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 backdrop-blur">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 shadow-md">
+            <Sliders className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-tech font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded">
+                USER SETTINGS • GRAPHICS & PERFORMANCE
+              </span>
+              <span
+                className={`text-[10px] font-tech font-bold px-2 py-0.5 rounded ${
+                  heavyWeatherFxEnabled
+                    ? 'bg-emerald-950/60 border border-emerald-500/30 text-emerald-300'
+                    : 'bg-amber-950/60 border border-amber-500/30 text-amber-300'
+                }`}
+              >
+                {heavyWeatherFxEnabled ? '✨ HIGH FIDELITY FX' : '⚡ LOW-END DEVICE OPTIMIZED'}
+              </span>
+            </div>
+
+            <h3 className="text-base md:text-lg font-rpg font-bold text-white mt-1">
+              Heavy Weather Visual Effects (Fog Drift, Screen Dimming & Lightning)
+            </h3>
+            <p className="text-xs text-slate-400 font-sans mt-0.5 max-w-2xl leading-relaxed">
+              Optimize rendering performance for lower-end devices and laptops by toggling GPU-intensive visual effects in the Subterranean StellarMap (including multi-layer 50px blurred fog banks on Crystal Mist, 65-particle celestial starlight rain with ambient lightning flashes on Astral Storm, and periodic 7-second screen dimming brightness cycles on Void Eclipse).
+            </p>
+          </div>
+        </div>
+
+        {/* Interactive Toggle Switch */}
+        <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+          <div className="flex flex-col items-end">
+            <span className="text-xs font-rpg font-bold text-white">
+              {heavyWeatherFxEnabled ? 'Effects Enabled' : 'Performance Mode'}
+            </span>
+            <span className="text-[10px] font-tech text-slate-400">
+              {heavyWeatherFxEnabled ? 'Full visual shaders' : 'Heavy FX bypassed (60 FPS)'}
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              if (onToggleHeavyWeatherFx) {
+                onToggleHeavyWeatherFx();
+              }
+            }}
+            className={`relative inline-flex h-8 w-16 items-center rounded-full p-1 transition-colors duration-300 cursor-pointer ${
+              heavyWeatherFxEnabled
+                ? 'bg-gradient-to-r from-cyan-600 to-emerald-500 shadow-lg shadow-cyan-900/40'
+                : 'bg-slate-800 border border-slate-700'
+            }`}
+            aria-label="Toggle Heavy Weather Visual Effects"
+            title={
+              heavyWeatherFxEnabled
+                ? 'Disable heavy weather visual effects for low-end device optimization'
+                : 'Enable high fidelity heavy weather visual effects'
+            }
+          >
+            <span
+              className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform duration-300 flex items-center justify-center text-[10px] font-bold ${
+                heavyWeatherFxEnabled
+                  ? 'translate-x-8 text-emerald-600'
+                  : 'translate-x-0 text-slate-600'
+              }`}
+            >
+              {heavyWeatherFxEnabled ? 'ON' : 'OFF'}
+            </span>
+          </button>
         </div>
       </div>
 
