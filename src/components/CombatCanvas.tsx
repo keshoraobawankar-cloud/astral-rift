@@ -32,6 +32,7 @@ import {
   Crosshair,
 } from 'lucide-react';
 import { bestiaryService } from '../services/bestiaryService';
+import { CombatLog, CombatLogEntry, CombatLogType } from './CombatLog';
 
 interface CombatCanvasProps {
   party: Character[];
@@ -107,6 +108,34 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
   const [lootMode, setLootMode] = useState<LootMode>('roll_need_greed');
   const [lootRolls, setLootRolls] = useState<LootRollResult[]>([]);
   const [isLootModalOpen, setIsLootModalOpen] = useState(false);
+
+  // Combat Log State & Enemy Attack Throttles
+  const [combatLogs, setCombatLogs] = useState<CombatLogEntry[]>([]);
+  const enemyAttackTimersRef = useRef<{ [enemyId: string]: number }>({});
+
+  const addCombatLog = useCallback(
+    (type: CombatLogType, message: string, detail?: string, isCrit?: boolean, value?: number) => {
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now
+        .getMinutes()
+        .toString()
+        .padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+      setCombatLogs((prev) => {
+        const newEntry: CombatLogEntry = {
+          id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          timestamp: timeStr,
+          type,
+          message,
+          detail,
+          isCrit,
+          value,
+        };
+        return [...prev.slice(-99), newEntry];
+      });
+    },
+    []
+  );
 
   // Entities & Animations
   const particlesRef = useRef<CombatParticle[]>([]);
@@ -322,6 +351,7 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
     }
 
     slainEnemyIdsRef.current.clear();
+    enemyAttackTimersRef.current = {};
     spawnedEnemies.forEach((e) => {
       bestiaryService.recordEncounter(e.type || e.id);
     });
@@ -332,7 +362,13 @@ export const CombatCanvas: React.FC<CombatCanvasProps> = ({
     setPlayerEnergy(activeChar.energy);
     setComboHits(0);
     setCombatOutcome('playing');
-  }, [node, activeChar]);
+
+    addCombatLog(
+      'system',
+      `⚔️ Encounter Started: ${node.name} (${node.tier})`,
+      `Party Leader: ${activeChar.name} (LV. ${activeChar.level} ${activeChar.classType}). Foes: ${spawnedEnemies.map((e) => e.name).join(', ')}.`
+    );
+  }, [node, activeChar, addCombatLog]);
 
   // Key Event Listeners
   useEffect(() => {
